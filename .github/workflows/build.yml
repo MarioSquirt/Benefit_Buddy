@@ -36,7 +36,7 @@ jobs:
       - name: Build APK
         run: |
           buildozer init  # Generate buildozer.spec if not already present
-          buildozer android debug  # Build the APK in debug mode
+          echo y | buildozer android debug  # Build the APK in debug mode
 
       # Step 5: Upload APK as an artifact
       - name: Upload APK
