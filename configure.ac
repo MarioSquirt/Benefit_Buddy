@@ -1,5 +1,8 @@
 AC_INIT([Benefit_Buddy], [1.0])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_FILES([Makefile])
+m4_pattern_allow([LT_SYS_SYMBOL_USCORE])
+AC_PROG_LIBTOOL
+LT_INIT
 AC_OUTPUT
 .
