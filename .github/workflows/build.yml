@@ -21,9 +21,6 @@ jobs:
         with:
           python-version: 3.12.11
 
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool
-
       - name: Install dependencies
         run: |
           sudo apt update
@@ -31,18 +28,6 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython setuptools
           pip install docwriter
-
-      - name: Update autoconf macros
-        run: |
-          autoupdate || true
-          autoreconf -fi || true
-
-      - name: Patch configure.ac for missing macros
-        run: |
-          if [ -f configure.ac ]; then
-            grep -q 'm4_pattern_allow([LT_SYS_SYMBOL_USCORE])' configure.ac || \
-            sed -i '1im4_pattern_allow([LT_SYS_SYMBOL_USCORE])' configure.ac
-          fi
 
 #      - name: Clean previous Buildozer builds
 #        run: buildozer android clean
