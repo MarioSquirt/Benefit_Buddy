@@ -2,11 +2,9 @@ name: Build Kivy APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build-apk:
@@ -34,6 +32,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install Cython==0.29.33 setuptools buildozer
+          pip install "python-for-android<2024.06"  # 🔹 Pin p4a to a known good version
 
       - name: Cache buildozer/.gradle
         uses: actions/cache@v3
