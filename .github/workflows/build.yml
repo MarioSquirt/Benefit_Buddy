@@ -23,6 +23,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo nano /etc/apt/sources.list
+          deb http://old-releases.ubuntu.com/ubuntu/ lunar universe
           sudo apt update
           sudo apt-get update
           sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
