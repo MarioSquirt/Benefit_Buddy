@@ -23,14 +23,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip build-essential git zip autoconf automake libtool m4 python3-dev
           pip install --upgrade pip
           pip install buildozer cython setuptools
           pip install docwriter
 
-#      - name: Clean previous Buildozer builds
-#        run: buildozer android clean
+      - name: Clean previous Buildozer builds
+        run: |
+          buildozer android clean
 
       - name: Build APK
         run: |
