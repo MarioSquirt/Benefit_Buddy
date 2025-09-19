@@ -1,10 +1,12 @@
-name: Build Kivy APK (Docker)
+name: Build Kivy APK
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build-apk:
@@ -14,10 +16,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build APK in Docker
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12.11"
+
+      - name: Install system dependencies
         run: |
-          docker run --rm -v $PWD:/home/user/hostcwd kivy/buildozer \
-            buildozer android debug
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev cmake \
+            libffi-dev libssl-dev libltdl-dev
+
+      - name: Set up pip and Python packages
+        run: |
+          pip install --upgrade pip
+          pip install Cython==0.29.33 setuptools buildozer
+
+      - name: Cache buildozer/.gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            .buildozer
+            ~/.gradle
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
+      - name: Build APK
+        run: |
+          buildozer init || true
+          echo y | buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
