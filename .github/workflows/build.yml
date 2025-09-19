@@ -27,9 +27,9 @@ jobs:
           pip install buildozer cython setuptools
           pip install docwriter
 
-      - name: Clean previous Buildozer builds
-        run: |
-          buildozer android clean
+#      - name: Clean previous Buildozer builds
+#        run: |
+#          buildozer android clean
 
       - name: Build APK
         run: |
