@@ -111,16 +111,16 @@ android.permissions = android.permission.INTERNET,name=android.permission.WRITE_
 android.api = 34
 
 # (int) Minimum API your APK / AAB will support.
-android.minapi = 17c
+#android.minapi = 21
 
 # (int) Android SDK version to use
-android.sdk = 24
+#android.sdk = 24
 
 # (str) Android NDK version to use
-android.ndk = 28c
+#android.ndk = 28c
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
-android.ndk_api = 17c
+#android.ndk_api = 21
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
 #android.ndk_path =
