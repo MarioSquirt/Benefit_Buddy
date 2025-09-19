@@ -39,27 +39,20 @@ jobs:
 
       - name: Install Python-for-Android
         run: |
-          pip install --upgrade python-for-android==2024.1.21
+          pip install --upgrade python-for-android==2025.9.0
 
-      - name: Cache buildozer and Gradle
+      # Cache Buildozer, Gradle, and P4A platform builds for faster rebuilds
+      - name: Cache buildozer, Gradle, and P4A platform
         uses: actions/cache@v3
         with:
           path: |
             .buildozer
             ~/.gradle
-          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
-          restore-keys: |
-            ${{ runner.os }}-buildozer-
-
-      - name: Cache Python-for-Android builds
-        uses: actions/cache@v3
-        with:
-          path: |
             .buildozer/android/platform/build-*
             .buildozer/android/platform/python-for-android
-          key: ${{ runner.os }}-p4a-${{ hashFiles('**/buildozer.spec') }}
+          key: ${{ runner.os }}-buildozer-p4a-${{ hashFiles('**/buildozer.spec') }}
           restore-keys: |
-            ${{ runner.os }}-p4a-
+            ${{ runner.os }}-buildozer-p4a-
 
       - name: Clean previous builds
         run: |
