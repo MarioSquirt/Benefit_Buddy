@@ -29,19 +29,7 @@ jobs:
             autoconf libtool pkg-config zlib1g-dev \
             libncurses5-dev libncursesw5-dev cmake \
             libffi-dev libssl-dev libltdl-dev gettext \
-            autoconf-archive automake autopoint curl
-
-      - name: Install Android SDK & NDK
-        run: |
-          mkdir -p $HOME/Android/Sdk
-          cd $HOME/Android/Sdk
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
-          yes | $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/Android/Sdk "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.3.13750724"
-        env:
-          JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
+            autoconf-archive automake autopoint
 
       - name: Set up pip and Python packages
         run: |
@@ -78,12 +66,6 @@ jobs:
       - name: Build APK
         run: |
           echo y | buildozer -v android debug
-        env:
-          ANDROIDSDK: $HOME/Android/Sdk
-          ANDROIDNDK: $HOME/Android/Sdk/ndk/27.3.13750724
-          ANDROIDAPI: 34
-          ANDROIDMINAPI: 24
-          PATH: $HOME/Android/Sdk/cmdline-tools/latest/bin:$PATH
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
