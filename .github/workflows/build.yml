@@ -28,7 +28,7 @@ jobs:
             git zip unzip openjdk-17-jdk python3-pip \
             autoconf libtool pkg-config zlib1g-dev \
             libncurses5-dev libncursesw5-dev cmake \
-            libffi-dev libssl-dev libltdl-dev
+            libffi-dev libssl-dev libltdl-dev gettext
 
       - name: Set up pip and Python packages
         run: |
