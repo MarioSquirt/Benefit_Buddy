@@ -34,7 +34,7 @@ jobs:
       - name: Set up pip and Python packages
         run: |
           pip install --upgrade pip
-          pip install setuptools==65.5.0 wheel==0.40.0
+          pip install "setuptools<60" wheel==0.40.0
           pip install Cython==0.29.33 buildozer
 
       - name: Install Python-for-Android
