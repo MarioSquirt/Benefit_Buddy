@@ -11,9 +11,6 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
 
     steps:
       - name: Checkout code
@@ -22,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11.8"
+          python-version: "3.10.13"
 
       - name: Install system dependencies
         run: |
@@ -34,25 +31,17 @@ jobs:
             libffi-dev libssl-dev libltdl-dev gettext \
             autoconf-archive automake autopoint
 
-      - name: Install Python packages
+      - name: Set up pip and Python packages
         run: |
           pip install --upgrade pip
-          pip install "setuptools<60" wheel==0.40.0
+          pip install "setuptools<65" wheel==0.40.0
           pip install Cython==0.29.33 buildozer
-          pip install --upgrade python-for-android==2024.1.21
 
-      - name: Determine if native rebuild is needed
-        id: check_native
+      - name: Install Python-for-Android
         run: |
-          # Check if any native-relevant files changed
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'buildozer.spec|requirements.txt'; then
-            echo "native_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "native_changed=false" >> $GITHUB_OUTPUT
-          fi
+          pip install python-for-android==2024.1.21
 
-      - name: Cache Buildozer and Gradle
-        if: steps.check_native.outputs.native_changed == 'true'
+      - name: Cache buildozer and Gradle
         uses: actions/cache@v3
         with:
           path: |
@@ -63,30 +52,21 @@ jobs:
             ${{ runner.os }}-buildozer-
 
       - name: Cache Python-for-Android builds
-        if: steps.check_native.outputs.native_changed == 'true'
         uses: actions/cache@v3
         with:
           path: |
             .buildozer/android/platform/build-*
+            .buildozer/android/platform/python-for-android
           key: ${{ runner.os }}-p4a-${{ hashFiles('**/buildozer.spec') }}
           restore-keys: |
             ${{ runner.os }}-p4a-
 
-      - name: Cache Python-for-Android source
-        if: steps.check_native.outputs.native_changed == 'true'
-        uses: actions/cache@v3
-        with:
-          path: .buildozer/android/platform/python-for-android
-          key: ${{ runner.os }}-p4a-src-${{ hashFiles('**/buildozer.spec') }}
-          restore-keys: |
-            ${{ runner.os }}-p4a-src-
-
-      - name: Clean previous builds (native)
-        if: steps.check_native.outputs.native_changed == 'true'
+      - name: Clean previous builds
         run: |
           buildozer android clean || true
+          rm -rf .buildozer/android/platform/python-for-android
 
-      - name: Initialize Buildozer if missing
+      - name: Initialize buildozer if missing
         run: |
           if [ ! -f buildozer.spec ]; then
             buildozer init
