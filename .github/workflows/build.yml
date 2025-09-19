@@ -30,12 +30,21 @@ jobs:
             libncurses5-dev libncursesw5-dev cmake \
             libffi-dev libssl-dev libltdl-dev gettext
 
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Set up pip and Python packages
         run: |
           pip install --upgrade pip
           pip install Cython==0.29.33 setuptools buildozer
+          pip install --upgrade python-for-android==2025.7.1
 
-      - name: Cache buildozer/.gradle
+      - name: Cache Buildozer and Gradle
         uses: actions/cache@v3
         with:
           path: |
@@ -47,7 +56,8 @@ jobs:
 
       - name: Build APK
         run: |
-          buildozer init || true
+          # Only init if buildozer.spec does not exist
+          [ -f buildozer.spec ] || buildozer init
           echo y | buildozer -v android debug
 
       - name: Upload APK
