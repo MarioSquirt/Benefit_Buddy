@@ -49,7 +49,7 @@ jobs:
 
       - name: Build APK
         run: |
-          buildozer android debug
+          echo y | buildozer -v android debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
