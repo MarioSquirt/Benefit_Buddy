@@ -34,7 +34,7 @@ source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.0
+version = 0.1
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -42,16 +42,16 @@ version = 1.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,requests,pandas,sqlite3,pillow,numpy
+requirements = python3,kivy,kivymd,requests,pandas,sqlite3,pillow
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = ./images/presplash.png
+presplash.filename = images/presplash.png
 
 # (str) Icon of the application
-icon.filename = ./images/icon.png
+icon.filename = images/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse, landscape-reverse, or all
@@ -102,7 +102,7 @@ android.presplash_color = #005EA5
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,CAMERA,ACCESS_FINE_LOCATION,ACCESS_NETWORK_STATE
+android.permissions = android.permission.INTERNET,name=android.permission.WRITE_EXTERNAL_STORAGE
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
@@ -111,7 +111,7 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,CAMERA,ACCESS_FINE_LOCATIO
 #android.api = 33
 
 # (int) Minimum API your APK / AAB will support.
-android.minapi = 24
+android.minapi = 34
 
 # (int) Android SDK version to use
 #android.sdk = 20
