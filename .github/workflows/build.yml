@@ -23,7 +23,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo nano/etc/apt/sources.list
           deb http://old-releases.ubuntu.com/ubuntu/ lunar universe
           sudo apt update
           sudo apt-get update
