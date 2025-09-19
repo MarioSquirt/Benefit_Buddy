@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Python-for-Android
         run: |
-          pip install --upgrade python-for-android==2025.9.0
+          pip install --upgrade python-for-android==2024.1.21
 
       - name: Cache buildozer and Gradle
         uses: actions/cache@v3
