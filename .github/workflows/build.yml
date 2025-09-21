@@ -41,8 +41,12 @@ jobs:
       - name: Install Buildozer and pinned packages
         run: |
           pip install --upgrade pip
-          pip install "Cython<3.2" "setuptools<70" "wheel==0.40.0"
+          pip install "Cython<3.2" "setuptools==68.2.2" "wheel==0.40.0"
           pip install buildozer
+
+      - name: Clean Buildozer cache
+        run: |
+          rm -rf .buildozer
 
       - name: Build APK
         run: |
