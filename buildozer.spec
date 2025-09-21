@@ -366,6 +366,10 @@ p4a.branch = develop
 # (str) extra command line arguments to pass when invoking pythonforandroid.toolchain
 #p4a.extra_args =
 
+# Pass pip constraints into p4a isolated builds
+extra_env_keys = PIP_CONSTRAINT
+
+
 
 
 #
