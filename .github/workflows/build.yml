@@ -5,55 +5,63 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.10"   # Stick with 3.10 (stable for p4a)
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            libffi-dev \
-            libssl-dev \
-            libltdl-dev \
-            libtool \
-            autotools-dev \
-            automake \
-            autopoint \
-            pkg-config \
-            zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            openjdk-17-jdk \
-            unzip
+            git zip unzip openjdk-17-jdk python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev cmake \
+            libffi-dev libssl-dev libltdl-dev gettext
 
-      - name: Install Buildozer and pinned packages
+      - name: Create pip constraints file
+        run: |
+          echo "setuptools==68.2.2" >> pip-constraints.txt
+          echo "wheel==0.40.0" >> pip-constraints.txt
+          echo "Cython<3.2" >> pip-constraints.txt
+          cat pip-constraints.txt
+
+      - name: Export pip constraint env
+        run: echo "PIP_CONSTRAINT=$GITHUB_WORKSPACE/pip-constraints.txt" >> $GITHUB_ENV
+
+      - name: Set up pip and Python packages
         run: |
           pip install --upgrade pip
-          pip install "Cython<3.2" "setuptools==68.2.2" "wheel==0.40.0"
-          pip install buildozer
+          pip install Cython==0.29.36 setuptools==68.2.2 wheel==0.40.0 buildozer python-for-android
 
-      - name: Clean Buildozer cache
-        run: |
-          rm -rf .buildozer
+      - name: Cache buildozer/.gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            .buildozer
+            ~/.gradle
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
 
       - name: Build APK
         run: |
+          buildozer init || true
           echo y | buildozer -v android debug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BenefitBuddy-APK
+          name: kivy-app-apk
           path: bin/*.apk
