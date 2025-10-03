@@ -46,7 +46,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      - name: Build APK
+      - name: Clean previous builds
+        run: rm -rf .buildozer
+
+      - name: Build APK (64-bit compatible)
         run: |
           buildozer init || true
           echo y | buildozer -v android debug
