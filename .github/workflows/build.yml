@@ -4,41 +4,54 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools
-          python -m pip install "wheel==0.42.0"
-          python -m pip install buildozer cython virtualenv
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            openjdk-17-jdk unzip git zlib1g-dev \
-            libncurses5 libffi-dev libssl-dev \
-            libsqlite3-dev libjpeg-dev libfreetype6-dev
+            git zip unzip openjdk-17-jdk python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses-dev libncursesw5-dev cmake \
+            libffi-dev libssl-dev libltdl-dev gettext
+
+      - name: Pin pip, setuptools, and wheel
+        run: |
+          python -m pip install --upgrade pip
+          pip install "setuptools<70" "wheel<0.44" "Cython<3.1" buildozer
+
+      - name: Cache buildozer/.gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            .buildozer
+            ~/.gradle
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
 
       - name: Build APK
         run: |
           buildozer init || true
           echo y | buildozer -v android debug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BenefitBuddy-APK
+          name: kivy-app-apk
           path: bin/*.apk
