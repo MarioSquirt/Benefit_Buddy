@@ -4,7 +4,8 @@ title = Benefit Buddy
 package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf
+source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
+main.py = Benefit_calculator.py
 
 version = 0.1
 
@@ -19,7 +20,7 @@ icon.filename = images/icon.png
 orientation = portrait
 
 # Permissions
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
 # Fullscreen
 fullscreen = 0
@@ -32,6 +33,9 @@ android.api = 34
 android.minapi = 24
 android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
+
+# Include your assets (fonts, images, etc.)
+source.include_patterns = assets/*, data/*
 
 # Enable backup
 android.allow_backup = True
