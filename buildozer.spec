@@ -5,7 +5,7 @@ package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
-main.py = Benefit_calculator.py
+main.py = benefit_calculator.py
 
 version = 0.1
 
