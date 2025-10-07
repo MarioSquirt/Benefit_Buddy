@@ -12,9 +12,31 @@ from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.uix.spinner import Spinner
 from kivy.uix.widget import Widget
+from kivy.utils import platform
+
 
 # Import your main app (must define BenefitBuddy class)
 import benefit_calculator
+
+
+# Detect if running on Android
+IS_ANDROID = platform == 'android'
+
+# Original Label __init__ method
+_orig_label_init = Label.__init__
+
+def label_init_patch(self, *args, **kwargs):
+    font_name = kwargs.get('font_name', None)
+    if font_name and not os.path.isabs(font_name):
+        # Redirect to font folder on Android
+        if IS_ANDROID:
+            new_path = os.path.join("font", font_name)
+            kwargs['font_name'] = new_path
+        # Else leave the font as is for desktop
+    _orig_label_init(self, *args, **kwargs)
+
+# Apply monkey patch
+Label.__init__ = label_init_patch
 
 
 class SplashScreen(App):
@@ -119,3 +141,4 @@ def open_benefit_calculator():
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting with GOV splash.")
     open_benefit_calculator()
+
