@@ -10,58 +10,75 @@ from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.core.window import Window
+from kivy.uix.spinner import Spinner
+from kivy.uix.widget import Widget
 
-# Import your main app
+# Import your main app (must define BenefitBuddy class)
 import benefit_calculator
 
 
 class SplashScreen(App):
-    """Animated splash screen before loading main app."""
+    """Animated GOV-themed splash screen before loading main app."""
 
     def build(self):
-        Window.clearcolor = (1, 1, 1, 1)  # White background
+        # GOV Blue background
+        Window.clearcolor = (29/255, 112/255, 184/255, 1)
 
-        layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
+        layout = BoxLayout(orientation='vertical', spacing=15, padding=60)
 
         # ✅ App logo
-        logo_path = os.path.join(os.path.dirname(__file__), "images", "logo.png")
-        if not os.path.exists(logo_path):
-            Logger.warning("BenefitBuddy: logo.png not found, skipping image.")
-        else:
-            logo = Image(source=logo_path, size_hint=(1, 0.6))
+        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        if os.path.exists(logo_path):
+            logo = Image(source=logo_path, size_hint=(1, 0.5))
             layout.add_widget(logo)
+        else:
+            Logger.warning("BenefitBuddy: logo.png not found, skipping image.")
 
         # ✅ App name
         self.label = Label(
             text="Benefit Buddy",
-            font_size="28sp",
+            font_size="32sp",
             bold=True,
-            color=(0.1, 0.2, 0.6, 1),  # GOV blue-ish
+            color=(1, 1, 1, 1),  # White text
             size_hint=(1, 0.2)
         )
         layout.add_widget(self.label)
 
-        # ✅ Subtext
+        # ✅ Animated subtext
         self.sub = Label(
-            text="Calculating your benefits...",
+            text="Checking benefit entitlements...",
             font_size="18sp",
-            color=(0, 0, 0, 0.7),
-            size_hint=(1, 0.2)
+            color=(1, 1, 1, 0.8),
+            size_hint=(1, 0.15)
         )
         layout.add_widget(self.sub)
 
-        # ✅ Animate fade-in for the text
-        anim = Animation(color=(0.1, 0.2, 0.6, 1), duration=1.2) + Animation(color=(0.4, 0.4, 0.8, 1), duration=1.2)
-        anim.repeat = True
-        anim.start(self.label)
+        # ✅ Simple spinner imitation (pulsing GOV yellow dot)
+        self.dot = Label(
+            text="●",
+            font_size="36sp",
+            color=(1, 221/255, 0, 0.0),  # GOV yellow but start transparent
+            size_hint=(1, 0.15)
+        )
+        layout.add_widget(self.dot)
 
-        # ✅ After 2.5 seconds, start the real app
-        Clock.schedule_once(self.start_main_app, 2.5)
+        # Animate pulsing yellow dot
+        anim = Animation(color=(1, 221/255, 0, 1), duration=0.6) + Animation(color=(1, 221/255, 0, 0.1), duration=0.6)
+        anim.repeat = True
+        anim.start(self.dot)
+
+        # Animate fade pulse on the title too
+        title_anim = Animation(color=(1, 1, 1, 0.7), duration=1.2) + Animation(color=(1, 1, 1, 1), duration=1.2)
+        title_anim.repeat = True
+        title_anim.start(self.label)
+
+        # ✅ After 3 seconds, start the real app
+        Clock.schedule_once(self.start_main_app, 3)
         return layout
 
     def start_main_app(self, *args):
         Logger.info("BenefitBuddy: Splash done, launching main app.")
-        self.stop()  # stop splash
+        self.stop()
         benefit_calculator.BenefitBuddy().run()
 
 
@@ -71,11 +88,11 @@ def open_benefit_calculator():
     is_android = hasattr(sys, 'getandroidapilevel')
 
     if is_android:
-        Logger.info("BenefitBuddy: Launching on Android with splash.")
+        Logger.info("BenefitBuddy: Launching on Android with GOV splash.")
         SplashScreen().run()
         return
 
-    # For desktop testing
+    # Desktop fallback
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     script_path = os.path.join(base_path, 'benefit_calculator.py')
 
@@ -100,6 +117,5 @@ def open_benefit_calculator():
 
 
 if __name__ == "__main__":
-    Logger.info("BenefitBuddy: Starting with splash.")
+    Logger.info("BenefitBuddy: Starting with GOV splash.")
     open_benefit_calculator()
-
