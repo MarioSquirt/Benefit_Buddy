@@ -10,7 +10,7 @@ source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
 version = 0.1
 
 # Python & Kivy dependencies
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,pandas,pillow,sqlite3
+requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,pandas,pillow,sqlite3,filetype,certifi,urllib3,chardet,idna
 
 # Icons & Presplash
 presplash.filename = %(source.dir)s/images/presplash.png
