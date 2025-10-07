@@ -35,7 +35,8 @@ android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
 # Include your assets (fonts, images, etc.)
-source.include_patterns = assets/*, data/*, font/*, images/*, main.py, benefit_calculator.py, benefit_data/*
+source.include_patterns = assets/*, data/*, font/*, images/*, main.py, benefit_calculator.py, benefit_data/*, freedom.ttf, roboto.ttf
+
 
 # Enable backup
 android.allow_backup = True
