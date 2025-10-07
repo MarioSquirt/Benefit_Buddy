@@ -24,7 +24,7 @@ class SplashScreen(App):
         layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
 
         # ✅ App logo
-        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        logo_path = os.path.join(os.path.dirname(__file__), "images", "logo.png")
         if not os.path.exists(logo_path):
             Logger.warning("BenefitBuddy: logo.png not found, skipping image.")
         else:
@@ -102,3 +102,4 @@ def open_benefit_calculator():
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting with splash.")
     open_benefit_calculator()
+
