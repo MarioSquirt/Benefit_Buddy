@@ -13,8 +13,8 @@ version = 0.1
 requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,pandas,pillow,sqlite3
 
 # Icons & Presplash
-presplash.filename = images/presplash.png
-icon.filename = images/icon.png
+presplash.filename = %(source.dir)s/images/presplash.png
+icon.filename = %(source.dir)s/images/icon.png
 
 # Orientation
 orientation = portrait
@@ -35,7 +35,7 @@ android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
 # Include your assets (fonts, images, etc.)
-source.include_patterns = assets/*, data/*, font/*, images/*
+source.include_patterns = assets/*, data/*, font/*, images/*, main.py, benefit_calculator.py, benefit_data/*
 
 # Enable backup
 android.allow_backup = True
