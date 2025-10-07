@@ -1,16 +1,23 @@
 import os
 import sys
-import subprocess
 import platform
+import subprocess
 from kivy.logger import Logger
+from kivy.app import App
+from kivy.uix.label import Label
+
+# ✅ Force import early so Buildozer includes the file
+import benefit_calculator
+
+
+class SplashScreen(App):
+    """Simple splash screen shown while the main app loads"""
+    def build(self):
+        return Label(text="Loading Benefit Buddy…", font_size="22sp", halign="center")
 
 
 def open_benefit_calculator():
-    """
-    Launch the Benefit Buddy calculator.
-    - On Android: runs the Kivy app directly.
-    - On desktop: opens benefit_calculator.py in a new terminal window.
-    """
+    """Launch the Benefit Buddy calculator — works on Android and desktop."""
 
     # Detect Android
     is_android = hasattr(sys, 'getandroidapilevel')
@@ -18,15 +25,13 @@ def open_benefit_calculator():
     if is_android:
         Logger.info("BenefitBuddy: Detected Android environment. Launching app directly.")
         try:
-            import benefit_calculator
+            SplashScreen().run()  # Show loading screen
             benefit_calculator.BenefitBuddy().run()
-        except ImportError:
-            Logger.error("BenefitBuddy: 'benefit_calculator' module not found in package.")
         except Exception as e:
             Logger.exception(f"BenefitBuddy: Error running calculator on Android — {e}")
         return
 
-    # Desktop / non-Android environments
+    # For desktop or packaged apps
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     script_path = os.path.join(base_path, 'benefit_calculator.py')
 
@@ -41,8 +46,7 @@ def open_benefit_calculator():
 
         if system == "Windows":
             subprocess.Popen(["start", "python", script_path], shell=True)
-
-        elif system in ["Linux", "Darwin"]:  # Linux or macOS
+        elif system in ["Linux", "Darwin"]:
             terminals = [
                 "x-terminal-emulator", "gnome-terminal", "konsole",
                 "lxterminal", "xfce4-terminal", "xterm"
@@ -53,9 +57,7 @@ def open_benefit_calculator():
                     break
             else:
                 subprocess.Popen(["python3", script_path])
-
         else:
-            # Fallback for unknown systems
             subprocess.Popen([sys.executable, script_path])
 
     except Exception as e:
