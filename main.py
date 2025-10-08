@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import builtins
 from kivy.logger import Logger
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -21,65 +22,62 @@ IS_ANDROID = kivy_platform == "android"
 if IS_ANDROID:
     Logger.info("BenefitBuddy: Applying Android path redirection patch.")
 
-    # Add the known app asset folders to Kivy’s search path
-    resource_add_path(os.path.join(os.getcwd(), "font"))
-    resource_add_path(os.path.join(os.getcwd(), "images"))
-    resource_add_path(os.path.join(os.getcwd(), "assets"))
+    # Add known asset folders to Kivy search path
+    for folder in ["font", "images", "assets"]:
+        resource_add_path(os.path.join(os.getcwd(), folder))
 
-    _orig_open = open
+    _orig_open = builtins.open
     _orig_exists = os.path.exists
     _orig_listdir = os.listdir
 
     def fix_path(path):
-        """Redirect Windows paths (like C:\\Users\\Kyle\\UC-Calc\\images\\loading)
-        to valid Android build asset paths (e.g., ./images/loading)."""
+        """Redirect Windows paths to Android relative asset paths."""
         if not path:
             return path
 
         # Normalize path separators
         path = path.replace("\\", "/")
 
-        # Common redirected subpaths
-        replacements = [
+        # Remove known prefixes from Windows/PC paths
+        for prefix in [
             "UC-Calc/",
             "BenefitBuddy/",
             "benefitbuddy/",
             "/data/user/0/mariosquirt.benefitbuddy.benefitbuddy/files/app/",
-        ]
-        for prefix in replacements:
+        ]:
             if prefix in path:
                 path = path.split(prefix, 1)[-1]
                 break
 
-        # If it looks like a font name without folder, redirect to /font/
+        # Handle fonts
         if path.lower().endswith(".ttf") and not path.startswith("font/"):
             path = "font/" + os.path.basename(path)
+
+        # Handle images
         elif "images/" not in path and any(x in path.lower() for x in ["loading", "logo", "splash"]):
             path = "images/" + os.path.basename(path)
 
-        # Check if resource_find can locate it
+        # Check resource_find first
         found = resource_find(path)
         if found:
             return found
 
-        # Fallback: assume local relative file
-        local_path = os.path.join(os.getcwd(), path)
-        return local_path
+        # Fallback: local relative path
+        return os.path.join(os.getcwd(), path)
 
-    # Monkey-patch open()
+    # Patch built-in open
     def open_patched(file, *args, **kwargs):
         new_file = fix_path(file)
         if new_file != file:
             Logger.info(f"BenefitBuddy: Redirecting file → {new_file}")
         return _orig_open(new_file, *args, **kwargs)
 
-    builtins = __import__('builtins')
     builtins.open = open_patched
 
-    # Monkey-patch os.path.exists()
+    # Patch os.path.exists
     os.path.exists = lambda path: _orig_exists(fix_path(path))
 
-    # Monkey-patch os.listdir()
+    # Patch os.listdir
     def listdir_patched(path):
         return _orig_listdir(fix_path(path))
     os.listdir = listdir_patched
@@ -87,7 +85,7 @@ if IS_ANDROID:
     Logger.info("BenefitBuddy: Path redirection patch active.")
 
 # ===============================================================
-# ✅ Import main app
+# ✅ Import main app logic
 # ===============================================================
 import benefit_calculator
 
@@ -99,7 +97,7 @@ class SplashScreen(App):
         Window.clearcolor = (29/255, 112/255, 184/255, 1)
         layout = BoxLayout(orientation='vertical', spacing=15, padding=60)
 
-        # ✅ App logo (handles redirection via patch)
+        # ✅ App logo (redirected automatically)
         logo_path = os.path.join("images", "logo.png")
         if os.path.exists(logo_path):
             logo = Image(source=logo_path, size_hint=(1, 0.5))
@@ -195,11 +193,9 @@ if IS_ANDROID:
         r"C:\Users\Kyle\UC-Calc\pcode_brma_lookup.csv"
     ]
 
-    from kivy.resources import resource_find
-
     for path in test_paths:
-        from os.path import exists
         fixed_path = path.replace("\\", "/")
+        from os.path import exists
         found = resource_find(fixed_path)
         exists_after_patch = exists(fixed_path)
         Logger.info(f"BenefitBuddy TEST → {path}")
@@ -207,10 +203,6 @@ if IS_ANDROID:
         Logger.info(f" ↳ os.path.exists(): {exists_after_patch}")
 
 
-
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting with GOV splash.")
     open_benefit_calculator()
-
-
-
