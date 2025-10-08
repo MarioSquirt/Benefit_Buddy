@@ -1,6 +1,5 @@
 import os
 import sys
-import platform
 import subprocess
 from kivy.logger import Logger
 from kivy.app import App
@@ -10,46 +9,98 @@ from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.core.window import Window
-from kivy.uix.spinner import Spinner
-from kivy.uix.widget import Widget
-from kivy.utils import platform
+from kivy.utils import platform as kivy_platform
+from kivy.resources import resource_find, resource_add_path
 
+# ===============================================================
+# 🔧 Universal Path Redirection Patch (handles Windows → Android)
+# ===============================================================
 
-# Import your main app (must define BenefitBuddy class)
+IS_ANDROID = kivy_platform == "android"
+
+if IS_ANDROID:
+    Logger.info("BenefitBuddy: Applying Android path redirection patch.")
+
+    # Add the known app asset folders to Kivy’s search path
+    resource_add_path(os.path.join(os.getcwd(), "font"))
+    resource_add_path(os.path.join(os.getcwd(), "images"))
+    resource_add_path(os.path.join(os.getcwd(), "assets"))
+
+    _orig_open = open
+    _orig_exists = os.path.exists
+    _orig_listdir = os.listdir
+
+    def fix_path(path):
+        """Redirect Windows paths (like C:\\Users\\Kyle\\UC-Calc\\images\\loading)
+        to valid Android build asset paths (e.g., ./images/loading)."""
+        if not path:
+            return path
+
+        # Normalize path separators
+        path = path.replace("\\", "/")
+
+        # Common redirected subpaths
+        replacements = [
+            "UC-Calc/",
+            "BenefitBuddy/",
+            "benefitbuddy/",
+            "/data/user/0/mariosquirt.benefitbuddy.benefitbuddy/files/app/",
+        ]
+        for prefix in replacements:
+            if prefix in path:
+                path = path.split(prefix, 1)[-1]
+                break
+
+        # If it looks like a font name without folder, redirect to /font/
+        if path.lower().endswith(".ttf") and not path.startswith("font/"):
+            path = "font/" + os.path.basename(path)
+        elif "images/" not in path and any(x in path.lower() for x in ["loading", "logo", "splash"]):
+            path = "images/" + os.path.basename(path)
+
+        # Check if resource_find can locate it
+        found = resource_find(path)
+        if found:
+            return found
+
+        # Fallback: assume local relative file
+        local_path = os.path.join(os.getcwd(), path)
+        return local_path
+
+    # Monkey-patch open()
+    def open_patched(file, *args, **kwargs):
+        new_file = fix_path(file)
+        if new_file != file:
+            Logger.info(f"BenefitBuddy: Redirecting file → {new_file}")
+        return _orig_open(new_file, *args, **kwargs)
+
+    builtins = __import__('builtins')
+    builtins.open = open_patched
+
+    # Monkey-patch os.path.exists()
+    os.path.exists = lambda path: _orig_exists(fix_path(path))
+
+    # Monkey-patch os.listdir()
+    def listdir_patched(path):
+        return _orig_listdir(fix_path(path))
+    os.listdir = listdir_patched
+
+    Logger.info("BenefitBuddy: Path redirection patch active.")
+
+# ===============================================================
+# ✅ Import main app
+# ===============================================================
 import benefit_calculator
-
-
-# Detect if running on Android
-IS_ANDROID = platform == 'android'
-
-# Original Label __init__ method
-_orig_label_init = Label.__init__
-
-def label_init_patch(self, *args, **kwargs):
-    font_name = kwargs.get('font_name', None)
-    if font_name and not os.path.isabs(font_name):
-        # Redirect to font folder on Android
-        if IS_ANDROID:
-            new_path = os.path.join("font", font_name)
-            kwargs['font_name'] = new_path
-        # Else leave the font as is for desktop
-    _orig_label_init(self, *args, **kwargs)
-
-# Apply monkey patch
-Label.__init__ = label_init_patch
 
 
 class SplashScreen(App):
     """Animated GOV-themed splash screen before loading main app."""
 
     def build(self):
-        # GOV Blue background
         Window.clearcolor = (29/255, 112/255, 184/255, 1)
-
         layout = BoxLayout(orientation='vertical', spacing=15, padding=60)
 
-        # ✅ App logo
-        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        # ✅ App logo (handles redirection via patch)
+        logo_path = os.path.join("images", "logo.png")
         if os.path.exists(logo_path):
             logo = Image(source=logo_path, size_hint=(1, 0.5))
             layout.add_widget(logo)
@@ -61,7 +112,7 @@ class SplashScreen(App):
             text="Benefit Buddy",
             font_size="32sp",
             bold=True,
-            color=(1, 1, 1, 1),  # White text
+            color=(1, 1, 1, 1),
             size_hint=(1, 0.2)
         )
         layout.add_widget(self.label)
@@ -75,26 +126,23 @@ class SplashScreen(App):
         )
         layout.add_widget(self.sub)
 
-        # ✅ Simple spinner imitation (pulsing GOV yellow dot)
+        # ✅ GOV yellow pulsing dot
         self.dot = Label(
             text="●",
             font_size="36sp",
-            color=(1, 221/255, 0, 0.0),  # GOV yellow but start transparent
+            color=(1, 221/255, 0, 0.0),
             size_hint=(1, 0.15)
         )
         layout.add_widget(self.dot)
 
-        # Animate pulsing yellow dot
         anim = Animation(color=(1, 221/255, 0, 1), duration=0.6) + Animation(color=(1, 221/255, 0, 0.1), duration=0.6)
         anim.repeat = True
         anim.start(self.dot)
 
-        # Animate fade pulse on the title too
         title_anim = Animation(color=(1, 1, 1, 0.7), duration=1.2) + Animation(color=(1, 1, 1, 1), duration=1.2)
         title_anim.repeat = True
         title_anim.start(self.label)
 
-        # ✅ After 3 seconds, start the real app
         Clock.schedule_once(self.start_main_app, 3)
         return layout
 
@@ -106,7 +154,6 @@ class SplashScreen(App):
 
 def open_benefit_calculator():
     """Main entry point: splash then launch calculator."""
-
     is_android = hasattr(sys, 'getandroidapilevel')
 
     if is_android:
@@ -124,12 +171,12 @@ def open_benefit_calculator():
         return
 
     try:
-        system = platform.system()
+        system = sys.platform
         Logger.info(f"BenefitBuddy: Launching calculator on {system}")
 
-        if system == "Windows":
+        if system.startswith("win"):
             subprocess.Popen(["start", "python", script_path], shell=True)
-        elif system in ["Linux", "Darwin"]:
+        elif system in ["linux", "darwin"]:
             subprocess.Popen(["python3", script_path])
         else:
             subprocess.Popen([sys.executable, script_path])
@@ -138,7 +185,32 @@ def open_benefit_calculator():
         print(f"An error occurred while launching the calculator: {e}")
 
 
+# ===============================================================
+# 🔍 Quick Test: Verify path redirection works (for debugging)
+# ===============================================================
+if IS_ANDROID:
+    test_paths = [
+        r"C:\Users\Kyle\UC-Calc\images\loading.png",
+        r"C:\Users\Kyle\UC-Calc\font\roboto.ttf",
+        r"C:\Users\Kyle\UC-Calc\pcode_brma_lookup.csv"
+    ]
+
+    from kivy.resources import resource_find
+
+    for path in test_paths:
+        from os.path import exists
+        fixed_path = path.replace("\\", "/")
+        found = resource_find(fixed_path)
+        exists_after_patch = exists(fixed_path)
+        Logger.info(f"BenefitBuddy TEST → {path}")
+        Logger.info(f" ↳ resource_find: {found}")
+        Logger.info(f" ↳ os.path.exists(): {exists_after_patch}")
+
+
+
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting with GOV splash.")
     open_benefit_calculator()
+
+
 
