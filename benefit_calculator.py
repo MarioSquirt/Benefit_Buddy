@@ -2257,12 +2257,14 @@ class Calculator(Screen):
         def on_find_brma(instance):
             find_brma_btn.text = "Finding BRMA"
             postcode = self.postcode_input.text.strip().replace(" ", "").upper()
+            
             if not postcode:
                 self.brma_spinner.text = "Enter postcode"
                 find_brma_btn.text = "Find BRMA"
                 return
 
             try:
+                # Lookup postcode in the master CSV
                 file_path = resource_find("pcode_brma_lookup.csv") or os.path.join(BASE_DIR, ".venv", "pcode_brma_lookup.csv")
                 with open(file_path, newline='', encoding='utf-8') as csvfile:
                     reader = csv.reader(csvfile)
@@ -2270,8 +2272,8 @@ class Calculator(Screen):
                     found = False
 
                     for row in reader:
-                          # Match against postcode columns (2, 3, or 4)
-                         for idx in [1, 2, 3]:
+                        # Match against postcode columns (2, 3, or 4)
+                        for idx in [1, 2, 3]:
                             if idx < len(row):
                                 pcode = row[idx].replace(" ", "").upper()
                                 if pcode == postcode:
@@ -2280,20 +2282,21 @@ class Calculator(Screen):
                                     country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
                                     location = country_map.get(country_code.upper(), "")
 
-            def update_spinners(dt):
-                if location in self.location_spinner.values:
-                    self.location_spinner.text = location
-                    update_brma_spinner(self.location_spinner, location)
-                if brma in self.brma_spinner.values:
-                    self.brma_spinner.text = brma
-                    find_brma_btn.text = "Find BRMA"
+                                    # Update UI on main thread
+                                    def update_spinners(dt):
+                                        if location in self.location_spinner.values:
+                                            self.location_spinner.text = location
+                                            update_brma_spinner(self.location_spinner, location)
+                                        if brma in self.brma_spinner.values:
+                                            self.brma_spinner.text = brma
+                                            find_brma_btn.text = "Find BRMA"
 
-                    Clock.schedule_once(update_spinners, 0)
-                    found = True
-                    break
+                                    Clock.schedule_once(update_spinners, 0)
+                                    found = True
+                                    break # Break inner loop
                     
-                    if found:
-                        break
+                        if found:
+                            break # Break outer loop
 
                     if not found:
                         self.brma_spinner.text = "Not found"
@@ -2303,64 +2306,64 @@ class Calculator(Screen):
                 self.brma_spinner.text = f"Error: {str(e)}"
                 find_brma_btn.text = "Find BRMA"
 
-                find_brma_btn.bind(on_press=on_find_brma)
-                layout.add_widget(find_brma_btn)
+        # Bind the button
+        find_brma_btn.bind(on_press=on_find_brma)
+        layout.add_widget(find_brma_btn)
 
-                # Location spinner
-                self.location_spinner = Spinner(
-                    text="Select Location",
-                    values=("England", "Scotland", "Wales"),
-                    font_size=18,
-                    background_color=(0, 0, 0, 0),
-                    color=get_color_from_hex(WHITE)
-                )
-                layout.add_widget(self.location_spinner)
+        # Location spinner
+        self.location_spinner = Spinner(
+             text="Select Location",
+            values=("England", "Scotland", "Wales"),
+            font_size=18,
+            background_color=(0, 0, 0, 0),
+            color=get_color_from_hex(WHITE)
+        )
+        layout.add_widget(self.location_spinner)
 
-                # BRMA spinner
-                self.brma_spinner = Spinner(
-                    text="Select BRMA",
-                    values=[],
-                    font_size=18,
-                    background_color=(0, 0, 0, 0),
-                    color=get_color_from_hex(WHITE)
-                )
-                layout.add_widget(self.brma_spinner)
+        # BRMA spinner
+        self.brma_spinner = Spinner(
+            text="Select BRMA",
+            values=[],
+            font_size=18,
+            background_color=(0, 0, 0, 0),
+            color=get_color_from_hex(WHITE)
+        )
+        layout.add_widget(self.brma_spinner)
 
 
-                # Update BRMA spinner based on location selection
-                LHA_FILES = {
-                    "England": "LHA-England.csv",
-                    "Scotland": "LHA-Scotland.csv",
-                    "Wales": "LHA-Wales.csv"
-                }
+        # Update BRMA spinner based on location selection
+        LHA_FILES = {
+            "England": "LHA-England.csv",
+            "Scotland": "LHA-Scotland.csv",
+            "Wales": "LHA-Wales.csv"
+        }
 
-                def update_brma_spinner(instance, value):
-                    try:
-                        if value not in LHA_FILES:
-                            self.brma_spinner.values = []
-                            self.brma_spinner.text = "Select BRMA"
-                            return
+        def update_brma_spinner(instance, value):
+            try:
+                if value not in LHA_FILES:
+                    self.brma_spinner.values = []
+                    self.brma_spinner.text = "Select BRMA"
+                    return
 
-                        filename = LHA_FILES[value]
-                        file_path = resource_find(filename) or os.path.join(BASE_DIR, ".venv", filename)
+                filename = LHA_FILES[value]
+                file_path = resource_find(filename) or os.path.join(BASE_DIR, ".venv", filename)
 
-                        with open(file_path, newline='', encoding='utf-8') as csvfile:
-                            reader = csv.reader(csvfile)
-                            next(reader, None)  # Skip header
-                            brma_values = [row[0] for row in reader if row]
+                with open(file_path, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    next(reader, None)  # Skip header
+                    brma_values = [row[0] for row in reader if row]
 
-                        self.brma_spinner.values = brma_values[1:] if len(brma_values) > 1 else ["No BRMAs"]
-                        self.brma_spinner.text = self.brma_spinner.values[0]
+                self.brma_spinner.values = brma_values[1:] if len(brma_values) > 1 else ["No BRMAs"]
+                self.brma_spinner.text = self.brma_spinner.values[0]
 
-                    except FileNotFoundError:
-                        self.brma_spinner.values = ["Error: File not found"]
-                        self.brma_spinner.text = "Error"
-                    except Exception as e:
-                        self.brma_spinner.values = [f"Error: {str(e)}"]
-                        self.brma_spinner.text = "Error"
+            except FileNotFoundError:
+                self.brma_spinner.values = ["Error: File not found"]
+                self.brma_spinner.text = "Error"
+            except Exception as e:
+                self.brma_spinner.values = [f"Error: {str(e)}"]
+                self.brma_spinner.text = "Error"
 
-                self.location_spinner.bind(text=update_brma_spinner)
-                )
+        self.location_spinner.bind(text=update_brma_spinner)
         
         # Style the Spinner widgets to match the RoundedButton appearance
         spinner_style = {
@@ -3307,6 +3310,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
