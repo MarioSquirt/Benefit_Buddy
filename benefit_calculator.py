@@ -2274,24 +2274,24 @@ class Calculator(Screen):
                          for idx in [1, 2, 3]:
                             if idx < len(row):
                                 pcode = row[idx].replace(" ", "").upper()
-                            if pcode == postcode:
-                                country_code = row[headers.index("country")] if "country" in headers else ""
-                                brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
-
-                                country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
-                                location = country_map.get(country_code.upper(), "")
+                                if pcode == postcode:
+                                    country_code = row[headers.index("country")] if "country" in headers else ""
+                                    brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
+                                    country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+                                    location = country_map.get(country_code.upper(), "")
 
             def update_spinners(dt):
                 if location in self.location_spinner.values:
                     self.location_spinner.text = location
-                        update_brma_spinner(self.location_spinner, location)
+                    update_brma_spinner(self.location_spinner, location)
                 if brma in self.brma_spinner.values:
                     self.brma_spinner.text = brma
-                        find_brma_btn.text = "Find BRMA"
+                    find_brma_btn.text = "Find BRMA"
 
                     Clock.schedule_once(update_spinners, 0)
                     found = True
                     break
+                    
                     if found:
                         break
 
@@ -2299,9 +2299,9 @@ class Calculator(Screen):
                         self.brma_spinner.text = "Not found"
                         find_brma_btn.text = "Find BRMA"
 
-                    except Exception as e:
-                        self.brma_spinner.text = f"Error: {str(e)}"
-                        find_brma_btn.text = "Find BRMA"
+            except Exception as e:
+                self.brma_spinner.text = f"Error: {str(e)}"
+                find_brma_btn.text = "Find BRMA"
 
                 find_brma_btn.bind(on_press=on_find_brma)
                 layout.add_widget(find_brma_btn)
@@ -3307,5 +3307,6 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
