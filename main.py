@@ -16,51 +16,43 @@ from kivy.resources import resource_find, resource_add_path
 # 🔧 Cross-Platform Asset Path Helper
 # ===============================================================
 
+# Detect if we're running on Android
 IS_ANDROID = kivy_platform == "android"
 
-def get_asset_path(path: str) -> str:
+# Base directory of your app (works for both desktop and Android)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Register all asset folders for resource_find() to search
+for folder in ["data", "images", "font", "assets"]:
+    path = os.path.join(BASE_DIR, folder)
+    if os.path.exists(path):
+        resource_add_path(path)
+        Logger.info(f"BenefitBuddy: Added resource path {path}")
+
+def get_asset_path(filename: str) -> str:
     """
-    Return a safe path to an asset, handling Android redirection.
-    Only normalizes known asset types: fonts, images, CSVs.
+    Return the correct absolute path to an asset file (image, font, CSV, etc.)
+    Works cross-platform using Kivy's resource management.
     """
-    if not path:
-        return path
+    if not filename:
+        return ""
 
-    # Normalize separators
-    path = path.replace("\\", "/")
+    # Normalize the filename
+    filename = filename.replace("\\", "/")
 
-    # On Android, try to redirect known paths
-    if IS_ANDROID:
-        # Remove known Windows prefixes
-        for prefix in ["UC-Calc/", "BenefitBuddy/", "benefitbuddy/"]:
-            if prefix in path:
-                path = path.split(prefix, 1)[-1]
-                break
+    # Try to resolve using Kivy's resource system
+    found = resource_find(filename)
+    if found:
+        return found
 
-        # Fonts
-        if path.lower().endswith(".ttf") and not path.startswith("font/"):
-            path = os.path.join("font", os.path.basename(path))
+    # Fallback to a relative or base directory lookup
+    candidate = os.path.join(BASE_DIR, filename)
+    if os.path.exists(candidate):
+        return candidate
 
-        # Images
-        elif "images/" not in path and any(x in path.lower() for x in ["loading", "logo", "splash"]):
-            path = os.path.join("images", os.path.basename(path))
-
-        # Add fallback: resource_find first
-        found = resource_find(path)
-        if found:
-            return found
-
-        # Fallback: local relative path
-        return os.path.join(os.getcwd(), path)
-
-    # Desktop: just return original path
-    return path
-
-if IS_ANDROID:
-    Logger.info("BenefitBuddy: Adding Android asset paths.")
-    for folder in ["font", "images", "assets"]:
-        resource_add_path(os.path.join(os.getcwd(), folder))
-
+    # Final fallback (helps debugging if file not found)
+    Logger.warning(f"BenefitBuddy: Asset not found: {filename}")
+    return filename
 # ===============================================================
 # ✅ Import main app logic
 # ===============================================================
@@ -192,3 +184,4 @@ if IS_ANDROID:
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
     open_benefit_calculator()
+
