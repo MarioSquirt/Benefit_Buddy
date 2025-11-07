@@ -31,7 +31,16 @@ import csv
 from kivy.uix.scrollview import ScrollView
 from kivy.core.image import Image as CoreImage
 import tracemalloc
+from kivy.resources import resource_add_path, resource_find
 
+# --- Register base paths for resources ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Add folders to Kivy's resource search paths
+for folder in ["images", "font", ".venv"]:
+    full_path = os.path.join(BASE_DIR, folder)
+    if os.path.exists(full_path):
+        resource_add_path(full_path)
 
 
 # Define GOV.UK colour scheme
@@ -167,28 +176,32 @@ class CustomSpinnerOption(SpinnerOption):
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationApp(App):
     def build(self):
+        # Register the folder where images are stored
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        images_path = os.path.join(base_path, "images", "loading")
+        resource_add_path(images_path)
+
         # Create an Image widget to display the animation
         self.image_widget = Image()
-        
-        # Path to the folder containing the PNG sequence
-        self.image_folder = r"C:\Users\Kyle\UC-Calc\images\loading"
-        
-        # Load all PNG files from the folder and sort them
-        self.frames = sorted([os.path.join(self.image_folder, f) 
-                              for f in os.listdir(self.image_folder) if f.endswith('.png')])
-        
-        self.current_frame = 0  # Start with the first frame
-        
-        # Schedule the animation to update at 30 FPS (adjust as needed)
+
+        # Use resource_find to locate all PNG files
+        self.frames = []
+        for f in sorted(os.listdir(images_path)):
+            if f.endswith(".png"):
+                found_path = resource_find(f)
+                if found_path:
+                    self.frames.append(found_path)
+
+        self.current_frame = 0
+
+        # Schedule the animation (30 FPS)
         Clock.schedule_interval(self.update_frame, 1 / 30.0)
-        
         return self.image_widget
 
     def update_frame(self, dt):
-        # Update the image source to the next frame
+        if not self.frames:
+            return  # Avoid crashes if no frames found
         self.image_widget.source = self.frames[self.current_frame]
-        
-        # Move to the next frame, looping back to the start if necessary
         self.current_frame = (self.current_frame + 1) % len(self.frames)
 
 
@@ -1650,9 +1663,8 @@ class Calculator(Screen):
                     return
 
                 lha_file_map = {
-                    "England": r"C:\Users\Kyle\UC-Calc\.venv\LHA-England.csv",
-                    "Scotland": r"C:\Users\Kyle\UC-Calc\.venv\LHA-Scotland.csv",
-                    "Wales": r"C:\Users\Kyle\UC-Calc\.venv\LHA-Wales.csv"
+                    region: resource_find(f"LHA-{region}.csv") or os.path.join(BASE_DIR, ".venv", f"LHA-{region}.csv")
+                    for region in ["England", "Scotland", "Wales"]
                 }
 
                 # Get the correct LHA rates file based on the selected location
@@ -1832,9 +1844,8 @@ class Calculator(Screen):
                     return
 
                 lha_file_map = {
-                    "England": r"C:\Users\Kyle\UC-Calc\.venv\LHA-England.csv",
-                    "Scotland": r"C:\Users\Kyle\UC-Calc\.venv\LHA-Scotland.csv",
-                    "Wales": r"C:\Users\Kyle\UC-Calc\.venv\LHA-Wales.csv"
+                    region: resource_find(f"LHA-{region}.csv") or os.path.join(BASE_DIR, ".venv", f"LHA-{region}.csv")
+                    for region in ["England", "Scotland", "Wales"]
                 }
 
                 # Get the correct LHA rates file based on the selected location
@@ -2243,126 +2254,113 @@ class Calculator(Screen):
             pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the button
         )
 
-        def on_find_brma(instance):
-            find_brma_btn.text = "Finding BRMA"
-            postcode = self.postcode_input.text.strip().replace(" ", "").upper()
-            if not postcode:
-                self.brma_spinner.text = "Enter postcode"
-                find_brma_btn.text = "Find BRMA"
-                return
-            try:
-                file_path = r"C:\Users\Kyle\UC-Calc\.venv\pcode_brma_lookup.csv"
-                with open(file_path, newline='', encoding='utf-8') as csvfile:
-                    reader = csv.reader(csvfile)
-                    headers = next(reader, None)
-                    found = False
-                    for row in reader:
-                        # Match against columns 2, 3, or 4 (index 1, 2, 3)
-                        for idx in [1, 2, 3]:
-                            if idx < len(row):
-                                pcode = row[idx].replace(" ", "").upper()
-                                if pcode == postcode:
-                                    country_code = row[headers.index("country")] if "country" in headers else ""
-                                    # Map country code to spinner value
-                                    country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
-                                    location = country_map.get(country_code.upper(), "")
-                                    brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
-                                    # Set location spinner and update BRMA spinner on the main thread
-                                    def update_spinners(dt):
-                                        if location in self.location_spinner.values:
-                                            self.location_spinner.text = location
-                                        update_brma_spinner(self.location_spinner, location)
-                                        # Set BRMA spinner if found
-                                        if brma in self.brma_spinner.values:
-                                            self.brma_spinner.text = brma
-                                        find_brma_btn.text = "Find BRMA"
-                                    from kivy.clock import Clock
-                                    Clock.schedule_once(update_spinners, 0)
-                                    found = True
-                                    break
-                        if found:
-                            break
-                    if not found:
-                        self.brma_spinner.text = "Not found"
+                def on_find_brma(instance):
+                    find_brma_btn.text = "Finding BRMA"
+                    postcode = self.postcode_input.text.strip().replace(" ", "").upper()
+                    if not postcode:
+                        self.brma_spinner.text = "Enter postcode"
                         find_brma_btn.text = "Find BRMA"
-            except Exception:
-                self.brma_spinner.text = "Error"
-                find_brma_btn.text = "Find BRMA"
+                        return
 
-        find_brma_btn.bind(on_press=on_find_brma)
-        layout.add_widget(find_brma_btn)
+                    try:
+                        file_path = resource_find("pcode_brma_lookup.csv") or os.path.join(BASE_DIR, ".venv", "pcode_brma_lookup.csv")
+                        with open(file_path, newline='', encoding='utf-8') as csvfile:
+                            reader = csv.reader(csvfile)
+                            headers = next(reader, None)
+                            found = False
 
-        self.location_spinner = Spinner(
-            text="Select Location",
-            values=("England", "Scotland", "Wales"),
-            font_size=18,
-            background_color=(0, 0, 0, 0),
-            color=get_color_from_hex(WHITE)
-        )
-        layout.add_widget(self.location_spinner)
+                            for row in reader:
+                                # Match against postcode columns (2, 3, or 4)
+                                for idx in [1, 2, 3]:
+                                    if idx < len(row):
+                                        pcode = row[idx].replace(" ", "").upper()
+                                        if pcode == postcode:
+                                            country_code = row[headers.index("country")] if "country" in headers else ""
+                                            brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
 
-        # Create a dependent spinner for BRMA values
-        self.brma_spinner = Spinner(
-            text="Select BRMA",
-            values=[],
-            font_size=18,
-            background_color=(0, 0, 0, 0),
-            color=get_color_from_hex(WHITE)
-        )
-        layout.add_widget(self.brma_spinner)
+                                            country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+                                            location = country_map.get(country_code.upper(), "")
 
-        # Update BRMA spinner based on location selection
-        def update_brma_spinner(instance, value):
-            if value == "England":
-                try:
-                    file_path = r"C:\Users\Kyle\UC-Calc\.venv\LHA-England.csv"
-                    with open(file_path, newline='', encoding='utf-8') as csvfile:
-                        reader = csv.reader(csvfile)
-                        next(reader, None)  # Skip header if it exists
-                        brma_values = [row[0] for row in reader if row]
-                    self.brma_spinner.values = brma_values[1:]  # Start from the 2nd value
-                    self.brma_spinner.text = brma_values[1] if len(brma_values) > 1 else "No BRMAs"
-                except FileNotFoundError:
-                    self.brma_spinner.values = ["Error: File not found"]
-                    self.brma_spinner.text = "Error"
-                except Exception as e:
-                    self.brma_spinner.values = [f"Error: {str(e)}"]
-                    self.brma_spinner.text = "Error"
-            elif value == "Scotland":
-                try:
-                    file_path = r"C:\Users\Kyle\UC-Calc\.venv\LHA-Scotland.csv"
-                    with open(file_path, newline='', encoding='utf-8') as csvfile:
-                        reader = csv.reader(csvfile)
-                        next(reader, None)  # Skip header if it exists
-                        brma_values = [row[0] for row in reader if row]
-                    self.brma_spinner.values = brma_values[1:]  # Start from the 2nd value
-                    self.brma_spinner.text = brma_values[1] if len(brma_values) > 1 else "No BRMAs"
-                except FileNotFoundError:
-                    self.brma_spinner.values = ["Error: File not found"]
-                    self.brma_spinner.text = "Error"
-                except Exception as e:
-                    self.brma_spinner.values = [f"Error: {str(e)}"]
-                    self.brma_spinner.text = "Error"
-            elif value == "Wales":
-                try:
-                    file_path = r"C:\Users\Kyle\UC-Calc\.venv\LHA-Wales.csv"
-                    with open(file_path, newline='', encoding='utf-8') as csvfile:
-                        reader = csv.reader(csvfile)
-                        next(reader, None)  # Skip header if it exists
-                        brma_values = [row[0] for row in reader if row]
-                    self.brma_spinner.values = brma_values[1:]  # Start from the 2nd value
-                    self.brma_spinner.text = brma_values[1] if len(brma_values) > 1 else "No BRMAs"
-                except FileNotFoundError:
-                    self.brma_spinner.values = ["Error: File not found"]
-                    self.brma_spinner.text = "Error"
-                except Exception as e:
-                    self.brma_spinner.values = [f"Error: {str(e)}"]
-                    self.brma_spinner.text = "Error"
-            else:
-                self.brma_spinner.values = []
-                self.brma_spinner.text = "Select BRMA"
+                                            def update_spinners(dt):
+                                                if location in self.location_spinner.values:
+                                                    self.location_spinner.text = location
+                                                update_brma_spinner(self.location_spinner, location)
+                                                if brma in self.brma_spinner.values:
+                                                    self.brma_spinner.text = brma
+                                                find_brma_btn.text = "Find BRMA"
 
-        self.location_spinner.bind(text=update_brma_spinner)
+                                            Clock.schedule_once(update_spinners, 0)
+                                            found = True
+                                            break
+                                if found:
+                                    break
+
+                            if not found:
+                                self.brma_spinner.text = "Not found"
+                                find_brma_btn.text = "Find BRMA"
+
+                    except Exception as e:
+                        self.brma_spinner.text = f"Error: {str(e)}"
+                        find_brma_btn.text = "Find BRMA"
+
+                find_brma_btn.bind(on_press=on_find_brma)
+                layout.add_widget(find_brma_btn)
+
+                # Location spinner
+                self.location_spinner = Spinner(
+                    text="Select Location",
+                    values=("England", "Scotland", "Wales"),
+                    font_size=18,
+                    background_color=(0, 0, 0, 0),
+                    color=get_color_from_hex(WHITE)
+                )
+                layout.add_widget(self.location_spinner)
+
+                # BRMA spinner
+                self.brma_spinner = Spinner(
+                    text="Select BRMA",
+                    values=[],
+                    font_size=18,
+                    background_color=(0, 0, 0, 0),
+                    color=get_color_from_hex(WHITE)
+                )
+                layout.add_widget(self.brma_spinner)
+
+
+                # Update BRMA spinner based on location selection
+                LHA_FILES = {
+                    "England": "LHA-England.csv",
+                    "Scotland": "LHA-Scotland.csv",
+                    "Wales": "LHA-Wales.csv"
+                }
+
+                def update_brma_spinner(instance, value):
+                    try:
+                        if value not in LHA_FILES:
+                            self.brma_spinner.values = []
+                            self.brma_spinner.text = "Select BRMA"
+                            return
+
+                        filename = LHA_FILES[value]
+                        file_path = resource_find(filename) or os.path.join(BASE_DIR, ".venv", filename)
+
+                        with open(file_path, newline='', encoding='utf-8') as csvfile:
+                            reader = csv.reader(csvfile)
+                            next(reader, None)  # Skip header
+                            brma_values = [row[0] for row in reader if row]
+
+                        self.brma_spinner.values = brma_values[1:] if len(brma_values) > 1 else ["No BRMAs"]
+                        self.brma_spinner.text = self.brma_spinner.values[0]
+
+                    except FileNotFoundError:
+                        self.brma_spinner.values = ["Error: File not found"]
+                        self.brma_spinner.text = "Error"
+                    except Exception as e:
+                        self.brma_spinner.values = [f"Error: {str(e)}"]
+                        self.brma_spinner.text = "Error"
+
+                self.location_spinner.bind(text=update_brma_spinner)
+                )
         
         # Style the Spinner widgets to match the RoundedButton appearance
         spinner_style = {
