@@ -2254,50 +2254,50 @@ class Calculator(Screen):
             pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the button
         )
 
-                def on_find_brma(instance):
-                    find_brma_btn.text = "Finding BRMA"
-                    postcode = self.postcode_input.text.strip().replace(" ", "").upper()
-                    if not postcode:
-                        self.brma_spinner.text = "Enter postcode"
-                        find_brma_btn.text = "Find BRMA"
-                        return
+        def on_find_brma(instance):
+            find_brma_btn.text = "Finding BRMA"
+            postcode = self.postcode_input.text.strip().replace(" ", "").upper()
+            if not postcode:
+                self.brma_spinner.text = "Enter postcode"
+                find_brma_btn.text = "Find BRMA"
+                return
 
-                    try:
-                        file_path = resource_find("pcode_brma_lookup.csv") or os.path.join(BASE_DIR, ".venv", "pcode_brma_lookup.csv")
-                        with open(file_path, newline='', encoding='utf-8') as csvfile:
-                            reader = csv.reader(csvfile)
-                            headers = next(reader, None)
-                            found = False
+            try:
+                file_path = resource_find("pcode_brma_lookup.csv") or os.path.join(BASE_DIR, ".venv", "pcode_brma_lookup.csv")
+                with open(file_path, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    headers = next(reader, None)
+                    found = False
 
-                            for row in reader:
-                                # Match against postcode columns (2, 3, or 4)
-                                for idx in [1, 2, 3]:
-                                    if idx < len(row):
-                                        pcode = row[idx].replace(" ", "").upper()
-                                        if pcode == postcode:
-                                            country_code = row[headers.index("country")] if "country" in headers else ""
-                                            brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
+                    for row in reader:
+                          # Match against postcode columns (2, 3, or 4)
+                         for idx in [1, 2, 3]:
+                            if idx < len(row):
+                                pcode = row[idx].replace(" ", "").upper()
+                                  if pcode == postcode:
+                                    country_code = row[headers.index("country")] if "country" in headers else ""
+                                    brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
 
-                                            country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
-                                            location = country_map.get(country_code.upper(), "")
+                                    country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+                                    location = country_map.get(country_code.upper(), "")
 
-                                            def update_spinners(dt):
-                                                if location in self.location_spinner.values:
-                                                    self.location_spinner.text = location
-                                                update_brma_spinner(self.location_spinner, location)
-                                                if brma in self.brma_spinner.values:
-                                                    self.brma_spinner.text = brma
-                                                find_brma_btn.text = "Find BRMA"
+                                    def update_spinners(dt):
+                                        if location in self.location_spinner.values:
+                                            self.location_spinner.text = location
+                                        update_brma_spinner(self.location_spinner, location)
+                                        if brma in self.brma_spinner.values:
+                                            self.brma_spinner.text = brma
+                                        find_brma_btn.text = "Find BRMA"
 
-                                            Clock.schedule_once(update_spinners, 0)
-                                            found = True
-                                            break
-                                if found:
+                                    Clock.schedule_once(update_spinners, 0)
+                                    found = True
                                     break
+                        if found:
+                            break
 
-                            if not found:
-                                self.brma_spinner.text = "Not found"
-                                find_brma_btn.text = "Find BRMA"
+                    if not found:
+                        self.brma_spinner.text = "Not found"
+                        find_brma_btn.text = "Find BRMA"
 
                     except Exception as e:
                         self.brma_spinner.text = f"Error: {str(e)}"
@@ -3307,3 +3307,4 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
