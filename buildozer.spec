@@ -31,12 +31,11 @@ android.minapi = 24
 android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
-# Paths for GitHub Actions
+# Paths to SDK/NDK (used in GitHub Actions)
 android.sdk_path = /home/runner/android-sdk
 android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
-android.sdk_cmdline_tools = /home/runner/android-sdk/cmdline-tools/latest/bin
 
-# Include your assets
+# Include assets
 source.include_patterns = assets/*, data/*, font/*, images/*, images/loading/*, main.py, benefit_calculator.py, benefit_data/*, freedom.ttf, roboto.ttf
 
 # Enable backup
