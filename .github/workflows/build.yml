@@ -28,28 +28,38 @@ jobs:
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake curl gettext autopoint
 
-          # --- Android SDK setup ---
-          mkdir -p ~/.android && touch ~/.android/repositories.cfg
+          # --- Setup Android SDK ---
+          echo "📦 Setting up Android SDK..."
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
-          echo "📦 Downloading Android command-line tools..."
-          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk-tools.zip -d latest
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          curl -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q tools.zip -d latest
+          rm tools.zip
 
-          # Accept all licenses
-          yes | sdkmanager --licenses || true
+          # Add to PATH for this session and globally for future steps
+          echo "export ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-          # Attempt build-tools 36.1.0, fallback to 35.0.0 if missing
-          echo "🧰 Installing Android SDK components..."
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;36.1.0" "ndk;27.2.12479018" || {
-            echo "⚠️ Build-tools 36.1.0 not found, falling back to 35.0.0..."
-            sdkmanager "build-tools;35.0.0"
-          }
+      - name: Accept Android SDK Licenses and Install Build Tools
+        run: |
+          source $GITHUB_ENV
+          mkdir -p ~/.android && touch ~/.android/repositories.cfg
 
-          sdkmanager --update
-          sdkmanager --list | head -n 20
+          echo "✅ Installing Android SDK components..."
+          yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
+
+          # Try build-tools 36.1.0, fallback to 35.0.0 if missing
+          sdkmanager --sdk_root=$ANDROID_HOME \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;36.1.0" \
+            "ndk;27.2.12479018" || {
+              echo "⚠️ Falling back to build-tools 35.0.0..."
+              sdkmanager --sdk_root=$ANDROID_HOME "build-tools;35.0.0"
+            }
+
+          sdkmanager --sdk_root=$ANDROID_HOME --update
+          sdkmanager --sdk_root=$ANDROID_HOME --list | head -n 30
 
       - name: Set up pip and Python packages
         run: |
@@ -68,13 +78,12 @@ jobs:
 
       - name: Clean previous builds
         run: |
-          rm -rf .buildozer/bin || true
+          rm -rf .buildozer || true
           rm -rf bin || true
 
       - name: Build APK (64-bit)
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          source $GITHUB_ENV
           echo "🚀 Starting Buildozer build..."
           buildozer android debug
 
