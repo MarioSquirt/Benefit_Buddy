@@ -1,11 +1,10 @@
-[app]
+[app] 
 # App info
 title = Benefit Buddy
 package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
-# main.py = benefit_calculator.py
 
 version = 0.1
 
@@ -26,17 +25,17 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 fullscreen = 0
 android.presplash_color = #005EA5
 
-#
 # Android settings
-#
 android.api = 34
 android.minapi = 24
 android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
-# Paths to SDK/NDK for CI environment
+# Explicit SDK/NDK paths (for GitHub Actions CI)
 android.sdk_path = /home/runner/android-sdk
 android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
+android.ndk_version = 25.2.9519653
+android.sdk_manager_path = /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager
 
 # Include your assets (fonts, images, etc.)
 source.include_patterns = assets/*, data/*, font/*, images/*, images/loading/*, main.py, benefit_calculator.py, benefit_data/*, freedom.ttf, roboto.ttf
@@ -48,11 +47,10 @@ android.allow_backup = True
 android.debug_artifact = apk
 android.release_artifact = apk
 
-#
 # Python for Android
-#
 p4a.branch = master
 p4a.bootstrap = sdl2
 
-# Use latest build-tools in CI
-android.build_tools_version = 36.1.0
+# Disable auto-download of Android SDK/NDK (since CI sets paths manually)
+android.auto_sdk = 0
+android.auto_ndk = 0
