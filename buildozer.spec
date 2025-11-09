@@ -5,6 +5,8 @@ package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
+#main.py = benefit_calculator.py
+
 version = 0.1
 
 # Python & Kivy dependencies
@@ -32,9 +34,9 @@ android.minapi = 24
 android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
-# Explicitly set SDK and NDK paths (match GitHub Actions setup)
+# Paths to SDK/NDK (required for GitHub Actions)
 android.sdk_path = /home/runner/android-sdk
-android.ndk_path = /home/runner/android-sdk/ndk/27.2.12479018
+android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
 
 # Include your assets (fonts, images, etc.)
 source.include_patterns = assets/*, data/*, font/*, images/*, images/loading/*, main.py, benefit_calculator.py, benefit_data/*, freedom.ttf, roboto.ttf
@@ -51,7 +53,3 @@ android.release_artifact = apk
 #
 p4a.branch = master
 p4a.bootstrap = sdl2
-
-[buildozer]
-log_level = 2
-warn_on_root = 1
