@@ -20,13 +20,36 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies
+      - name: Install system dependencies and Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake
+            pkg-config autoconf automake cmake curl gettext autopoint
+
+          # --- Android SDK setup ---
+          mkdir -p ~/.android && touch ~/.android/repositories.cfg
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          echo "📦 Downloading Android command-line tools..."
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip sdk-tools.zip -d latest
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          # Accept all licenses
+          yes | sdkmanager --licenses || true
+
+          # Attempt build-tools 36.1.0, fallback to 35.0.0 if missing
+          echo "🧰 Installing Android SDK components..."
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;36.1.0" "ndk;27.2.12479018" || {
+            echo "⚠️ Build-tools 36.1.0 not found, falling back to 35.0.0..."
+            sdkmanager "build-tools;35.0.0"
+          }
+
+          sdkmanager --update
+          sdkmanager --list | head -n 20
 
       - name: Set up pip and Python packages
         run: |
@@ -50,7 +73,9 @@ jobs:
 
       - name: Build APK (64-bit)
         run: |
-          echo "Starting Buildozer build..."
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          echo "🚀 Starting Buildozer build..."
           buildozer android debug
 
       - name: Rename built APK for clarity
@@ -59,9 +84,9 @@ jobs:
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
           if [ -f "$APK_PATH" ]; then
             cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
-            echo "APK copied to output/BenefitBuddy_v0.1_debug.apk"
+            echo "✅ APK copied to output/BenefitBuddy_v0.1_debug.apk"
           else
-            echo "No APK found in bin/"
+            echo "❌ No APK found in bin/"
             exit 1
           fi
 
