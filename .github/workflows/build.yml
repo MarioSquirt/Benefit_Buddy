@@ -10,9 +10,13 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_NDK_HOME: ${{ github.workspace }}/android-sdk/ndk/25.2.9519653
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ env.PATH }}
 
     steps:
-      # 1️⃣ Checkout your repo
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -29,42 +33,35 @@ jobs:
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl
+            pkg-config autoconf automake cmake tar curl wget
 
-      # 4️⃣ Set up Python packages
+      # 4️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Set up Android SDK + NDK
-      - name: Set up Android SDK & NDK
+      # 5️⃣ Install Android SDK command line tools
+      - name: Install Android SDK Command-line Tools
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
           curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools.zip
           mv cmdline-tools latest
-          mkdir -p $HOME/android-sdk/ndk
-          cd $HOME/android-sdk
+
+      # 6️⃣ Install Android NDK
+      - name: Install Android NDK
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/ndk
+          cd $ANDROID_SDK_ROOT
           curl -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 6️⃣ Set environment variables
-      - name: Set Android environment variables
-        run: |
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
-
-      - name: Verify sdkmanager
-        run: |
-          sdkmanager --version
-
-      # 7️⃣ Accept Android licenses
+      # 7️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
-        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
       # 8️⃣ Clean previous builds
       - name: Clean previous builds
@@ -79,7 +76,7 @@ jobs:
           buildozer android debug
 
       # 🔟 Rename APK for clarity
-      - name: Rename built APK
+      - name: Rename APK
         run: |
           mkdir -p output
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
