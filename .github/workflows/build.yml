@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -55,22 +55,22 @@ jobs:
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 7️⃣ Set Android environment variables
+      # 7️⃣ Create symlink for Buildozer
+      - name: Symlink SDK cmdline-tools for Buildozer
+        run: |
+          mkdir -p $HOME/android-sdk/tools/bin
+          ln -s $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
+
+      # 8️⃣ Set Android environment variables
       - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
-
-      # 8️⃣ Symlink SDK cmdline-tools for Buildozer
-      - name: Symlink SDK cmdline-tools for Buildozer
-        run: |
-          mkdir -p $HOME/android-sdk/tools
-          ln -s $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools/cmdline-tools
+          echo "$HOME/android-sdk/tools/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
       # 9️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
-        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        run: yes | sdkmanager --licenses
 
       # 🔟 Clean previous builds
       - name: Clean previous builds
@@ -78,14 +78,14 @@ jobs:
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 1️⃣1️⃣ Build APK
-      - name: Build APK (64-bit)
+      # 1️⃣1️⃣ Build APK (64-bit)
+      - name: Build APK
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 1️⃣2️⃣ Rename APK for clarity
-      - name: Rename built APK
+      # 1️⃣2️⃣ Rename built APK
+      - name: Rename APK
         run: |
           mkdir -p output
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
