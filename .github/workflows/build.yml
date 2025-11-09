@@ -55,30 +55,36 @@ jobs:
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 7️⃣ Set environment variables
+      # 7️⃣ Set Android environment variables
       - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 8️⃣ Accept Android licenses
+      # 8️⃣ Symlink SDK cmdline-tools for Buildozer
+      - name: Symlink SDK cmdline-tools for Buildozer
+        run: |
+          mkdir -p $HOME/android-sdk/tools
+          ln -s $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools/cmdline-tools
+
+      # 9️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
         run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # 9️⃣ Clean previous builds
+      # 🔟 Clean previous builds
       - name: Clean previous builds
         run: |
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 🔟 Build APK
+      # 1️⃣1️⃣ Build APK
       - name: Build APK (64-bit)
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 1️⃣1️⃣ Rename APK for clarity
+      # 1️⃣2️⃣ Rename APK for clarity
       - name: Rename built APK
         run: |
           mkdir -p output
@@ -91,7 +97,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣2️⃣ Upload APK
+      # 1️⃣3️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
