@@ -10,13 +10,13 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_NDK_HOME: ${{ github.workspace }}/android-sdk/ndk/25.2.9519653
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ env.PATH }}
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -41,8 +41,8 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Install Android SDK command line tools
-      - name: Install Android SDK Command-line Tools
+      # 5️⃣ Download & set up Android SDK cmdline-tools
+      - name: Set up Android SDK cmdline-tools
         run: |
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           cd $ANDROID_SDK_ROOT/cmdline-tools
@@ -50,8 +50,8 @@ jobs:
           unzip -q commandlinetools.zip
           mv cmdline-tools latest
 
-      # 6️⃣ Install Android NDK
-      - name: Install Android NDK
+      # 6️⃣ Download & set up Android NDK
+      - name: Set up Android NDK
         run: |
           mkdir -p $ANDROID_SDK_ROOT/ndk
           cd $ANDROID_SDK_ROOT
@@ -59,24 +59,29 @@ jobs:
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 7️⃣ Accept Android SDK licenses
-      - name: Accept Android SDK licenses
-        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      # 7️⃣ Add Android SDK tools to PATH
+      - name: Update PATH
+        run: |
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 8️⃣ Clean previous builds
+      # 8️⃣ Accept Android licenses
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      # 9️⃣ Clean previous builds
       - name: Clean previous builds
         run: |
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 9️⃣ Build APK
+      # 🔟 Build APK
       - name: Build APK (64-bit)
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 🔟 Rename APK for clarity
-      - name: Rename APK
+      # 1️⃣1️⃣ Rename APK for clarity
+      - name: Rename built APK
         run: |
           mkdir -p output
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
@@ -88,7 +93,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣1️⃣ Upload APK
+      # 1️⃣2️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
