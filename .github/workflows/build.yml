@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Python
-      - name: Set up Python 3.11
+      # 2️⃣ Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -29,7 +29,7 @@ jobs:
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl wget
+            pkg-config autoconf automake cmake tar curl
 
       # 4️⃣ Install Python packages
       - name: Install Python packages
@@ -37,46 +37,48 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Install Android SDK cmdline-tools and NDK
-      - name: Setup Android SDK & NDK
+      # 5️⃣ Install Android SDK command-line tools
+      - name: Setup Android SDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools.zip
           mv cmdline-tools latest
+
+      # 6️⃣ Install Android NDK
+      - name: Setup Android NDK
+        run: |
           mkdir -p $HOME/android-sdk/ndk
           cd $HOME/android-sdk
           curl -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 6️⃣ Set Android environment variables
-      - name: Set environment variables
+      # 7️⃣ Set environment variables
+      - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 7️⃣ Accept SDK licenses and install build-tools + platforms
-      - name: Install Build-Tools & Accept Licenses
-        run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;36.1.0"
+      # 8️⃣ Accept Android licenses
+      - name: Accept Android SDK licenses
+        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # 8️⃣ Clean previous builds
+      # 9️⃣ Clean previous builds
       - name: Clean previous builds
         run: |
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 9️⃣ Build APK
+      # 🔟 Build APK
       - name: Build APK (64-bit)
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 🔟 Rename APK for clarity
+      # 1️⃣1️⃣ Rename APK for clarity
       - name: Rename built APK
         run: |
           mkdir -p output
@@ -89,7 +91,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣1️⃣ Upload APK
+      # 1️⃣2️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
