@@ -9,7 +9,12 @@ source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
 version = 0.1
 
 # Python & Kivy dependencies
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,pandas,pillow,sqlite3,filetype,certifi,urllib3,chardet,idna
+requirements = python3==3.11,kivy==2.3.1,kivymd==1.2.0,requests,pandas,pillow,sqlite3,filetype,certifi,urllib3,chardet,idna
+
+# Explicitly include common p4a recipes to avoid CI HTTP 403
+# (liblzma, zlib, SDL2_image, freetype, jpeg, etc.)
+# p4a will use cached packages from .buildozer/android/packages
+android.recipe_whitelist = hostpython3,python3,kivy,kivymd,openssl,zlib,liblzma,freetype,jpeg,pillow,sqlite3,filetype,requests,certifi,idna,chardet,urllib3
 
 # Icons & Presplash
 presplash.filename = %(source.dir)s/images/presplash.png
@@ -51,6 +56,9 @@ android.release_artifact = apk
 p4a.branch = master
 p4a.bootstrap = sdl2
 
-# Disable auto-download of Android SDK/NDK (since CI sets paths manually)
+# Disable auto-download of Android SDK/NDK (CI sets paths manually)
 android.auto_sdk = 0
 android.auto_ndk = 0
+
+# Enable offline build (use cached packages)
+p4a.offline = 1
