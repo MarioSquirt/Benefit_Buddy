@@ -37,7 +37,7 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Install Android SDK command-line tools
+      # 5️⃣ Setup Android SDK command-line tools
       - name: Setup Android SDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
@@ -46,7 +46,7 @@ jobs:
           unzip -q commandlinetools.zip
           mv cmdline-tools latest
 
-      # 6️⃣ Install Android NDK
+      # 6️⃣ Setup Android NDK
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/android-sdk/ndk
@@ -55,37 +55,45 @@ jobs:
           unzip -q ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 7️⃣ Create symlink for Buildozer
-      - name: Symlink SDK cmdline-tools for Buildozer
-        run: |
-          mkdir -p $HOME/android-sdk/tools/bin
-          ln -s $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
-
-      # 8️⃣ Set Android environment variables
+      # 7️⃣ Set Android environment variables
       - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/tools/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 9️⃣ Accept Android SDK licenses
+      # 8️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # 🔟 Clean previous builds
+      # 9️⃣ Cache downloaded p4a packages
+      - name: Cache p4a packages
+        uses: actions/cache@v3
+        with:
+          path: .buildozer/android/packages
+          key: ${{ runner.os }}-p4a-packages-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-p4a-packages-
+
+      # 🔟 Pre-download recipes (optional, avoids 403)
+      - name: Pre-download p4a recipes
+        run: |
+          buildozer android update
+
+      # 1️⃣1️⃣ Clean previous builds
       - name: Clean previous builds
         run: |
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 1️⃣1️⃣ Build APK (64-bit)
-      - name: Build APK
+      # 1️⃣2️⃣ Build APK offline
+      - name: Build APK offline
         run: |
-          echo "Starting Buildozer build..."
-          buildozer android debug
+          echo "Starting Buildozer offline build..."
+          buildozer android debug --offline
 
-      # 1️⃣2️⃣ Rename built APK
-      - name: Rename APK
+      # 1️⃣3️⃣ Rename APK for clarity
+      - name: Rename built APK
         run: |
           mkdir -p output
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
@@ -97,7 +105,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣3️⃣ Upload APK
+      # 1️⃣4️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
