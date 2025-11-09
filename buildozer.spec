@@ -5,6 +5,7 @@ package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
+# main.py = benefit_calculator.py
 
 version = 0.1
 
@@ -25,17 +26,19 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 fullscreen = 0
 android.presplash_color = #005EA5
 
+#
 # Android settings
+#
 android.api = 34
 android.minapi = 24
 android.ndk_api = 24
 android.archs = armeabi-v7a,arm64-v8a
 
-# Paths to SDK/NDK (used in GitHub Actions)
+# Paths to SDK/NDK for CI environment
 android.sdk_path = /home/runner/android-sdk
 android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
 
-# Include assets
+# Include your assets (fonts, images, etc.)
 source.include_patterns = assets/*, data/*, font/*, images/*, images/loading/*, main.py, benefit_calculator.py, benefit_data/*, freedom.ttf, roboto.ttf
 
 # Enable backup
@@ -45,6 +48,11 @@ android.allow_backup = True
 android.debug_artifact = apk
 android.release_artifact = apk
 
+#
 # Python for Android
+#
 p4a.branch = master
 p4a.bootstrap = sdl2
+
+# Use latest build-tools in CI
+android.build_tools_version = 36.1.0
