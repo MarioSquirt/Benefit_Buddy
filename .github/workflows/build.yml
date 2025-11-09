@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -29,35 +29,38 @@ jobs:
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake wget tar
+            pkg-config autoconf automake cmake tar curl
 
-      # 4️⃣ Install Buildozer and Python-for-Android
+      # 4️⃣ Set up Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Set Android SDK / NDK paths
+      # 5️⃣ Set up Android SDK + NDK
+      - name: Set up Android SDK & NDK
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools.zip
+          mv cmdline-tools latest
+          mkdir -p $HOME/android-sdk/ndk
+          cd $HOME/android-sdk
+          curl -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip -q ndk.zip
+          mv android-ndk-r25b ndk/25.2.9519653
+
+      # 6️⃣ Set environment variables
       - name: Set Android environment variables
         run: |
-          mkdir -p $HOME/android-sdk
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 6️⃣ Download & set up Android command line tools
-      - name: Install Android Command-line Tools
-        run: |
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          unzip -q cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # 7️⃣ Install required SDK packages
-      - name: Install Android SDK packages
-        run: |
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;35.0.0" "ndk;25.2.9519653"
+      # 7️⃣ Accept Android licenses
+      - name: Accept Android SDK licenses
+        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
       # 8️⃣ Clean previous builds
       - name: Clean previous builds
@@ -66,13 +69,13 @@ jobs:
           rm -rf bin || true
 
       # 9️⃣ Build APK
-      - name: Build APK
+      - name: Build APK (64-bit)
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 🔟 Rename and upload APK
-      - name: Upload APK
+      # 🔟 Rename APK for clarity
+      - name: Rename built APK
         run: |
           mkdir -p output
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
@@ -84,7 +87,8 @@ jobs:
             exit 1
           fi
 
-      - name: Upload APK artifact
+      # 1️⃣1️⃣ Upload APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BenefitBuddy-v0.1-debug
