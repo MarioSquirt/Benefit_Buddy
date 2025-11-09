@@ -58,6 +58,10 @@ jobs:
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
+      - name: Verify sdkmanager
+        run: |
+          sdkmanager --version
+
       # 7️⃣ Accept Android licenses
       - name: Accept Android SDK licenses
         run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
