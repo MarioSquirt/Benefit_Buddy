@@ -11,6 +11,9 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,53 +23,36 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies and Android SDK
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake curl gettext autopoint
+            pkg-config autoconf automake cmake wget
 
-          # --- Setup Android SDK ---
-          echo "📦 Setting up Android SDK..."
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
-          curl -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q tools.zip -d latest
-          rm tools.zip
-
-          # Add to PATH for this session and globally for future steps
-          echo "export ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
-
-      - name: Accept Android SDK Licenses and Install Build Tools
-        run: |
-          source $GITHUB_ENV
-          mkdir -p ~/.android && touch ~/.android/repositories.cfg
-
-          echo "✅ Installing Android SDK components..."
-          yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
-
-          # Try build-tools 36.1.0, fallback to 35.0.0 if missing
-          sdkmanager --sdk_root=$ANDROID_HOME \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;36.1.0" \
-            "ndk;27.2.12479018" || {
-              echo "⚠️ Falling back to build-tools 35.0.0..."
-              sdkmanager --sdk_root=$ANDROID_HOME "build-tools;35.0.0"
-            }
-
-          sdkmanager --sdk_root=$ANDROID_HOME --update
-          sdkmanager --sdk_root=$ANDROID_HOME --list | head -n 30
-
-      - name: Set up pip and Python packages
+      - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      - name: Cache buildozer/.gradle
+      - name: Download and set up Android SDK
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O sdk-tools.zip
+          unzip -q sdk-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+
+          # Add sdkmanager to PATH
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+          # Accept licenses
+          yes | sdkmanager --licenses
+
+          # Install required SDK components
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;36.0.0" "ndk;27.2.12479018"
+
+      - name: Cache buildozer and Gradle
         uses: actions/cache@v4
         with:
           path: |
@@ -78,13 +64,12 @@ jobs:
 
       - name: Clean previous builds
         run: |
-          rm -rf .buildozer || true
+          rm -rf .buildozer/bin || true
           rm -rf bin || true
 
       - name: Build APK (64-bit)
         run: |
-          source $GITHUB_ENV
-          echo "🚀 Starting Buildozer build..."
+          echo "Starting Buildozer build..."
           buildozer android debug
 
       - name: Rename built APK for clarity
@@ -93,9 +78,9 @@ jobs:
           APK_PATH=$(find bin -name "*.apk" | head -n 1)
           if [ -f "$APK_PATH" ]; then
             cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
-            echo "✅ APK copied to output/BenefitBuddy_v0.1_debug.apk"
+            echo "APK copied to output/BenefitBuddy_v0.1_debug.apk"
           else
-            echo "❌ No APK found in bin/"
+            echo "No APK found in bin/"
             exit 1
           fi
 
