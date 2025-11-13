@@ -62,11 +62,14 @@ jobs:
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 7.5️⃣ Symlink cmdline-tools to tools for Buildozer
+      # 7.5️⃣ Symlink Android cmdline-tools for Buildozer compatibility
       - name: Symlink Android cmdline-tools
         run: |
-          mkdir -p $HOME/android-sdk/tools
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools
+          mkdir -p $HOME/android-sdk/tools/bin
+          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
+          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
+          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/ $HOME/android-sdk/tools/bin/
+          echo "Symlinked sdkmanager to legacy tools path"
 
       # 8️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
