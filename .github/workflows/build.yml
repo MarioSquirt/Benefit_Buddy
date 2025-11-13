@@ -31,6 +31,11 @@ jobs:
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake tar curl
 
+      - name: Fix libffi build issue (install missing autotools)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool autoconf-archive
+
       # 4️⃣ Install Python packages
       - name: Install Python packages
         run: |
