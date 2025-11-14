@@ -1,113 +1,94 @@
-name: Build Kivy APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Python 3.11
+      # -----------------------------
+      # Install Python 3.11
+      # -----------------------------
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      # 3️⃣ Install system dependencies
+      # -----------------------------
+      # Install Buildozer dependencies
+      # -----------------------------
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
-            libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl
+          sudo apt update
+          sudo apt install -y \
+            git zip unzip libffi-dev libssl-dev \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libpng-dev libfreetype6-dev libx11-dev libxrandr-dev \
+            libgl1-mesa-dev libgles2-mesa-dev libsqlite3-dev \
+            openjdk-17-jdk
 
-      - name: Fix libffi build issue (install missing autotools)
+      # -----------------------------
+      # Buildozer, Cython, p4a
+      # -----------------------------
+      - name: Install Buildozer and python-for-android
         run: |
-          sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool autoconf-archive
+          pip install --upgrade pip
+          pip install Cython
+          pip install buildozer
+          pip install python-for-android
 
-      # 4️⃣ Install Python packages
-      - name: Install Python packages
-        run: |
-          pip install --upgrade pip wheel setuptools
-          pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
-
-      # 5️⃣ Install Android SDK command-line tools
-      - name: Setup Android SDK
+      # -----------------------------
+      # Android SDK/NDK setup
+      # -----------------------------
+      - name: Install Android SDK + NDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
-          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q commandlinetools.zip
+
+          # Download Google commandline tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-11076708_latest.zip
           mv cmdline-tools latest
 
-      # 6️⃣ Install Android NDK
-      - name: Setup Android NDK
-        run: |
-          mkdir -p $HOME/android-sdk/ndk
-          cd $HOME/android-sdk
-          curl -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip -q ndk.zip
-          mv android-ndk-r25b ndk/25.2.9519653
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
-      # 7️⃣ Set environment variables
-      - name: Set Android environment
-        run: |
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
+          yes | sdkmanager --licenses
 
-      # 7.5️⃣ Symlink Android cmdline-tools for Buildozer compatibility
-      - name: Symlink Android cmdline-tools
-        run: |
-          mkdir -p $HOME/android-sdk/tools/bin
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/ $HOME/android-sdk/tools/bin/
-          echo "Symlinked sdkmanager to legacy tools path"
+          sdkmanager "platform-tools" \
+                     "platforms;android-34" \
+                     "build-tools;34.0.0" \
+                     "ndk;25.2.9519653" \
+                     "cmdline-tools;latest"
 
-      # 8️⃣ Accept Android SDK licenses
-      - name: Accept Android SDK licenses
-        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # 9️⃣ Clean previous builds
-      - name: Clean previous builds
+      # -----------------------------
+      # Ensure Buildozer uses correct paths
+      # -----------------------------
+      - name: Set environment variables
         run: |
-          rm -rf .buildozer/bin || true
-          rm -rf bin || true
+          echo "ANDROIDSDK=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROIDNDK=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-      # 🔟 Build APK
-      - name: Build APK (64-bit)
+      # -----------------------------
+      # Build the APK
+      # -----------------------------
+      - name: Build APK with Buildozer
         run: |
-          echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 1️⃣1️⃣ Rename APK for clarity
-      - name: Rename built APK
-        run: |
-          mkdir -p output
-          APK_PATH=$(find bin -name "*.apk" | head -n 1)
-          if [ -f "$APK_PATH" ]; then
-            cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
-            echo "APK copied to output/BenefitBuddy_v0.1_debug.apk"
-          else
-            echo "No APK found in bin/"
-            exit 1
-          fi
-
-      # 1️⃣2️⃣ Upload APK
-      - name: Upload APK
+      # -----------------------------
+      # Upload the output APK
+      # -----------------------------
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BenefitBuddy-v0.1-debug
-          path: output/*.apk
+          name: benefit-buddy-apk
+          path: bin/*.apk
