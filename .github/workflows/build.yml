@@ -67,38 +67,40 @@ jobs:
           # Define paths
           ANDROID_SDK_ROOT="$HOME/android-sdk"
           ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/25.2.9519653"
-    
+
           # Create SDK folder
-          mkdir -p "$ANDROID_SDK_ROOT"
-    
-          # Download and unzip Android command-line tools
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+
+          # Download and unzip command-line tools
           curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
           rm cmdline-tools.zip
-    
-          # Rename extracted folder to 'latest' for Buildozer compatibility
+
+          # Rename extracted folder to 'latest'
           mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-    
+
           # Download and unzip NDK
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           rm ndk.zip
           mkdir -p "$ANDROID_SDK_ROOT/ndk"
           mv android-ndk-r25b "$ANDROID_SDK_ROOT/ndk/25.2.9519653"
-    
+
           # Export environment variables
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
-    
+
           # Verify tools
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --version
 
-      # 9️⃣ Accept licenses & install SDK packages
+
+      # 9️⃣ Accept licenses & install packages
       - name: Accept licenses & install packages
         run: |
-          yes | $HOME/android-sdk/tools/bin/sdkmanager --licenses
-          $HOME/android-sdk/tools/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
 
       # 🔟 Clean previous APK builds
       - name: Clean previous APK
