@@ -9,20 +9,38 @@ on:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Python 3.11
+      # 2️⃣ Cache Python packages
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 3️⃣ Cache Buildozer builds (based on requirements & spec)
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/requirements.txt','buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
+      # 4️⃣ Set up Python 3.11
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3️⃣ Install system dependencies
+      # 5️⃣ Install system dependencies
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -30,16 +48,15 @@ jobs:
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake tar curl \
-            libtool g++ make
+            libtool g++ make build-essential
 
-
-      # 4️⃣ Install Python packages
+      # 6️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 5️⃣ Install Android SDK command-line tools
+      # 7️⃣ Setup Android SDK
       - name: Setup Android SDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools/latest
@@ -47,11 +64,10 @@ jobs:
           curl -L -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q sdk.zip
           rm sdk.zip
-          # Move contents up one level so bin/sdkmanager exists
           mv $HOME/android-sdk/cmdline-tools/latest/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/
           rm -rf $HOME/android-sdk/cmdline-tools/latest/cmdline-tools
 
-      # 6️⃣ Install Android NDK
+      # 8️⃣ Setup Android NDK
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/android-sdk/ndk
@@ -61,52 +77,49 @@ jobs:
           rm ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
 
-      # 7️⃣ Set environment variables
+      # 9️⃣ Set environment variables
       - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 7️⃣5️⃣ Symlink SDK tools for Buildozer compatibility
+      # 🔟 Symlink SDK tools for Buildozer
       - name: Symlink SDK tools for Buildozer
         run: |
           mkdir -p $HOME/android-sdk/tools/bin
           ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
           ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
-          echo "Symlinked sdkmanager and avdmanager to legacy tools path"
 
-
-      # 8️⃣ Accept Android SDK licenses
-      - name: Accept Android SDK licenses
-        run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # 9️⃣ Clean previous builds
-      - name: Clean previous builds
+      # 1️⃣1️⃣ Accept SDK licenses & install packages
+      - name: Accept licenses & install packages
         run: |
-          rm -rf .buildozer/bin || true
-          rm -rf bin || true
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      # 🔟 Build APK
-      - name: Build APK (64-bit)
+      # 1️⃣2️⃣ Clean previous APK builds
+      - name: Clean previous APK
+        run: rm -rf bin || true
+
+      # 1️⃣3️⃣ Build APK
+      - name: Build APK
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 1️⃣1️⃣ Rename APK for clarity
+      # 1️⃣4️⃣ Rename APK
       - name: Rename built APK
         run: |
           mkdir -p output
-          APK_PATH=$(find bin -name "*.apk" | head -n 1)
+          APK_PATH=$(find .buildozer -name "*.apk" | head -n 1)
           if [ -f "$APK_PATH" ]; then
             cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
-            echo "APK copied to output/BenefitBuddy_v0.1_debug.apk"
           else
-            echo "No APK found in bin/"
+            echo "No APK found"
             exit 1
           fi
 
-      # 1️⃣2️⃣ Upload APK
+      # 1️⃣5️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
