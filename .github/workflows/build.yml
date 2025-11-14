@@ -94,13 +94,18 @@ jobs:
           # Verify tools
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --version
 
+      # 🔧 Symlink SDK tools for Buildozer compatibility
+      - name: Symlink SDK tools for Buildozer
+        run: |
+          mkdir -p $HOME/android-sdk/tools/bin
+          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
+          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
 
       # 9️⃣ Accept licenses & install packages
-      - name: Accept licenses & install packages
+      - name: Accept licenses & install SDK packages
         run: |
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-
+          yes | $HOME/android-sdk/tools/bin/sdkmanager --licenses
+          $HOME/android-sdk/tools/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
       # 🔟 Clean previous APK builds
       - name: Clean previous APK
