@@ -34,78 +34,96 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      # 4️⃣ Setup Python
+      # 4️⃣ Set up Python 3.11
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 5️⃣ Install system dependencies
-      - name: Install system dependencies
+      # 5️⃣ Install system dependencies + Temurin 17
+      - name: Install system dependencies & Temurin 17
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl libtool g++ make
+            pkg-config autoconf automake cmake tar curl \
+            libtool g++ make build-essential temurin-17-jdk
 
-      # 6️⃣ Install Java 17
-      - name: Install Temurin Java 17
-        run: |
-          sudo apt-get install -y temurin-17-jdk
+          # Configure alternatives to use Temurin 17
+          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/temurin-17-jdk-amd64/bin/java 1
+          sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/temurin-17-jdk-amd64/bin/javac 1
+          sudo update-alternatives --set java /usr/lib/jvm/temurin-17-jdk-amd64/bin/java
+          sudo update-alternatives --set javac /usr/lib/jvm/temurin-17-jdk-amd64/bin/javac
+
+          # Export JAVA_HOME for Buildozer
           echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
           export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+
+          # Verify installation
           java -version
           javac -version
 
-      # 7️⃣ Install Python packages
+      # 6️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 8️⃣ Setup Android SDK & NDK
+      # 7️⃣ Setup Android SDK & NDK
       - name: Setup Android SDK & NDK
         run: |
           export ANDROID_SDK_ROOT=$HOME/android-sdk
           export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
+          
+          # SDK
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           cd $ANDROID_SDK_ROOT
           curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q cmdline-tools.zip -d cmdline-tools
+          unzip -q cmdline-tools.zip
           rm cmdline-tools.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/cmdline-tools/* cmdline-tools/latest/
+          rm -rf cmdline-tools/cmdline-tools
+          
+          # NDK
           mkdir -p ndk
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           rm ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
+          
+          # Export environment
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 9️⃣ Accept SDK licenses & install packages
+      # 8️⃣ Accept licenses & install required SDK packages
       - name: Accept licenses & install packages
         run: |
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
           $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      # 🔟 Clean previous builds
+      # 9️⃣ Clean previous APK builds
       - name: Clean previous APK
         run: rm -rf bin || true
 
-      # 1️⃣1️⃣ Build APK
+      # 🔟 Build APK
       - name: Build APK
+        run: buildozer android debug
+
+      # 1️⃣1️⃣ Rename APK
+      - name: Rename built APK
         run: |
-          buildozer android debug
-          APK_PATH=$(find .buildozer/android/platform/build-* -name "*-debug.apk" | head -n1)
+          mkdir -p output
+          APK_PATH=$(find .buildozer -name "*.apk" | head -n 1)
           if [ -f "$APK_PATH" ]; then
-            mkdir -p output
-            cp "$APK_PATH" output/BenefitBuddy_v0.1_debug.apk
+            cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
           else
-            echo "No APK found!"
+            echo "No APK found"
             exit 1
           fi
 
-      # 1️⃣2️⃣ Upload APK artifact
+      # 1️⃣2️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
