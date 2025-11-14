@@ -31,66 +31,58 @@ jobs:
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake tar curl
 
-      # 4️⃣ Fix libffi build issue
-      - name: Install autotools
-        run: |
-          sudo apt-get install -y autoconf automake libtool autoconf-archive
-
-      # 5️⃣ Install Python packages
+      # 4️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 6️⃣ Install Android SDK cmdline-tools
+      # 5️⃣ Install Android SDK command-line tools
       - name: Setup Android SDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools/latest
+          cd $HOME/android-sdk/cmdline-tools/latest
           curl -L -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q sdk.zip -d $HOME/android-sdk/cmdline-tools/latest
+          unzip -q sdk.zip
           rm sdk.zip
+          # Move contents up one level so bin/sdkmanager exists
+          mv $HOME/android-sdk/cmdline-tools/latest/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/
+          rm -rf $HOME/android-sdk/cmdline-tools/latest/cmdline-tools
 
-      # 7️⃣ Install Android NDK
+      # 6️⃣ Install Android NDK
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/android-sdk/ndk
+          cd $HOME/android-sdk
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip -q ndk.zip -d $HOME/android-sdk/ndk
+          unzip -q ndk.zip
           rm ndk.zip
-          mv $HOME/android-sdk/ndk/android-ndk-r25b $HOME/android-sdk/ndk/25.2.9519653
+          mv android-ndk-r25b ndk/25.2.9519653
 
-      # 8️⃣ Set environment variables
+      # 7️⃣ Set environment variables
       - name: Set Android environment
         run: |
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 9️⃣ Symlink legacy Android tools for Buildozer
-      - name: Symlink legacy tools path
-        run: |
-          mkdir -p $HOME/android-sdk/tools/bin
-          ln -s $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
-          ln -s $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
-          echo "Symlinked legacy Android tools/bin path"
-
-      # 🔟 Accept SDK licenses
+      # 8️⃣ Accept Android SDK licenses
       - name: Accept Android SDK licenses
         run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # 1️⃣1️⃣ Clean previous builds
+      # 9️⃣ Clean previous builds
       - name: Clean previous builds
         run: |
           rm -rf .buildozer/bin || true
           rm -rf bin || true
 
-      # 1️⃣2️⃣ Build APK
+      # 🔟 Build APK
       - name: Build APK (64-bit)
         run: |
           echo "Starting Buildozer build..."
           buildozer android debug
 
-      # 1️⃣3️⃣ Rename APK for clarity
+      # 1️⃣1️⃣ Rename APK for clarity
       - name: Rename built APK
         run: |
           mkdir -p output
@@ -103,7 +95,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣4️⃣ Upload APK artifact
+      # 1️⃣2️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
