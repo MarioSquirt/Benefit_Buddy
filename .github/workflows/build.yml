@@ -64,33 +64,35 @@ jobs:
       # 8️⃣ Setup Android SDK & NDK
       - name: Setup Android SDK & NDK
         run: |
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
-          
-          # SDK
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT
+          # Define paths
+          ANDROID_SDK_ROOT="$HOME/android-sdk"
+          ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/25.2.9519653"
+    
+          # Create SDK folder
+          mkdir -p "$ANDROID_SDK_ROOT"
+    
+          # Download and unzip Android command-line tools
           curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
           rm cmdline-tools.zip
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/cmdline-tools/* cmdline-tools/latest/
-          
-          # NDK
-          mkdir -p ndk
+    
+          # Rename extracted folder to 'latest' for Buildozer compatibility
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+    
+          # Download and unzip NDK
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           rm ndk.zip
-          mv android-ndk-r25b ndk/25.2.9519653
-
-          # Symlink sdkmanager & avdmanager for Buildozer
-          mkdir -p $ANDROID_SDK_ROOT/tools/bin
-          ln -s $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/* $ANDROID_SDK_ROOT/tools/bin/
-
+          mkdir -p "$ANDROID_SDK_ROOT/ndk"
+          mv android-ndk-r25b "$ANDROID_SDK_ROOT/ndk/25.2.9519653"
+    
           # Export environment variables
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
+    
+          # Verify tools
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --version
 
       # 9️⃣ Accept licenses & install SDK packages
       - name: Accept licenses & install packages
