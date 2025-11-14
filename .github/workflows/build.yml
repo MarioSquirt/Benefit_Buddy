@@ -54,7 +54,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-          cache: false
 
       # 7️⃣ Install system dependencies
       - name: Install system dependencies
