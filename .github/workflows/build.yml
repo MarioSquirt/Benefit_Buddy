@@ -40,72 +40,69 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 5️⃣ Install Temurin 17 and system dependencies
-      - name: Install Temurin 17 & dependencies
+      # 5️⃣ Install system dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake tar curl \
             libtool g++ make build-essential
-          
-          # Install Temurin 17
-          sudo apt-get install -y temurin-17-jdk
-          echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
-          export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
-          java -version
-          javac -version
 
-      # 6️⃣ Install Python packages
+      # 6️⃣ Install Temurin JDK 17
+      - name: Install Temurin 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: false
+
+      # 7️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 7️⃣ Setup Android SDK & NDK
+      # 8️⃣ Setup Android SDK & NDK
       - name: Setup Android SDK & NDK
         run: |
           export ANDROID_SDK_ROOT=$HOME/android-sdk
           export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
 
-          # Download SDK command line tools
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
-          curl -L -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q commandlinetools.zip
-          rm commandlinetools.zip
-
-          # Move extracted folder into "latest" for Buildozer
+          # Create directories
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
+          mkdir -p $ANDROID_SDK_ROOT/ndk/25.2.9519653
 
-          # Download NDK
-          cd $ANDROID_SDK_ROOT
-          curl -L -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip -q android-ndk.zip
-          rm android-ndk.zip
-          mv android-ndk-r25b ndk/25.2.9519653
+          # Download & unzip SDK cmdline-tools directly into 'latest'
+          curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools/latest
+          rm cmdline-tools.zip
 
-          # Export environment
+          # Download & unzip NDK directly into target folder
+          curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip -q ndk.zip -d $ANDROID_SDK_ROOT/ndk/25.2.9519653
+          rm ndk.zip
+
+          # Export environment variables
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 8️⃣ Accept licenses & install required SDK packages
+      # 9️⃣ Accept licenses & install SDK packages
       - name: Accept licenses & install packages
         run: |
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
           $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      # 9️⃣ Clean previous APK builds
+      # 🔟 Clean previous APK
       - name: Clean previous APK
         run: rm -rf bin || true
 
-      # 🔟 Build APK
+      # 1️⃣1️⃣ Build APK
       - name: Build APK
         run: buildozer android debug
 
-      # 1️⃣1️⃣ Rename APK
+      # 1️⃣2️⃣ Rename APK
       - name: Rename built APK
         run: |
           mkdir -p output
@@ -117,7 +114,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣2️⃣ Upload APK
+      # 1️⃣3️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
