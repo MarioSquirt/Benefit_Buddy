@@ -32,20 +32,29 @@ jobs:
 
       - name: Install Android SDK + cmdline-tools
         run: |
-          mkdir -p /home/runner/android-sdk/cmdline-tools/latest
-          cd /home/runner/android-sdk/cmdline-tools/latest
+          mkdir -p /home/runner/android-sdk/cmdline-tools
 
-          curl -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip
-          rm sdk.zip
+          cd /home/runner/android-sdk/cmdline-tools
 
+          echo "Downloading cmdline tools..."
+          curl -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip tools.zip
+          rm tools.zip
+
+          # The ZIP extracts to ./cmdline-tools/
+          # We must rename it to ./latest/
+          mv cmdline-tools latest
+
+          # Accept licenses
           yes | /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
+          # Install core packages
           /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "ndk;25.2.9519653"
+
 
       - name: Build APK
         run: |
