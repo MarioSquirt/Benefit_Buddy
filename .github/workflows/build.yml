@@ -25,7 +25,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # 3️⃣ Cache Buildozer builds (based on requirements & spec)
+      # 3️⃣ Cache Buildozer builds
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
@@ -34,7 +34,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      # 4️⃣ Set up Python 3.11
+      # 4️⃣ Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -44,82 +44,68 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
+          sudo apt-get install -y unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl \
-            libtool g++ make build-essential
+            pkg-config autoconf automake cmake tar curl libtool g++ make
 
-      # 6️⃣ Install Python packages
+      # 6️⃣ Install Java 17
+      - name: Install Temurin Java 17
+        run: |
+          sudo apt-get install -y temurin-17-jdk
+          echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
+          export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+          java -version
+          javac -version
+
+      # 7️⃣ Install Python packages
       - name: Install Python packages
         run: |
           pip install --upgrade pip wheel setuptools
           pip install Cython==0.29.36 buildozer==1.5.0 "python-for-android==2024.1.21"
 
-      # 7️⃣ Setup Android SDK
-      - name: Setup Android SDK
+      # 8️⃣ Setup Android SDK & NDK
+      - name: Setup Android SDK & NDK
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
-          cd $HOME/android-sdk/cmdline-tools/latest
-          curl -L -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q sdk.zip
-          rm sdk.zip
-          mv $HOME/android-sdk/cmdline-tools/latest/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/
-          rm -rf $HOME/android-sdk/cmdline-tools/latest/cmdline-tools
-
-      # 8️⃣ Setup Android NDK
-      - name: Setup Android NDK
-        run: |
-          mkdir -p $HOME/android-sdk/ndk
-          cd $HOME/android-sdk
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
+          curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q cmdline-tools.zip -d cmdline-tools
+          rm cmdline-tools.zip
+          mkdir -p ndk
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           rm ndk.zip
           mv android-ndk-r25b ndk/25.2.9519653
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
-      # 9️⃣ Set environment variables
-      - name: Set Android environment
-        run: |
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_PATH
-
-      # 🔟 Symlink SDK tools for Buildozer
-      - name: Symlink SDK tools for Buildozer
-        run: |
-          mkdir -p $HOME/android-sdk/tools/bin
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager $HOME/android-sdk/tools/bin/sdkmanager
-          ln -sfn $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager $HOME/android-sdk/tools/bin/avdmanager
-
-      # 1️⃣1️⃣ Accept SDK licenses & install packages
+      # 9️⃣ Accept SDK licenses & install packages
       - name: Accept licenses & install packages
         run: |
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
           $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      # 1️⃣2️⃣ Clean previous APK builds
+      # 🔟 Clean previous builds
       - name: Clean previous APK
         run: rm -rf bin || true
 
-      # 1️⃣3️⃣ Build APK
+      # 1️⃣1️⃣ Build APK
       - name: Build APK
         run: |
-          echo "Starting Buildozer build..."
           buildozer android debug
-
-      # 1️⃣4️⃣ Rename APK
-      - name: Rename built APK
-        run: |
-          mkdir -p output
-          APK_PATH=$(find .buildozer -name "*.apk" | head -n 1)
+          APK_PATH=$(find .buildozer/android/platform/build-* -name "*-debug.apk" | head -n1)
           if [ -f "$APK_PATH" ]; then
-            cp "$APK_PATH" "output/BenefitBuddy_v0.1_debug.apk"
+            mkdir -p output
+            cp "$APK_PATH" output/BenefitBuddy_v0.1_debug.apk
           else
-            echo "No APK found"
+            echo "No APK found!"
             exit 1
           fi
 
-      # 1️⃣5️⃣ Upload APK
+      # 1️⃣2️⃣ Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
