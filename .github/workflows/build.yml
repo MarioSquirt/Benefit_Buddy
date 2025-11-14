@@ -30,13 +30,7 @@ jobs:
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
             pkg-config autoconf automake cmake tar curl \
-            libtool \
-            g++ \
-            make
-          
-          libtoolize --force
-          autoconf
-          automake --add-missing
+            libtool g++ make
 
 
       # 4️⃣ Install Python packages
