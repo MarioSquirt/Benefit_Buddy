@@ -29,7 +29,16 @@ jobs:
           sudo apt-get install -y \
             openjdk-17-jdk unzip zip git libffi-dev libssl-dev \
             libsqlite3-dev zlib1g-dev libjpeg-dev libfreetype6-dev \
-            pkg-config autoconf automake cmake tar curl
+            pkg-config autoconf automake cmake tar curl \
+            libtool \
+            g++ \
+            make
+          
+          libtoolize --force
+          aclocal
+          autoconf
+          automake --add-missing
+
 
       # 4️⃣ Install Python packages
       - name: Install Python packages
