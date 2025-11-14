@@ -5,6 +5,8 @@ package.name = BenefitBuddy
 package.domain = mariosquirt.benefitbuddy
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,py3,csv,txt,gif,ttf,xml,json
+p4a.local_recipes = recipes
+
 
 version = 0.1
 
