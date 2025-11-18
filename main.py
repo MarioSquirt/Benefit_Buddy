@@ -103,8 +103,13 @@ class SplashScreen(App):
         layout.add_widget(self.dot)
 
         # Animations
-        Animation(color=(1, 221 / 255, 0, 1), duration=0.6).repeat(self.dot)
-        Animation(color=(1, 1, 1, 0.7), duration=1.2).repeat(self.label)
+        anim1 = Animation(color=(1, 221 / 255, 0, 1), duration=0.6)
+        anim1.repeat = True   # ✅ property, not method
+        anim1.start(self.dot)
+
+        anim2 = Animation(color=(1, 1, 1, 0.7), duration=1.2)
+        anim2.repeat = True   # ✅ property, not method
+        anim2.start(self.label)
 
         # Continue to main app after delay
         Clock.schedule_once(self.start_main_app, 3)
@@ -115,37 +120,9 @@ class SplashScreen(App):
         self.stop()
         benefit_calculator.BenefitBuddy().run()
 
-
-# ===============================================================
-# 🚀 Cross-Platform Launcher
-# ===============================================================
-def open_benefit_calculator():
-    """Entry point: runs splash screen then launches app."""
-
-    if IS_ANDROID:
-        Logger.info("BenefitBuddy: Running on Android → using splash screen.")
-        SplashScreen().run()
-        return
-
-    # Desktop launch (Windows/Linux/macOS)
-    script_path = os.path.join(BASE_DIR, "benefit_calculator.py")
-
-    if not os.path.isfile(script_path):
-        Logger.error("BenefitBuddy: benefit_calculator.py not found.")
-        print("❌ Error: benefit_calculator.py not found.")
-        return
-
-    try:
-        Logger.info(f"BenefitBuddy: Launching calculator on {sys.platform}")
-        subprocess.Popen([sys.executable, script_path])
-    except Exception as e:
-        Logger.exception(f"BenefitBuddy: Launch error — {e}")
-        print(f"⚠️ Failed to launch calculator: {e}")
-
-
 # ===============================================================
 # 🏁 Entry Point
 # ===============================================================
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
-    open_benefit_calculator()
+    BenefitBuddyApp().run()   # ✅ run your main App class, not a bare function
