@@ -55,74 +55,10 @@ except ImportError:
     print("❌ Error: benefit_calculator.py not found!")
     sys.exit(1)
 
-
-# ===============================================================
-# 🌟 Splash Screen
-# ===============================================================
-class SplashScreen(App):
-    """Animated GOV-themed splash screen before launching main app."""
-
-    def build(self):
-        Window.clearcolor = (29 / 255, 112 / 255, 184 / 255, 1)
-        layout = BoxLayout(orientation="vertical", spacing=15, padding=60)
-
-        # Logo
-        logo_path = get_asset_path("images/logo.png")
-        if os.path.exists(logo_path):
-            logo = Image(source=logo_path, size_hint=(1, 0.5))
-            layout.add_widget(logo)
-        else:
-            Logger.warning("BenefitBuddy: logo.png missing.")
-
-        # App name
-        self.label = Label(
-            text="Benefit Buddy",
-            font_size="32sp",
-            bold=True,
-            color=(1, 1, 1, 1),
-            size_hint=(1, 0.2),
-        )
-        layout.add_widget(self.label)
-
-        # Subtext
-        self.sub = Label(
-            text="Checking benefit entitlements...",
-            font_size="18sp",
-            color=(1, 1, 1, 0.8),
-            size_hint=(1, 0.15),
-        )
-        layout.add_widget(self.sub)
-
-        # Pulsing GOV yellow dot
-        self.dot = Label(
-            text="●",
-            font_size="36sp",
-            color=(1, 221 / 255, 0, 0.0),
-            size_hint=(1, 0.15),
-        )
-        layout.add_widget(self.dot)
-
-        # Animations
-        anim1 = Animation(color=(1, 221 / 255, 0, 1), duration=0.6)
-        anim1.repeat = True   # ✅ property, not method
-        anim1.start(self.dot)
-
-        anim2 = Animation(color=(1, 1, 1, 0.7), duration=1.2)
-        anim2.repeat = True   # ✅ property, not method
-        anim2.start(self.label)
-
-        # Continue to main app after delay
-        Clock.schedule_once(self.start_main_app, 3)
-        return layout
-
-    def start_main_app(self, *args):
-        Logger.info("BenefitBuddy: Splash complete → launching BenefitBuddy app.")
-        self.stop()
-        benefit_calculator.BenefitBuddy().run()
-
 # ===============================================================
 # 🏁 Entry Point
 # ===============================================================
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
-    SplashScreen().run()   # ✅ run your main App class, not a bare function
+    benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class, not a bare function
+
