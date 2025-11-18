@@ -9,6 +9,10 @@ requirements = python3,kivy,kivymd
 orientation = portrait
 fullscreen = 0
 
+# Icons & Presplash
+presplash.filename = %(source.dir)s/images/presplash.png
+icon.filename = %(source.dir)s/images/icon.png
+
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 34
 android.minapi = 23
