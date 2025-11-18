@@ -125,4 +125,4 @@ class SplashScreen(App):
 # ===============================================================
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
-    BenefitBuddyApp().run()   # ✅ run your main App class, not a bare function
+    SplashScreen().run()   # ✅ run your main App class, not a bare function
