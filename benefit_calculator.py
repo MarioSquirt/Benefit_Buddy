@@ -54,10 +54,8 @@ color = get_color_from_hex("#005EA5")  # GOVUK_BLUE
 # Set the background color of the app to GOVUK_BLUE
 Window.clearcolor = get_color_from_hex("#005EA5")  # GOVUK_BLUE
 
-# Automatically adjust the size of the app's contents in relation to the window size
-Window.size = (300, 600)  # Set the default window size
-Window.minimum_width = 300  # Set the minimum width
-Window.minimum_height = 600  # Set the minimum height
+layout = BoxLayout(orientation="vertical", spacing=10, padding=20, size_hint=(1,1))
+Window.maximize()
 
 # Bind the window size to adjust the layout dynamically
 def adjust_layout(instance, value):
@@ -2704,6 +2702,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
