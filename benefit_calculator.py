@@ -417,7 +417,7 @@ class MainScreenFullAccess(Screen):
             **button_style,
             font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.update_details
+            on_press=lambda x: print("Update details feature not yet implemented")
         ))
         layout.add_widget(RoundedButton(
             text="Log Out",
@@ -2702,6 +2702,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
