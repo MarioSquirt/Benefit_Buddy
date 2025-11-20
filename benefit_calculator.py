@@ -67,7 +67,31 @@ def adjust_layout(instance, value):
 
 Window.bind(size=adjust_layout)
 
+def build_header(layout, title_text):
+    top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
+    title = Label(
+        text=title_text,
+        font_size="50sp",
+        bold=True,
+        font_name="freedom",
+        color=get_color_from_hex("#FFDD00"),  # GOV.UK yellow
+        halign="center",
+        valign="middle"
+    )
+    title.bind(size=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+    top_layout.add_widget(title)
+    layout.add_widget(top_layout)
 
+def build_footer(layout):
+    bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25)
+    footer_label = Label(
+        text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved",
+        font_size=12,
+        halign="center",
+        color=get_color_from_hex("#FFDD00")  # GOV.UK yellow
+    )
+    bottom_layout.add_widget(footer_label)
+    layout.add_widget(bottom_layout)
 
 tracemalloc.start()  # Start tracing memory allocations
 
@@ -174,17 +198,13 @@ class CustomSpinnerOption(SpinnerOption):
         self.background_normal = ""  # Remove default background image
 
 # Create a loading animation using a sequence of PNG images
-class PNGSequenceAnimationApp(App):
-    def build(self):
-        # Register the folder where images are stored
+class PNGSequenceAnimationWidget(Image):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         base_path = os.path.dirname(os.path.abspath(__file__))
         images_path = os.path.join(base_path, "images", "loading")
         resource_add_path(images_path)
 
-        # Create an Image widget to display the animation
-        self.image_widget = Image()
-
-        # Use resource_find to locate all PNG files
         self.frames = []
         for f in sorted(os.listdir(images_path)):
             if f.endswith(".png"):
@@ -193,17 +213,13 @@ class PNGSequenceAnimationApp(App):
                     self.frames.append(found_path)
 
         self.current_frame = 0
-
-        # Schedule the animation (30 FPS)
         Clock.schedule_interval(self.update_frame, 1 / 30.0)
-        return self.image_widget
 
     def update_frame(self, dt):
         if not self.frames:
-            return  # Avoid crashes if no frames found
-        self.image_widget.source = self.frames[self.current_frame]
+            return
+        self.source = self.frames[self.current_frame]
         self.current_frame = (self.current_frame + 1) % len(self.frames)
-
 
 
 # Define the Settings Screen
@@ -211,202 +227,87 @@ class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        
-        def header(title_text):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, padding=0, spacing=0)
-            layout.add_widget(top_layout)
-            
-            # Title in the center
-            title = Label(
-            text=title_text,
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("#FFDD00"),  # GOVUK_YELLOW text color
-            size_hint=(1, None),
-            height=60,
-            halign="center",
-            valign="top"
-            )
-            
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
-            
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
 
-            title.bind(size=adjust_font_size)
-            top_layout.add_widget(title)
-            # Adjust layout to remove gap above the title and evenly space widgets
-            top_layout.padding = (0, 0, 0, 0)  # Remove padding above the title
-            layout.spacing = Window.height * 0.05  # Dynamically space widgets based on screen height
+        build_header(layout, "Benefit Buddy")
 
-        # Use the reusable header function
-        header("Benefit Buddy")
-        
-        def wrapped_label(text, font_size, height):
-            label = Label(
-            text=text,
-            font_size=font_size,
+        info_label = Label(
+            text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
+            font_size="16sp",
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE),
+            color=get_color_from_hex("#FFFFFF"),
             size_hint_y=None,
-            height=height
-            )
-            # Bind the label's width to the window width minus padding
-            def update_text_size(instance, value):
-                instance.text_size = (Window.width - 60, None)
-            label.bind(width=update_text_size)
-            update_text_size(label, None)
-            return label        
-        
-        layout.add_widget(wrapped_label(
-            text="This section of the app is still currently in development.\n\n"
-            "Please check back later for updates.",
-            font_size="16sp",
-            height=Window.height * 0.3  # Set height dynamically based on window size
-        ))
-        
-        # Buttons
-        button_style = {
-        "size_hint": (None, None),
-        "size": (250, 50),
-        "background_color": (0, 0, 0, 0),  # Transparent background
-        "background_normal": ""  # Remove default background image
-        }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
-
-
+            height=Window.height * 0.3
+        )
+        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(info_label)
 
         layout.add_widget(RoundedButton(
             text="Back to Main Menu",
-            **button_style,
-            font_size="20sp",
-            font_name="roboto",
+            size_hint=(None, None), size=(250, 50),
+            background_color=(0, 0, 0, 0), background_normal="",
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_main)
-                          )
-        
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("#FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout    
-        
-        # Use the reusable footer function
-        footer()       
-        
+            on_press=self.go_to_main
+        ))
 
+        build_footer(layout)
         self.add_widget(layout)
 
-    # Function to go back to the main menu        
     def go_to_main(self, instance):
         self.manager.current = "main"
+
 
 # Define the Splash Screen
 class SplashScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', spacing=50, padding=50)
-        layout.size_hint = (1, 1)  # Make the layout size automatically adjust to the window size
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the layout
+        layout = BoxLayout(orientation="vertical", spacing=50, padding=50)
 
-        # App title
-        title = Label(
-            text="Benefit\n Buddy",
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("#FFDD00") # GOVUK_YELLOW text color
-        )
-        title.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the title
-        title.size_hint = (2, 2)  # Set size hint to None to use fixed size
+        build_header(layout, "Benefit Buddy")
 
-        # Logo image
         logo = Image(source="logo.png", size_hint=(None, None), size=(150, 150))
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-        logo.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-        
-        # Loading animation
-        loading_animation = PNGSequenceAnimationApp().build()
-        loading_animation.size_hint = (None, None)  # Set size hint to None to use fixed size
-        loading_animation.size = (10, 10)  # Set a size for the loading circle        
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the layout
+        layout.add_widget(logo)
 
-        loading_animation.size = (100, 100)  # Set a size for the loading circle
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the layout
-        loading_animation.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the loading circle
+        loading_animation = PNGSequenceAnimationWidget(
+            size_hint=(None, None), size=(100, 100),
+            pos_hint={"center_x": 0.5, "center_y": 0.5}
+        )
+        layout.add_widget(loading_animation)
 
-        layout.add_widget(title) # Add the title to the layout
-        layout.add_widget(logo) # Add the logo to the layout
-        layout.add_widget(loading_animation)  # Add the loading circle to the layout
-        
+        build_footer(layout)
         self.add_widget(layout)
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout
-        
-        # Use the reusable footer function
-        footer()
 
     def on_enter(self):
-        Clock.schedule_once(self.switch_to_disclaimer, 5)  # Switch to disclaimer screen after 5 seconds
+        Clock.schedule_once(self.switch_to_disclaimer, 5)
 
     def switch_to_disclaimer(self, dt):
         self.manager.current = "disclaimer"
+
 
 # Disclaimer Screen
 class DisclaimerScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
-        layout.size_hint = (1, 1)  # Make the layout size automatically adjust to the window size
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the layout
+        layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        # Disclaimer text
         disclaimer_text = Label(
-            text=(
-            "Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
-            "It is for informational purposes only and does not constitute financial advice.\n\n\n"
-            "Guest access has limited functionality and will not save your data."
-            ),
+            text=("Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
+                  "It is for informational purposes only and does not constitute financial advice.\n\n\n"
+                  "Guest access has limited functionality and will not save your data."),
             font_size="18sp",
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#FFFFFF")  # White text color
+            color=get_color_from_hex("#FFFFFF")
         )
-        disclaimer_text.bind(size=disclaimer_text.setter('text_size'))  # Ensure text wraps properly
-
+        disclaimer_text.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(disclaimer_text)
 
+        build_footer(layout)
         self.add_widget(layout)
-        
+
     def on_enter(self):
-        Clock.schedule_once(self.switch_to_main, 8)  # Switch to main screen after 8 seconds
+        Clock.schedule_once(self.switch_to_main, 8)
 
     def switch_to_main(self, dt):
         self.manager.current = "main"
@@ -416,103 +317,51 @@ class MainScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
-        layout.size_hint = (1, 1)  # Make the layout size automatically adjust to the window size
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the layout
-        
-        # App title
-        title = Label(
-            text="Benefit\n Buddy",
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("##FFDD00") # GOVUK_YELLOW text color
-        )
-        title.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the title
-        
-        # Logo image
+
+        # Reusable GOV.UK header
+        build_header(layout, "Benefit Buddy")
+
+        # Logo
         logo = Image(source="logo.png", size_hint=(None, None), size=(150, 150))
-        layout.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-        logo.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
-        # Buttons
-        button_style = {
-        "size_hint": (None, None),
-        "size": (250, 50),
-        "background_color": (0, 0, 0, 0),  # Transparent background
-        "background_normal": ""  # Remove default background image
-        }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
-        button_style["size_hint"] = (None, None)  # Set size hint to None to use fixed size              
-        
-        create_account_btn = RoundedButton(
-            text="Create Account", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_create_account
-        )
-        login_btn = RoundedButton(
-            text="Login", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_login
-            )
-        guest_btn = RoundedButton(
-            text="Guest", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_guest_access
-            )
-        settings_btn = RoundedButton(
-            text="Settings",
-            **button_style,
-            font_size="20sp",
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_settings
-            )        
-        exit_btn = RoundedButton(
-            text="Exit",
-            **button_style,
-            font_size="20sp",
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.exit_app
-            )
-
-        layout.add_widget(title)
         layout.add_widget(logo)
-        layout.add_widget(create_account_btn)
-        layout.add_widget(login_btn)
-        layout.add_widget(guest_btn)
-        layout.add_widget(settings_btn)
-        layout.add_widget(exit_btn)
+
+        # Shared button style
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 50),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
+
+        # GOV.UK blue buttons
+        layout.add_widget(RoundedButton(text="Create Account", **button_style,
+                                        font_size="20sp", font_name="roboto",
+                                        color=get_color_from_hex("#005EA5"),
+                                        on_press=self.go_to_create_account))
+        layout.add_widget(RoundedButton(text="Login", **button_style,
+                                        font_size="20sp", font_name="roboto",
+                                        color=get_color_from_hex("#005EA5"),
+                                        on_press=self.go_to_login))
+        layout.add_widget(RoundedButton(text="Guest", **button_style,
+                                        font_size="20sp", font_name="roboto",
+                                        color=get_color_from_hex("#005EA5"),
+                                        on_press=self.go_to_guest_access))
+        layout.add_widget(RoundedButton(text="Settings", **button_style,
+                                        font_size="20sp", font_name="roboto",
+                                        color=get_color_from_hex("#005EA5"),
+                                        on_press=self.go_to_settings))
+        layout.add_widget(RoundedButton(text="Exit", **button_style,
+                                        font_size="20sp", font_name="roboto",
+                                        color=get_color_from_hex("#005EA5"),
+                                        on_press=self.exit_app))
+
+        # Reusable GOV.UK footer
+        build_footer(layout)
 
         self.add_widget(layout)
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout
-        
-        # Use the reusable footer function
-        footer()
 
+    # Navigation methods
     def go_to_create_account(self, instance):
         self.manager.current = "create_account"
 
@@ -521,7 +370,7 @@ class MainScreen(Screen):
 
     def go_to_guest_access(self, instance):
         self.manager.current = "main_guest_access"
-        
+
     def go_to_settings(self, instance):
         self.manager.current = "settings"
 
@@ -531,115 +380,71 @@ class MainScreen(Screen):
     def exit_app(self, instance):
         App.get_running_app().stop()
 
+
 # Define the Main Screen for Full Access
 class MainScreenFullAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        
-        def header(title_text):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=100, padding=0, spacing=0)
 
-            # Title in the center
-            title = Label(
-            text=title_text,
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-            size_hint=(1, None),
-            height=80,
-            halign="center",
-            valign="middle"
-            )
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
-            
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
+        # Reusable GOV.UK header
+        build_header(layout, "Benefit Buddy")
 
-            title.bind(size=adjust_font_size)
-
-            top_layout.add_widget(title)
-            layout.add_widget(top_layout)
-            
-        # Use the reusable header function
-        header("Benefit Buddy")
-        
-        # Buttons
+        # Shared button style
         button_style = {
-        "size_hint": (None, None),
-        "size": (250, 50),
-        "background_color": (0, 0, 0, 0),  # Transparent background
-        "background_normal": ""  # Remove default background image
+            "size_hint": (None, None),
+            "size": (250, 50),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
         }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
 
-        # Add buttons for full access features
+        # Full access feature buttons
         layout.add_widget(RoundedButton(
-            text="Predict Next Payment", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="Predict Next Payment",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.predict_payment)
-                          )
-        
+            on_press=self.predict_payment
+        ))
         layout.add_widget(RoundedButton(
-            text="View Previous Payments", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="View Previous Payments",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.view_payments)
-                          )
+            on_press=self.view_payments
+        ))
         layout.add_widget(RoundedButton(
-            text="Update Details", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="Update Details",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.update_details)
-                          )
+            on_press=self.update_details
+        ))
         layout.add_widget(RoundedButton(
-            text="Log Out", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="Log Out",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.log_out)
-                          )
+            on_press=self.log_out
+        ))
 
-        self.add_widget(layout)
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout    
-        
-        # Use the reusable footer function
-        footer()        
+        # Reusable GOV.UK footer
+        build_footer(layout)
+
+        self.add_widget(layout)        
         
     def predict_payment(self, instance):
         # Create a popup for income input
         content = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        income_input = TextInput(
+
+        self.income_input = TextInput(
             hint_text="Enter your income for this assessment period",
             font_size=18,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
+
         submit_button = RoundedButton(
             text="Submit",
             size_hint=(None, None),
@@ -647,526 +452,243 @@ class MainScreenFullAccess(Screen):
             font_size="20sp",
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            background_color=(0, 0, 0, 0),  # Transparent background
-            background_normal="",  # Remove default background image,
-            on_press=lambda _: self.show_prediction_popup(income_input.text)
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            on_press=lambda _: self.show_prediction_popup(self.income_input.text)
         )
+
         content.add_widget(Label(
             text="Enter your income:",
             font_size=20,
             halign="center",
             color=get_color_from_hex(WHITE)
         ))
-        content.add_widget(income_input)
+        content.add_widget(self.income_input)
         content.add_widget(submit_button)
 
         popup = Popup(
             title="Payment Prediction",
-            title_color=get_color_from_hex("#FFDD00"),  # GOVUK_YELLOW text color
-            title_font="roboto",
-            separator_color=get_color_from_hex("#005EA5"),  # GOVUK_BLUE separator color
             content=content,
-            size_hint=(0.8, 0.4),
-            background_color=get_color_from_hex(GOVUK_BLUE)  # GOVUK_BLUE background color
+            size_hint=(0.8, 0.4)
         )
         popup.open()
 
     def show_prediction_popup(self, income):
         try:
-            income = float(income)  # Validate and convert income to a float
+            income = float(income)
             predicted_payment = self.payment_prediction(income)
             message = f"Your next payment is predicted to be: £{predicted_payment:.2f}"
         except ValueError:
             message = "Invalid income entered. Please enter a numeric value."
 
-        # Show the prediction result in a new popup
+        result_label = Label(
+            text=message,
+            font_size=20,
+            color=get_color_from_hex(WHITE)
+        )
+        result_label.bind(size=lambda inst, val: setattr(inst, 'text_size', (val[0], None)))
+
         result_popup = Popup(
             title="Prediction Result",
-            title_color=get_color_from_hex("#FFDD00"),  # GOVUK_YELLOW text color
-            title_font="roboto",
-            separator_color=get_color_from_hex("#005EA5"),  # GOVUK_BLUE separator color
-            content=Label(
-                text=message,
-                font_size=20,
-                halign="center",
-                valign="middle",
-                color=get_color_from_hex(WHITE)
-            ),
-            size_hint=(0.8, 0.4),
-            background_color=get_color_from_hex(GOVUK_BLUE)  # GOVUK_BLUE background color
+            content=result_label,
+            size_hint=(0.8, 0.4)
         )
         result_popup.open()
 
     def payment_prediction(self, income):
         """Calculate the payment prediction based on the user's details."""
-        # Temporarily set the income to the inputted value and calculate entitlement
-        self.income_input.text = str(income)  # Update the income input field
-        return self.calculate_entitlement()
+        self.income_input.text = str(income)
+        return self.calculate_entitlement()  # Ensure this method exists
+
         
     def calculate_entitlement(self):
-        """Calculate the entitlement based on the user's details."""
+        """Calculate entitlement based on user details."""
 
-        entitlement = (total_allowance - total_deductions)  # Calculate entitlement based on your logic
-        if entitlement < 0:
-            entitlement = 0 # Ensure entitlement is not negative
+        # --- Gather inputs ---
+        try:
+            dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
+            partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
+        except ValueError:
+            self.create_popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
+            return
 
-        total_allowance = max(0, standard_allowance + additional_elements) # Define total allowance based on your logic
-        total_deductions = max(0, income - work_allowance * 0.55) # Define total deductions based on your logic
-
-
-
-        dob = self.dob_input.text  # Retrieve the date of birth from the TextInput widget
-        partner_dob = self.partner_dob_input.text  # Retrieve the partner's date of birth from the TextInput widget
-        
-        # Convert the date of birth string to a datetime object
-        dob_date = datetime.strptime(dob, "%d-%m-%Y")
-        
-        # Get the current date
         current_date = datetime.now()
-        
-        # Validate and calculate age
-        try:
-            dob_date = datetime.strptime(dob, "%d-%m-%Y")
-            # Calculate age
-            age = current_date.year - dob_date.year
-            # Adjust for cases where the birthday hasn't occurred yet this year
-            if (current_date.month, current_date.day) < (dob_date.month, dob_date.day):
-                age -= 1
-        except ValueError:
-            popup = self.create_popup(
-                title="Invalid Date",
-                message="Please enter a valid date in the format DD-MM-YYYY."
-            )
-            popup.open()
-            return
-        
-        # Adjust for cases where the birthday hasn't occurred yet this year
-        if (current_date.month, current_date.day) < (dob_date.month, dob_date.day):
-            age -= 1        
-        
-        
-        # Validate and calculate partner's age
-        try:
-            partner_dob_date = datetime.strptime(partner_dob, "%d-%m-%Y")
-            # Calculate partner's age
-            partner_age = current_date.year - partner_dob_date.year
-            # Adjust for cases where the birthday hasn't occurred yet this year
-            if (current_date.month, current_date.day) < (partner_dob_date.month, partner_dob_date.day):
-                partner_age -= 1
-        except ValueError:
-            popup = self.create_popup(
-                title="Invalid Date",
-                message="Please enter a valid date in the format DD-MM-YYYY."
-            )
-            popup.open()
-            return
+        age = current_date.year - dob_date.year - ((current_date.month, current_date.day) < (dob_date.month, dob_date.day))
+        partner_age = current_date.year - partner_dob_date.year - ((current_date.month, current_date.day) < (partner_dob_date.month, partner_dob_date.day))
 
-        # Define relationship status as "single" or "couple" based on your logic
-        relationship_status = "single" or "couple" 
-         
-        # Check if the user is single or in a couple
-        single = relationship_status == "single"
-        couple = relationship_status == "couple"
-        
-        # Validate relationship status
-        if relationship_status not in ["single", "couple"]:
-            popup = self.create_popup(
-                title="Invalid Relationship Status",
-                message="Please select a valid relationship status."
-            )
-            popup.open()
-            return  
-               
-        # Calculate standard allowance based on age and relationship status        
-        if relationship_status == single and age < 25:
-            standard_allowance = 316.98
-        elif relationship_status == single and age >=25:
-            standard_allowance = 400.14
-        elif relationship_status == couple and (age and partner_age) <25:
-            standard_allowance = 497.55
-        elif relationship_status == couple and (age or partner_age) >=25:
-            standard_allowance = 628.10
+        relationship_status = self.relationship_input.text.lower()  # e.g. "single" or "couple"
+
+        # --- Standard allowance ---
+        if relationship_status == "single":
+            standard_allowance = 316.98 if age < 25 else 400.14
+        elif relationship_status == "couple":
+            if age < 25 and partner_age < 25:
+                standard_allowance = 497.55
+            else:
+                standard_allowance = 628.10
         else:
-            error_message = "Invalid relationship status or age."
-            popup = self.create_popup(
-                title="Error",
-                message=error_message
-            )
-
-        # Calculate additional elements
-        additional_elements = (
-            child_element +
-            carer_element +
-            disability_element +
-            childcare_element +
-            housing_element)
-        
-                
-        # Validate Children Date of Births and calculate child elements
-        try:
-            # Assuming `self.children_dob_inputs` is a list of TextInput widgets for children's DOBs
-            children_dobs = []
-            for dob_input in self.children_dob_inputs:
-                dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
-            children_dobs.append(dob)
-        except ValueError:
-            popup = self.create_popup(
-            title="Invalid Date",
-            message="Please ensure all dates are in the format DD-MM-YYYY."
-            )
-            popup.open()
+            self.create_popup("Invalid Relationship Status", "Please select single or couple").open()
             return
 
-        # Calculate child elements based on the number of children and their DOBs
-        first_born = 0
-        next_born = 0
+        # --- Child elements ---
         child_element = 0
+        children_dobs = []
+        for dob_input in self.children_dob_inputs:
+            try:
+                dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
+                children_dobs.append(dob)
+            except ValueError:
+                self.create_popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
+                return
 
         for i, dob in enumerate(children_dobs):
-            if i == 0:  # First child
-                first_born = 339 if dob < datetime(2017, 4, 6) else 292.81
-            child_element += first_born
-        else:  # Subsequent children
-            next_born = 292.81
-            child_element += next_born
-                
-
-        is_carer = False
-        carer_element = 201.68 if is_carer == True else 0 # decided by DWP
-        
-        housing = "rented" or "owned"  # Define housing as "rented" or "owned" based on your logic    
-        self.eligible_rent = getattr(self, 'eligible_rent', 0)  # Ensure eligible_rent is defined with a default value
-        if housing == "rented":
-            receives_housing_support = True
-        else:
-            receives_housing_support = False
-        
-        income = input("Enter your income for this assessment period: ")        
-        # Validate income
-        try:
-            income = float(self.income_input.text)  # Retrieve the income from the TextInput widget
-        except ValueError:
-            popup = self.create_popup(
-                title="Invalid Income",
-                message="Please enter a valid income."
-            )
-            popup.open()
-            return    
-            
-        # Calculate work allowance based on children and housing support
-        children = len(children_dobs)  # Calculate the number of children based on their DOBs
-        if children > 0 or lcw == True:
-            if receives_housing_support:
-                work_allowance = 411
+            if i == 0:
+                child_element += 339 if dob < datetime(2017, 4, 6) else 292.81
             else:
-                work_allowance = 684
+                child_element += 292.81
+
+        # --- Other elements ---
+        carer_element = 201.68 if self.is_carer else 0
+        disability_element = 0  # add LCW/LCWRA logic
+        childcare_element = 0   # add childcare cost logic
+        housing_element = 0     # add housing logic
+
+        # --- Income & work allowance ---
+        try:
+            income = float(self.income_input.text)
+        except ValueError:
+            self.create_popup("Invalid Income", "Please enter a numeric income").open()
+            return
+
+        children = len(children_dobs)
+        if children > 0 or self.lcw:
+            work_allowance = 411 if self.receives_housing_support else 684
         else:
             work_allowance = 0
-            
-        #   #   #   #   #   #   #   #   #   #
-        
-        sanctions = 0  # Placeholder for sanctions, decided by DWP
-    
-        #   #   #   #   #   #   #   #   #   #
-        
-        lcw = False
-        lcwra = False
-        if lcwra == True:
-            disability_element = 423.27
-        elif lcw == True:
-            disability_element = 158.76
-            if lcw == True and current_date > datetime(2017, 4, 3):
-                disability_element = 0
-        else:
-            disability_element = 0
-            
-        childcare_element = 0
-        if self.childcare_costs > 0:
-            if children > 0:
-                childcare_element = min(self.childcare_costs * 0.85, 1031.88 if children == 1 else 1768.94)
-            else:
-                childcare_element = 0 
-        
-        housing_element = 0
-        # Define accommodation type dynamically based on user input or logic
-        accomodation = input("Enter your accommodation type (shared/private/social): ").strip().lower()
-        if accomodation not in ["shared", "private", "social"]:
-            # Show a popup if the accommodation type is invalid
-            popup = self.create_popup(
-                title="Invalid Accommodation Type",
-                message="Please enter a valid accommodation type (shared, private, social)."
-            )
-            popup.open()
-            
-        # Ensure eligible_rent is initialized and validated as numeric
-        self.eligible_rent = getattr(self, 'eligible_rent', 0)  # Default to 0 if not set
-        self.eligible_rent = float(self.eligible_rent)
-            
-        accomodation = "shared" or "private" or "social"  # Define accommodation type based on your logic
-        
-        if housing == "rented":
-            if accomodation == "shared":
-                housing_element = 0.5 * self.eligible_rent
-            elif accomodation == "private":
-                housing_element = self.eligible_rent
-            elif accomodation == "social":
-                housing_element = self.eligible_rent
-            else:
-                housing_element = 0
-        # --- NEEDS TO BE LINKED TO LHA RATES --- #
-        
-    def create_popup(self, title, message):
-        """Helper function to create a popup with a given title and message."""
-        content = Label(
-            text=message,
-            font_name="roboto",
-            font_size=20,
-            color=get_color_from_hex("#FFDD00"),  # GOVUK_YELLOW text color
-        )
-        return Popup(title=title, size_hint=(0.8, 0.4), content=content)
 
-    def view_payments(self, instance):
-        print("Navigating to payments...")
+        # --- Totals ---
+        total_allowance = standard_allowance + child_element + carer_element + disability_element + childcare_element + housing_element
+        total_deductions = max(0, income - work_allowance) * 0.55
+        entitlement = max(0, total_allowance - total_deductions)
 
-    def update_details(self, instance):
-        print("Navigating to update details...")
+        return entitlement
 
-    def log_out(self, instance):
-        self.manager.current = "main"
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
 class MainScreenGuestAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        
-        def header(title_text):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, padding=0, spacing=0)
-            layout.add_widget(top_layout)
-            
-            # Title in the center
-            title = Label(
-            text=title_text,
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-            size_hint=(1, None),
-            height=60,
-            halign="center",
-            valign="top"
-            )
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
-            
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
 
-            title.bind(size=adjust_font_size)
-            top_layout.add_widget(title)
-            # Adjust layout to remove gap above the title and evenly space widgets
-            top_layout.padding = (0, 0, 0, 0)  # Remove padding above the title
-            layout.spacing = Window.height * 0.05  # Dynamically space widgets based on screen height
+        # Reusable GOV.UK header
+        build_header(layout, "Benefit Buddy")
 
-        # Use the reusable header function
-        header("Benefit Buddy")
-        
-        def wrapped_label(text, font_size, height):
-            label = Label(
-                text=text,
-                font_size=font_size,
-                halign="center",
-                valign="middle",
-                color=get_color_from_hex(WHITE),
-                size_hint_y=None,
-                height=height
-            )
-            # Bind the label's width to the window width minus padding
-            def update_text_size(instance, value):
-                instance.text_size = (Window.width - 60, None)
-            label.bind(width=update_text_size)
-            update_text_size(label, None)
-            return label
-
-        layout.add_widget(wrapped_label(
-            text="Guest Access has limited functionality.\n\n"
-            "A Full Access Mode with more features is currently in development.\n"
-            "Look out for updates on this and be able have a payment prediction in seconds.",
+        # Info label
+        info_label = Label(
+            text=("Guest Access has limited functionality.\n\n"
+                  "A Full Access Mode with more features is currently in development.\n"
+                  "Look out for updates and soon be able to have a payment prediction in seconds."),
             font_size="16sp",
-            height=Window.height * 0.3  # Set height dynamically based on window size
-        ))
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex(WHITE),
+            size_hint_y=None,
+            height=Window.height * 0.3
+        )
+        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(info_label)
+
+        # Shared button style
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 50),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
 
         # Buttons
-        button_style = {
-        "size_hint": (None, None),
-        "size": (250, 50),
-        "background_color": (0, 0, 0, 0),  # Transparent background
-        "background_normal": ""  # Remove default background image
-        }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
-
-        # Add buttons for limited features
         layout.add_widget(RoundedButton(
-            text="Calculate Universal Credit", 
+            text="Calculate Universal Credit",
             **button_style,
-            font_size="20sp",
-            font_name="roboto",
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_calculator)
-                          )
+            on_press=self.go_to_calculator
+        ))
         layout.add_widget(RoundedButton(
-            text="Log Out", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="Log Out",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.log_out)
-                          )
+            on_press=self.log_out
+        ))
+
+        # Reusable GOV.UK footer
+        build_footer(layout)
 
         self.add_widget(layout)
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout    
-        
-        # Use the reusable footer function
-        footer()    
 
-    def calculate_credit(self, instance):
-        print("Navigating to Universal Credit calculator...")
-
-    def log_out(self, instance):
-        self.manager.current = "main"
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-
-        self.add_widget(layout) 
-
-    def proceed_to_main(self, instance):
-        print("Proceeding to the main application as a guest...")
-        
+    # Navigation methods
     def go_to_calculator(self, instance):
         print("Navigating to the calculator...")
-        
         self.manager.current = "calculator"
+
+    def log_out(self, instance):
+        print("Logging out...")
+        self.manager.current = "main"
 
     def go_back(self, instance):
         self.manager.current = "main"
+
 
 # Define the Create Account Screen
 class CreateAccountPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        
-        def header(title_text):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=100, padding=0, spacing=0)
-            
-            # Title in the center
-            title = Label(
-            text=title_text,
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-            size_hint=(1, None),
-            height=80,
-            halign="center",
-            valign="middle"
-            )
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
-            
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
-                
-            title.bind(size=adjust_font_size)
-            
-            # Adjust layout to remove gap above the title and evenly space widgets
-            top_layout.padding = (0, 0, 0, 0)  # Remove padding above the title
-            layout.spacing = Window.height * 0.05  # Dynamically space widgets based on screen height
 
-            top_layout.add_widget(title)
-            layout.add_widget(top_layout)
+        # Reusable GOV.UK header
+        build_header(layout, "Benefit Buddy")
 
-        # Use the reusable header function
-        header("Benefit Buddy")
-        
-        def wrapped_label(text, font_size, height):
-            label = Label(
-            text=text,
-            font_size=font_size,
+        # Info label
+        info_label = Label(
+            text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
+            font_size="16sp",
             halign="center",
             valign="middle",
             color=get_color_from_hex(WHITE),
             size_hint_y=None,
-            height=height
-            )
-            # Bind the label's width to the window width minus padding
-            def update_text_size(instance, value):
-                instance.text_size = (Window.width - 60, None)
-            label.bind(width=update_text_size)
-            update_text_size(label, None)
-            return label        
-        
-        layout.add_widget(wrapped_label(
-            text="This section of the app is still currently in development.\n\n"
-            "Please check back later for updates.",
-            font_size="16sp",
-            height=Window.height * 0.3  # Set height dynamically based on window size
-        ))
-        
-        # Buttons
+            height=Window.height * 0.3
+        )
+        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(info_label)
+
+        # Shared button style
         button_style = {
-        "size_hint": (None, None),
-        "size": (250, 50),
-        "background_color": (0, 0, 0, 0),  # Transparent background
-        "background_normal": ""  # Remove default background image
+            "size_hint": (None, None),
+            "size": (250, 50),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
         }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
-        
+
+        # Back button
         layout.add_widget(RoundedButton(
-            text="Back to Home", 
-            **button_style, 
-            font_size="20sp",
-            font_name="roboto",
+            text="Back to Home",
+            **button_style,
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.go_back)
-                          )
+            on_press=self.go_back
+        ))
+
+        # Reusable GOV.UK footer
+        build_footer(layout)
+
         self.add_widget(layout)
-        
-        def footer(): # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            
-            return bottom_layout    
-        
-        # Use the reusable footer function
-        footer()    
 
     def go_back(self, instance):
         self.manager.current = "main"
+
 
 # Define the Login Screen
 class LoginPage(Screen):
@@ -1174,105 +696,53 @@ class LoginPage(Screen):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        def header(title_text):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=100, padding=0, spacing=0)
+        # Reusable GOV.UK header
+        build_header(layout, "Benefit Buddy")
 
-            # Title in the center
-            title = Label(
-                text=title_text,
-                font_size="50sp",
-                bold=True,
-                font_name="freedom",
-                color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-                size_hint=(1, None),
-                height=80,
-                halign="center",
-                valign="middle"
-            )
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
-
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
-
-            title.bind(size=adjust_font_size)
-
-            top_layout.add_widget(title)
-            layout.add_widget(top_layout)
-
-        # Use the reusable header function
-        header("Benefit Buddy")
-
-        def wrapped_label(text, font_size, height):
-            label = Label(
-                text=text,
-                font_size=font_size,
-                halign="center",
-                valign="middle",
-                color=get_color_from_hex(WHITE),
-                size_hint_y=None,
-                height=height
-            )
-            # Bind the label's width to the window width minus padding
-            def update_text_size(instance, value):
-                instance.text_size = (Window.width - 60, None)
-            label.bind(width=update_text_size)
-            update_text_size(label, None)
-            return label
-
-        layout.add_widget(wrapped_label(
-            text="This section of the app is still currently in development.\n\n"
-                 "When this feature is fully developed you will be able to have much more usability;\n"
-                 "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement.\n",
+        # Info label
+        info_label = Label(
+            text=("This section of the app is still currently in development.\n\n"
+                  "When this feature is fully developed you will be able to have much more usability;\n"
+                  "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement."),
             font_size="16sp",
-            height=Window.height * 0.3  # Set height dynamically based on window size
-        ))
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex(WHITE),
+            size_hint_y=None,
+            height=Window.height * 0.3
+        )
+        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(info_label)
 
-        # Buttons
+        # Shared button style
         button_style = {
             "size_hint": (None, None),
             "size": (250, 50),
-            "background_color": (0, 0, 0, 0),  # Transparent background
-            "background_normal": ""  # Remove default background image
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
         }
-        button_style["pos_hint"] = {"center_x": 0.5, "center_y": 0.5}  # Center the buttons
 
+        # Buttons
         layout.add_widget(RoundedButton(
             text="Log In",
             **button_style,
-            font_size="20sp",
-            font_name="roboto",
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.log_in)
-        )
+            on_press=self.log_in
+        ))
         layout.add_widget(RoundedButton(
             text="Back to Home",
             **button_style,
-            font_size="20sp",
-            font_name="roboto",
+            font_size="20sp", font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            on_press=self.go_back)
-        )
+            on_press=self.go_back
+        ))
+
+        # Reusable GOV.UK footer
+        build_footer(layout)
+
         self.add_widget(layout)
-
-        def footer():  # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout)  # Add a footer if a target screen is provided
-
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-
-            return bottom_layout
-
-        # Use the reusable footer function
-        footer()
 
     def log_in(self, instance):
         print("Logging in...")
@@ -1281,74 +751,28 @@ class LoginPage(Screen):
     def go_back(self, instance):
         self.manager.current = "main"
 
+
 # Define the Calculator Screen
 class Calculator(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=5, padding=5)
-        
-        self.background_color = get_color_from_hex("#FFFFFF")  # White background
-        self.color = get_color_from_hex("#005EA5")  # GOVUK_BLUE text color
-        self.background_normal = ""  # Remove default background image
 
-        # Initialize shared input attributes to avoid AttributeError
-        self.income_input = TextInput()
-        self.capital_input = TextInput()
-        self.dob_input = TextInput()
-        self.partner_name_input = TextInput()
-        self.partner_dob_input = TextInput()
-        self.couple_claim_checkbox = CheckBox()
-        self.housing_type_spinner = Spinner()
-        self.location_spinner = Spinner()
-        self.brma_spinner = Spinner()
-        
-        def header(title_text, back_button_screen=None):
-            # Define the header layout
-            top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=100, padding=0, spacing=0)
-            
-            # Title in the center
-            title = Label(
-            text=title_text,
-            font_size="50sp",
-            bold=True,
-            font_name="freedom",
-            color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-            size_hint=(1, None),
-            height=80,
-            halign="center",
-            valign="middle"
-            )
-            title.bind(size=title.setter('text_size'))  # Ensure text wraps properly
+        # Reusable GOV.UK header with back button
+        build_header(layout, "Benefit Buddy")
+        back_button = RoundedButton(
+            text="Back",
+            size_hint=(None, None), size=(100, 25),
+            background_color=get_color_from_hex("#005EA5"),
+            background_normal="",
+            font_size="14sp", font_name="roboto",
+            color=get_color_from_hex("#FFDD00"),
+            on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
+        )
+        back_button.pos_hint = {"center_x": 0.5}
+        layout.add_widget(back_button)
 
-            # Adjust font size dynamically to fit within the available space
-            def adjust_font_size(instance, value):
-                instance.font_size = min(50, instance.width / len(instance.text) * 1.5)
-
-            title.bind(size=adjust_font_size)
-            top_layout.add_widget(title)
-
-            layout.add_widget(top_layout)
-
-            # Add a back button if a target screen is provided
-            if back_button_screen:
-                back_button = RoundedButton(
-                    text="Back",
-                    size_hint=(None, None),
-                    size=(100, 25),
-                    background_color= get_color_from_hex("#005EA5"),  # GOVUK_BLUE background color
-                    background_normal="",  # Remove default background image
-                    font_size="14sp",
-                    font_name="roboto",
-                    color=get_color_from_hex("##FFDD00"),  # GOVUK_YELLOW text color
-                    on_press=lambda x: setattr(self.manager, 'current', back_button_screen)
-                )
-            back_button.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the button
-            layout.add_widget(back_button)
-
-        # Use the reusable header function
-        header("Benefit Buddy", back_button_screen="main_guest_access")
-
-        # Define the screens for the Spinner to use for screen selection
+        # Define screens (stubbed for now)
         self.screens = [
             ("Introduction", self.create_intro_screen),
             ("Claimant Details", self.create_claimant_details_screen),
@@ -1361,50 +785,23 @@ class Calculator(Screen):
             ("Summary", self.create_calculate_screen)
         ]
 
-        # Spinner for selecting the current screen
+        # Spinner
         self.screen_spinner = Spinner(
-            text="Introduction ▼",  # Add a dropdown arrow unicode character to the text (You can also use an image, but unicode is simple and cross-platform)
+            text="Introduction ▼",
             values=[name for name, _ in self.screens],
-            size_hint=(None, None),
-            size=(250, 50),
-            background_color=(0, 0, 0, 0),  # Transparent background
-            background_normal="",  # Remove default background image
-            color=get_color_from_hex("#005EA5"),  # GOVUK_BLUE text color
-            font_size="20sp",
-            font_name="roboto",
-            option_cls=CustomSpinnerOption,  # Use custom dropdown option for consistent style
+            size_hint=(None, None), size=(250, 50),
+            background_color=(0, 0, 0, 0), background_normal="",
+            color=get_color_from_hex("#005EA5"),
+            font_size="20sp", font_name="roboto",
+            option_cls=CustomSpinnerOption,
+            pos_hint={"center_x": 0.5}
         )
-        self.screen_spinner.text = "Introduction ▼" # Add a dropdown arrow unicode character to the text (You can also use an image, but unicode is simple and cross-platform)
-        self.screen_spinner.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
-        # Add a rounded rectangle background to match RoundedButton
-        with self.screen_spinner.canvas.before:
-            self.spinner_bg_color = Color(rgba=get_color_from_hex("#FFDD00"))  # GOVUK_YELLOW
-            self.spinner_bg_rect = RoundedRectangle(
-            pos=self.screen_spinner.pos,
-            size=self.screen_spinner.size,
-            radius=[20]
-            )
-        def update_spinner_bg(*_):
-            self.spinner_bg_rect.pos = self.screen_spinner.pos
-            self.spinner_bg_rect.size = self.screen_spinner.size
-        self.screen_spinner.bind(pos=update_spinner_bg, size=update_spinner_bg)
-
-        # Update the spinner text to always show the dropdown arrow
-        def update_spinner_text(spinner, text):
-            # Remove any existing arrow and add it back
-            if not text.endswith(" ▼"):
-                spinner.text = text + " ▼"
-        self.screen_spinner.bind(text=update_spinner_text)
-
-        # Container for the current screen's content
+        # Container for screen content
         self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        # Add initial screen
-        self.screen_content.clear_widgets()
         self.screen_content.add_widget(self.screens[0][1]())
 
         def on_screen_select(_, text):
-            # Remove dropdown arrow if present for matching
             clean_text = text.replace(" ▼", "")
             self.screen_content.clear_widgets()
             for name, builder in self.screens:
@@ -1414,28 +811,25 @@ class Calculator(Screen):
 
         self.screen_spinner.bind(text=on_screen_select)
 
-        # Add spinner and content to layout
         layout.add_widget(self.screen_spinner)
         layout.add_widget(self.screen_content)
+
+        # Reusable GOV.UK footer
+        build_footer(layout)
+
         self.add_widget(layout)
 
-        def footer():
-            # Define the footer layout
-            bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25, padding=0, spacing=0)
-            bottom_layout.add_widget(Label(text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved", font_size=12, halign="center", color=get_color_from_hex("##FFDD00")))  # GOVUK_YELLOW text color
-            layout.add_widget(bottom_layout) # Add a footer if a target screen is provided
-            
-            # Adjust font size dynamically to fit within the available space for footer labels
-            def adjust_font_size(instance, value):
-                instance.font_size = max(10, min(14, instance.width / len(instance.text) * 1.5))
-            
-            for child in bottom_layout.children:
-                if isinstance(child, Label):
-                    child.bind(size=adjust_font_size)
-            return bottom_layout
-        
-        # Use the reusable footer function
-        footer()
+    # Stub methods
+    def create_intro_screen(self): return Label(text="Intro screen")
+    def create_claimant_details_screen(self): return Label(text="Claimant details")
+    def create_finances_screen(self): return Label(text="Finances")
+    def create_housing_screen(self): return Label(text="Housing")
+    def create_children_screen(self): return Label(text="Children")
+    def create_additional_elements_screen(self): return Label(text="Additional elements")
+    def create_sanction_screen(self): return Label(text="Sanctions")
+    def create_advance_payments_screen(self): return Label(text="Advance payments")
+    def create_calculate_screen(self): return Label(text="Summary")
+
         
     def calculate(self, instance):
         # Gather input values
@@ -3310,6 +2704,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
