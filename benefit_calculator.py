@@ -385,10 +385,8 @@ class MainScreenFullAccess(Screen):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        # Reusable GOV.UK header
         build_header(layout, "Benefit Buddy")
 
-        # Shared button style
         button_style = {
             "size_hint": (None, None),
             "size": (250, 50),
@@ -397,7 +395,6 @@ class MainScreenFullAccess(Screen):
             "pos_hint": {"center_x": 0.5}
         }
 
-        # Full access feature buttons
         layout.add_widget(RoundedButton(
             text="Predict Next Payment",
             **button_style,
@@ -427,10 +424,22 @@ class MainScreenFullAccess(Screen):
             on_press=self.log_out
         ))
 
-        # Reusable GOV.UK footer
         build_footer(layout)
+        self.add_widget(layout)
 
-        self.add_widget(layout)        
+        # Initialize attributes to avoid AttributeError
+        self.dob_input = TextInput(hint_text="DD/MM/YYYY")
+        self.partner_dob_input = TextInput(hint_text="DD/MM/YYYY")
+        self.relationship_input = TextInput(hint_text="single/couple")
+        self.children_dob_inputs = []
+        self.is_carer = False
+        self.lcw = False
+        self.receives_housing_support = False
+
+    def create_popup(self, title, message):
+        lbl = Label(text=message, halign="center", color=get_color_from_hex(WHITE))
+        lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        return Popup(title=title, content=lbl, size_hint=(0.8, 0.4))        
         
     def predict_payment(self, instance):
         # Create a popup for income input
@@ -2706,6 +2715,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
