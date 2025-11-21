@@ -24,8 +24,6 @@ android.archs = arm64-v8a
 
 android.gradle_dependencies = com.android.support:multidex:1.0.3
 
-android.manifest_placeholders = exported=true
-
 
 [buildozer]
 log_level = 2
