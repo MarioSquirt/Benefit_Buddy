@@ -507,7 +507,7 @@ class MainScreenFullAccess(Screen):
             dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
             partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
         except ValueError:
-            self.create_popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
+            Popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
             return
 
         current_date = datetime.now()
@@ -525,7 +525,7 @@ class MainScreenFullAccess(Screen):
             else:
                 standard_allowance = 628.10
         else:
-            self.create_popup("Invalid Relationship Status", "Please select single or couple").open()
+            Popup("Invalid Relationship Status", "Please select single or couple").open()
             return
 
         # --- Child elements ---
@@ -536,7 +536,7 @@ class MainScreenFullAccess(Screen):
                 dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
                 children_dobs.append(dob)
             except ValueError:
-                self.create_popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
+                Popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
                 return
 
         for i, dob in enumerate(children_dobs):
@@ -555,7 +555,7 @@ class MainScreenFullAccess(Screen):
         try:
             income = float(self.income_input.text)
         except ValueError:
-            self.create_popup("Invalid Income", "Please enter a numeric income").open()
+            Popup("Invalid Income", "Please enter a numeric income").open()
             return
 
         children = len(children_dobs)
@@ -904,7 +904,7 @@ class Calculator(Screen):
                                 child_elements += 292.81
                             # else: no entitlement for 3rd+ child born after 5 April 2017 without special circumstances
                     except Exception:
-                        popup = self.create_popup(
+                        popup = Popup(
                             title="Invalid Date",
                             message="Please enter valid dates for all children in the format DD/MM/YYYY."
                         )
@@ -2706,6 +2706,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
