@@ -571,6 +571,10 @@ class MainScreenFullAccess(Screen):
 
         return entitlement
 
+    def log_out(self, instance):
+        print("Logging out...")
+        self.manager.current = "main"
+
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
 class MainScreenGuestAccess(Screen):
@@ -2702,6 +2706,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
