@@ -10,7 +10,7 @@ orientation = portrait
 fullscreen = 0
 
 # Icons & Presplash
-presplash.filename = %(source.dir)s/images/presplash.png
+presplash.filename = %(source.dir)s/images/splash.png
 icon.filename = %(source.dir)s/images/icon.png
 
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
