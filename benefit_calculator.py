@@ -69,7 +69,7 @@ def build_header(layout, title_text):
     top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
     title = Label(
         text=title_text,
-        font_size="50",
+        font_size=50,
         bold=True,
         font_name="freedom",
         color=get_color_from_hex("#FFDD00"),  # GOV.UK yellow
@@ -230,7 +230,7 @@ class SettingsScreen(Screen):
 
         info_label = Label(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
-            font_size="16",
+            font_size=16,
             halign="center",
             valign="middle",
             color=get_color_from_hex("#FFFFFF"),
@@ -244,7 +244,7 @@ class SettingsScreen(Screen):
             text="Back to Main Menu",
             size_hint=(None, None), size=(250, 50),
             background_color=(0, 0, 0, 0), background_normal="",
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_to_main
         ))
@@ -293,7 +293,7 @@ class DisclaimerScreen(Screen):
             text=("Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
                   "It is for informational purposes only and does not constitute financial advice.\n\n\n"
                   "Guest access has limited functionality and will not save your data."),
-            font_size="18",
+            font_size=18,
             halign="center",
             valign="middle",
             color=get_color_from_hex("#FFFFFF")
@@ -334,23 +334,23 @@ class MainScreen(Screen):
 
         # GOV.UK blue buttons
         layout.add_widget(RoundedButton(text="Create Account", **button_style,
-                                        font_size="20", font_name="roboto",
+                                        font_size=20, font_name="roboto",
                                         color=get_color_from_hex("#005EA5"),
                                         on_press=self.go_to_create_account))
         layout.add_widget(RoundedButton(text="Login", **button_style,
-                                        font_size="20", font_name="roboto",
+                                        font_size=20, font_name="roboto",
                                         color=get_color_from_hex("#005EA5"),
                                         on_press=self.go_to_login))
         layout.add_widget(RoundedButton(text="Guest", **button_style,
-                                        font_size="20", font_name="roboto",
+                                        font_size=20, font_name="roboto",
                                         color=get_color_from_hex("#005EA5"),
                                         on_press=self.go_to_guest_access))
         layout.add_widget(RoundedButton(text="Settings", **button_style,
-                                        font_size="20", font_name="roboto",
+                                        font_size=20, font_name="roboto",
                                         color=get_color_from_hex("#005EA5"),
                                         on_press=self.go_to_settings))
         layout.add_widget(RoundedButton(text="Exit", **button_style,
-                                        font_size="20", font_name="roboto",
+                                        font_size=20, font_name="roboto",
                                         color=get_color_from_hex("#005EA5"),
                                         on_press=self.exit_app))
 
@@ -398,28 +398,28 @@ class MainScreenFullAccess(Screen):
         layout.add_widget(RoundedButton(
             text="Predict Next Payment",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.predict_payment
         ))
         layout.add_widget(RoundedButton(
             text="View Previous Payments",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=lambda x: print("Payments feature not yet implemented")
         ))
         layout.add_widget(RoundedButton(
             text="Update Details",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=lambda x: print("Update details feature not yet implemented")
         ))
         layout.add_widget(RoundedButton(
             text="Log Out",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.log_out
         ))
@@ -456,7 +456,7 @@ class MainScreenFullAccess(Screen):
             text="Submit",
             size_hint=(None, None),
             size=(250, 50),
-            font_size="20",
+            font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             background_color=(0, 0, 0, 0),
@@ -599,7 +599,7 @@ class MainScreenGuestAccess(Screen):
             text=("Guest Access has limited functionality.\n\n"
                   "A Full Access Mode with more features is currently in development.\n"
                   "Look out for updates and soon be able to have a payment prediction in seconds."),
-            font_size="16",
+            font_size=16,
             halign="center",
             valign="middle",
             color=get_color_from_hex(WHITE),
@@ -622,14 +622,14 @@ class MainScreenGuestAccess(Screen):
         layout.add_widget(RoundedButton(
             text="Calculate Universal Credit",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_to_calculator
         ))
         layout.add_widget(RoundedButton(
             text="Log Out",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.log_out
         ))
@@ -664,7 +664,7 @@ class CreateAccountPage(Screen):
         # Info label
         info_label = Label(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
-            font_size="16",
+            font_size=16,
             halign="center",
             valign="middle",
             color=get_color_from_hex(WHITE),
@@ -687,7 +687,7 @@ class CreateAccountPage(Screen):
         layout.add_widget(RoundedButton(
             text="Back to Home",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_back
         ))
@@ -715,7 +715,7 @@ class LoginPage(Screen):
             text=("This section of the app is still currently in development.\n\n"
                   "When this feature is fully developed you will be able to have much more usability;\n"
                   "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement."),
-            font_size="16",
+            font_size=16,
             halign="center",
             valign="middle",
             color=get_color_from_hex(WHITE),
@@ -738,14 +738,14 @@ class LoginPage(Screen):
         layout.add_widget(RoundedButton(
             text="Log In",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.log_in
         ))
         layout.add_widget(RoundedButton(
             text="Back to Home",
             **button_style,
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_back
         ))
@@ -776,7 +776,7 @@ class Calculator(Screen):
             size_hint=(None, None), size=(100, 25),
             background_color=get_color_from_hex("#005EA5"),
             background_normal="",
-            font_size="14", font_name="roboto",
+            font_size=14, font_name="roboto",
             color=get_color_from_hex("#FFDD00"),
             on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
         )
@@ -803,7 +803,7 @@ class Calculator(Screen):
             size_hint=(None, None), size=(250, 50),
             background_color=(0, 0, 0, 0), background_normal="",
             color=get_color_from_hex("#005EA5"),
-            font_size="20", font_name="roboto",
+            font_size=20, font_name="roboto",
             option_cls=CustomSpinnerOption,
             pos_hint={"center_x": 0.5}
         )
@@ -1519,7 +1519,7 @@ class Calculator(Screen):
             size=(250, 50),
             background_color=(0, 0, 0, 0),  # Transparent background
             background_normal="",  # Remove default background image
-            font_size="20",
+            font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),  # GOVUK_BLUE text color
             on_press=lambda x: setattr(self.screen_spinner, 'text', "Claimant Details ▼")
@@ -1651,7 +1651,7 @@ class Calculator(Screen):
             text="Find BRMA",
             size_hint=(None, None),
             size=(150, 40),
-            font_size="16",
+            font_size=16,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             background_color=(0, 0, 0, 0),
@@ -1777,7 +1777,7 @@ class Calculator(Screen):
             "background_color": (0, 0, 0, 0),  # Transparent background
             "background_normal": "",  # Remove default background image
             "color": get_color_from_hex("#005EA5"),  # GOVUK_BLUE text color
-            "font_size": "20",
+            "font_size": 20,
             "font_name": "roboto"
         }
 
@@ -1847,7 +1847,7 @@ class Calculator(Screen):
             text="Add Another Child",
             size_hint=(None, None),
             size=(200, 40),
-            font_size="16",
+            font_size=16,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             background_color=(0, 0, 0, 0),
@@ -1859,7 +1859,7 @@ class Calculator(Screen):
             text="Remove Selected Child",
             size_hint=(None, None),
             size=(200, 40),
-            font_size="16",
+            font_size=16,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             background_color=(0, 0, 0, 0),
@@ -2125,7 +2125,7 @@ class Calculator(Screen):
         self.sanction_level_spinner = Spinner(
             text="Select Sanction Level",
             values=sanction_levels,
-            font_size="16",
+            font_size=16,
             font_name="roboto",
             size_hint=(None, None),
             size=(250, 50),
@@ -2154,7 +2154,7 @@ class Calculator(Screen):
         self.sanctioned_claimants_input = Spinner(
             text="Select Sanctioned Claimants",
             values=["1", "2"],
-            font_size="16",
+            font_size=16,
             font_name="roboto",
             size_hint=(None, None),
             size=(250, 50),
@@ -2664,7 +2664,7 @@ class Calculator(Screen):
             text="Calculate",
             size_hint=(None, None),
             size=(250, 50),
-            font_size="20",
+            font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             background_color=(0, 0, 0, 0),  # Transparent background
@@ -2715,6 +2715,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
