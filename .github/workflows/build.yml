@@ -111,28 +111,42 @@ jobs:
       - name: Clean previous APK
         run: rm -rf bin || true
 
-      - name: Lint font_size usage
+      - name: Lint Kivy numeric properties
         run: |
-          echo "Checking for risky font_size assignments..."
+          echo "Checking for risky numeric assignments..."
 
-          # Python: catch any quoted font_size values
-          BAD=$(grep -R --include="*.py" -E 'font_size\s*=\s*["'\'']' . || true)
+          # Python checks
+          BAD_FONT=$(grep -R --include="*.py" -E 'font_size\s*=\s*["'\'']' . || true)
+          BAD_TEXT=$(grep -R --include="*.py" -E 'text_size\s*=\s*["'\'']' . || true)
+          BAD_LINE=$(grep -R --include="*.py" -E 'line_height\s*=\s*["'\'']' . || true)
+          BAD_PAD=$(grep -R --include="*.py" -E 'padding\s*=\s*["'\'']' . || true)
+          BAD_LETTER=$(grep -R --include="*.py" -E 'letter_spacing\s*=\s*["'\'']' . || true)
 
-          # KV: catch any quoted font_size values
-          BAD_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["'\'']' . || true)
+          # KV checks
+          BAD_FONT_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["'\'']' . || true)
+          BAD_TEXT_KV=$(grep -R --include="*.kv" -E 'text_size\s*:\s*["'\'']' . || true)
+          BAD_LINE_KV=$(grep -R --include="*.kv" -E 'line_height\s*:\s*["'\'']' . || true)
+          BAD_PAD_KV=$(grep -R --include="*.kv" -E 'padding\s*:\s*["'\'']' . || true)
+          BAD_LETTER_KV=$(grep -R --include="*.kv" -E 'letter_spacing\s*:\s*["'\'']' . || true)
 
-          # KV: specifically catch quoted numbers without 'sp'
-          BAD_KV_NUM=$(grep -R --include="*.kv" -E 'font_size\s*:\s*"[0-9]+"' . || true)
-
-          if [ -n "$BAD" ] || [ -n "$BAD_KV" ] || [ -n "$BAD_KV_NUM" ]; then
-            echo "❌ Found risky font_size assignments:"
-            echo "$BAD"
-            echo "$BAD_KV"
-            echo "$BAD_KV_NUM"
+          if [ -n "$BAD_FONT" ] || [ -n "$BAD_TEXT" ] || [ -n "$BAD_LINE" ] || [ -n "$BAD_PAD" ] || [ -n "$BAD_LETTER" ] || \
+             [ -n "$BAD_FONT_KV" ] || [ -n "$BAD_TEXT_KV" ] || [ -n "$BAD_LINE_KV" ] || [ -n "$BAD_PAD_KV" ] || [ -n "$BAD_LETTER_KV" ]; then
+            echo "❌ Found risky numeric assignments:"
+            echo "$BAD_FONT"
+            echo "$BAD_TEXT"
+            echo "$BAD_LINE"
+            echo "$BAD_PAD"
+            echo "$BAD_LETTER"
+            echo "$BAD_FONT_KV"
+            echo "$BAD_TEXT_KV"
+            echo "$BAD_LINE_KV"
+            echo "$BAD_PAD_KV"
+            echo "$BAD_LETTER_KV"
             exit 1
           else
-            echo "✅ No risky font_size strings found."
+            echo "✅ No risky numeric strings found."
           fi
+
 
 
 
