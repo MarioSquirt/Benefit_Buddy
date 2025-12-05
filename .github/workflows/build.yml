@@ -116,10 +116,10 @@ jobs:
           echo "Checking for risky font_size assignments..."
 
           # Python: catch any quoted font_size values
-          BAD=$(grep -R --include="*.py" -E 'font_size\s*=\s*["\']' . || true)
+          BAD=$(grep -R --include="*.py" -E 'font_size\s*=\s*["'\'']' . || true)
 
           # KV: catch any quoted font_size values
-          BAD_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["\']' . || true)
+          BAD_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["'\'']' . || true)
 
           # KV: specifically catch quoted numbers without 'sp'
           BAD_KV_NUM=$(grep -R --include="*.kv" -E 'font_size\s*:\s*"[0-9]+"' . || true)
@@ -133,6 +133,7 @@ jobs:
           else
             echo "✅ No risky font_size strings found."
           fi
+
 
 
       # 1️⃣1️⃣ Build APK
