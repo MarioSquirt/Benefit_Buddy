@@ -111,6 +111,21 @@ jobs:
       - name: Clean previous APK
         run: rm -rf bin || true
 
+      - name: Lint font_size usage
+        run: |
+          echo "Checking for risky font_size assignments..."
+          BAD=$(grep -R --include="*.py" -E 'font_size\s*=\s*["\']' . || true)
+          BAD_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["\']' . || true)
+
+          if [ -n "$BAD" ] || [ -n "$BAD_KV" ]; then
+            echo "❌ Found risky font_size assignments:"
+            echo "$BAD"
+            echo "$BAD_KV"
+            exit 1
+          else
+            echo "✅ No risky font_size strings found."
+          fi
+
       # 1️⃣1️⃣ Build APK
       - name: Build APK
         run: buildozer android debug
