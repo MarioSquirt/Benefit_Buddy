@@ -115,40 +115,19 @@ jobs:
         run: |
           echo "Checking for risky numeric assignments..."
 
-          # Python checks
-          BAD_FONT=$(grep -R --include="*.py" -E 'font_size\s*=\s*["'\'']' . || true)
-          BAD_TEXT=$(grep -R --include="*.py" -E 'text_size\s*=\s*["'\'']' . || true)
-          BAD_LINE=$(grep -R --include="*.py" -E 'line_height\s*=\s*["'\'']' . || true)
-          BAD_PAD=$(grep -R --include="*.py" -E 'padding\s*=\s*["'\'']' . || true)
-          BAD_LETTER=$(grep -R --include="*.py" -E 'letter_spacing\s*=\s*["'\'']' . || true)
+          # Only scan your app code at project root
+          grep -R --include="*.py" --include="*.kv" \
+            --exclude-dir=.buildozer \
+            --exclude-dir=kivy \
+            --exclude-dir=kivymd \
+            -E 'font_size\s*=\s*["'\'']|text_size\s*=\s*["'\'']|line_height\s*=\s*["'\'']|padding\s*=\s*["'\'']|letter_spacing\s*=\s*["'\'']|size_hint\s*=\s*["'\'']|pos_hint\s*=\s*["'\'']|spacing\s*=\s*["'\'']' .
 
-          # KV checks
-          BAD_FONT_KV=$(grep -R --include="*.kv" -E 'font_size\s*:\s*["'\'']' . || true)
-          BAD_TEXT_KV=$(grep -R --include="*.kv" -E 'text_size\s*:\s*["'\'']' . || true)
-          BAD_LINE_KV=$(grep -R --include="*.kv" -E 'line_height\s*:\s*["'\'']' . || true)
-          BAD_PAD_KV=$(grep -R --include="*.kv" -E 'padding\s*:\s*["'\'']' . || true)
-          BAD_LETTER_KV=$(grep -R --include="*.kv" -E 'letter_spacing\s*:\s*["'\'']' . || true)
-
-          if [ -n "$BAD_FONT" ] || [ -n "$BAD_TEXT" ] || [ -n "$BAD_LINE" ] || [ -n "$BAD_PAD" ] || [ -n "$BAD_LETTER" ] || \
-             [ -n "$BAD_FONT_KV" ] || [ -n "$BAD_TEXT_KV" ] || [ -n "$BAD_LINE_KV" ] || [ -n "$BAD_PAD_KV" ] || [ -n "$BAD_LETTER_KV" ]; then
-            echo "❌ Found risky numeric assignments:"
-            echo "$BAD_FONT"
-            echo "$BAD_TEXT"
-            echo "$BAD_LINE"
-            echo "$BAD_PAD"
-            echo "$BAD_LETTER"
-            echo "$BAD_FONT_KV"
-            echo "$BAD_TEXT_KV"
-            echo "$BAD_LINE_KV"
-            echo "$BAD_PAD_KV"
-            echo "$BAD_LETTER_KV"
+          if [ $? -eq 0 ]; then
+            echo "❌ Found risky numeric assignments in your app code."
             exit 1
           else
-            echo "✅ No risky numeric strings found."
+            echo "✅ No risky numeric strings found in your app code."
           fi
-
-
-
 
       # 1️⃣1️⃣ Build APK
       - name: Build APK
