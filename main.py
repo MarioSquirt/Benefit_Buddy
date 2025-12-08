@@ -1,3 +1,5 @@
+import safe_props  # enables runtime safety nets globally
+
 import os
 import sys
 import subprocess
@@ -61,4 +63,5 @@ except ImportError:
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
     benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class, not a bare function
+
 
