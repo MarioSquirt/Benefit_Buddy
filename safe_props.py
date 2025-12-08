@@ -1,29 +1,53 @@
 # safe_props.py
 from kivy.uix.label import Label
+from kivy.uix.spinner import Spinner
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.textinput import TextInput
 from kivy.metrics import sp
 
-# Keep original __init__ for Label
-_orig_init = Label.__init__
+# --- Label ---
+_orig_label_init = Label.__init__
+def _debug_label_init(self, **kwargs):
+    if "font_size" in kwargs and isinstance(kwargs["font_size"], str):
+        print(f"⚠️ Label font_size string detected: {kwargs['font_size']!r}")
+        try:
+            kwargs["font_size"] = sp(int(kwargs["font_size"].replace("sp", "")))
+        except Exception:
+            kwargs["font_size"] = sp(16)
+    _orig_label_init(self, **kwargs)
+Label.__init__ = _debug_label_init
 
-def _debug_init(self, **kwargs):
-    # Check risky properties at construction
-    for key in ("font_size", "text_size", "line_height", "padding", "letter_spacing"):
+# --- Spinner ---
+_orig_spinner_init = Spinner.__init__
+def _debug_spinner_init(self, **kwargs):
+    if "font_size" in kwargs and isinstance(kwargs["font_size"], str):
+        print(f"⚠️ Spinner font_size string detected: {kwargs['font_size']!r}")
+        try:
+            kwargs["font_size"] = sp(int(kwargs["font_size"].replace("sp", "")))
+        except Exception:
+            kwargs["font_size"] = sp(16)
+    _orig_spinner_init(self, **kwargs)
+Spinner.__init__ = _debug_spinner_init
+
+# --- CheckBox ---
+_orig_checkbox_init = CheckBox.__init__
+def _debug_checkbox_init(self, **kwargs):
+    # CheckBox doesn’t usually use font_size, but catch any numeric misuse
+    for key in ("size_hint", "pos_hint"):
         if key in kwargs and isinstance(kwargs[key], str):
-            print(f"⚠️ Runtime warning: {key} received a string value {kwargs[key]!r}")
-            # Default to safe fallback
-            if key == "font_size":
-                try:
-                    kwargs[key] = sp(int(kwargs[key].replace("sp", "")))
-                except Exception:
-                    kwargs[key] = sp(16)
-            elif key in ("text_size", "padding"):
-                kwargs[key] = (0, 0)  # safe tuple fallback
-            elif key == "line_height":
-                kwargs[key] = 1.0
-            elif key == "letter_spacing":
-                kwargs[key] = 0.0
+            print(f"⚠️ CheckBox {key} string detected: {kwargs[key]!r}")
+            kwargs[key] = None  # safe fallback
+    _orig_checkbox_init(self, **kwargs)
+CheckBox.__init__ = _debug_checkbox_init
 
-    _orig_init(self, **kwargs)
-
-# Monkey‑patch Label globally
-Label.__init__ = _debug_init
+# --- TextInput ---
+_orig_textinput_init = TextInput.__init__
+def _debug_textinput_init(self, **kwargs):
+    if "font_size" in kwargs and isinstance(kwargs["font_size"], str):
+        print(f"⚠️ TextInput font_size string detected: {kwargs['font_size']!r}")
+        try:
+            kwargs["font_size"] = sp(int(kwargs["font_size"].replace("sp", "")))
+        except Exception:
+            kwargs["font_size"] = sp(16)
+    _orig_textinput_init(self, **kwargs)
+TextInput.__init__ = _debug_textinput_init
