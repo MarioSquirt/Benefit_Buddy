@@ -222,12 +222,59 @@ class RoundedButton(Button):
 
 # Customizing Spinner to change dropdown background color
 class CustomSpinnerOption(SpinnerOption):
-    # Customize the dropdown options
     def __init__(self, **kwargs):
+        # --- FONT SIZE ---
+        fs = kwargs.get("font_size", 16)
+        if isinstance(fs, str):
+            try:
+                fs = fs.strip().replace("sp", "")
+                kwargs["font_size"] = sp(int(fs))
+            except Exception:
+                kwargs["font_size"] = sp(16)
+        elif isinstance(fs, (int, float)):
+            kwargs["font_size"] = sp(fs)
+        else:
+            kwargs["font_size"] = sp(16)
+
+        # --- TEXT SIZE ---
+        ts = kwargs.get("text_size", None)
+        if isinstance(ts, (ObservableList, list, tuple)):
+            ts = tuple(ts)
+        else:
+            ts = (Window.width - 60, 0)
+
+        if len(ts) != 2:
+            ts = (Window.width - 60, 0)
+
+        w, h = ts
+        w = int(w) if w not in (None, 0) else int(Window.width - 60)
+        h = int(h) if h is not None else 0
+        kwargs["text_size"] = (w, h)
+
+        # --- PADDING ---
+        pad = kwargs.get("padding", None)
+        if isinstance(pad, (ObservableList, list, tuple)):
+            pad = tuple(int(v) if v is not None else 0 for v in pad)
+            if all(v == 0 for v in pad):
+                kwargs["padding"] = (10, 10)
+            else:
+                kwargs["padding"] = pad
+        else:
+            kwargs["padding"] = (10, 10)
+
         super().__init__(**kwargs)
+
+        # --- Styling (your original code) ---
         self.background_color = get_color_from_hex("#FFFFFF")  # White background
-        self.color = get_color_from_hex("#005EA5")  # GOVUK_BLUE text color
-        self.background_normal = ""  # Remove default background image
+        self.color = get_color_from_hex("#005EA5")             # GOVUK_BLUE text color
+        self.background_normal = ""                            # Remove default background image
+
+        # 🔑 Bind text_size dynamically to width and window resize
+        self.bind(width=self._update_text_size)
+        Window.bind(size=lambda *_: self._update_text_size())
+
+    def _update_text_size(self, *args):
+        self.text_size = (self.width - 20, 0)
 
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
@@ -2749,6 +2796,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
