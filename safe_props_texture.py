@@ -11,8 +11,8 @@ _orig_texture_update = Label.texture_update
 def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
-    - Normalizes ObservableList and list values into safe tuples
-    - Ensures text_size and padding are always valid integers
+    - Normalizes ObservableList/ObservableReferenceList into tuples
+    - Ensures text_size and padding are always integer tuples
     - Coerces invalid values into sane defaults
     - Logs only when values are genuinely invalid
     """
@@ -50,25 +50,25 @@ def texture_update(self, *args, **kwargs):
 
         # --- TEXT SIZE ---
         ts = self.text_size
-        if isinstance(ts, ObservableList):
+        if isinstance(ts, (ObservableList, list, tuple)):
             ts = tuple(ts)
-        if not isinstance(ts, tuple) or len(ts) != 2:
-            _log_issue("text_size", self.text_size)
-            self.text_size = (self.width if hasattr(self, "width") else 400, 0)
         else:
-            w, h = ts
-            if w in (None, 0):
-                w = self.width if hasattr(self, "width") else 400
-            if h is None:
-                h = 0
-            self.text_size = (int(w), int(h))
+            ts = (self.width if hasattr(self, "width") else 400, 0)
+
+        if len(ts) != 2:
+            _log_issue("text_size", self.text_size)
+            ts = (self.width if hasattr(self, "width") else 400, 0)
+
+        w, h = ts
+        # Replace None with safe defaults and cast to int
+        w = int(w) if w not in (None, 0) else int(self.width if hasattr(self, "width") else 400)
+        h = int(h) if h is not None else 0
+        self.text_size = (w, h)
 
         # --- PADDING ---
         pad = self.padding
-        if isinstance(pad, ObservableList):
-            pad = tuple(pad)
-        if isinstance(pad, (list, tuple)):
-            pad = tuple(int(v) for v in pad)
+        if isinstance(pad, (ObservableList, list, tuple)):
+            pad = tuple(int(v) if v is not None else 0 for v in pad)
             if all(v == 0 for v in pad):
                 _log_issue("padding", self.padding)
                 self.padding = (10, 10)
