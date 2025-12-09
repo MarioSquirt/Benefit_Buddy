@@ -67,7 +67,7 @@ Window.bind(size=adjust_layout)
 
 def build_header(layout, title_text):
     top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
-    title = Label(
+    title = SafeLabel(
         text=title_text,
         font_size=50,
         bold=True,
@@ -82,7 +82,7 @@ def build_header(layout, title_text):
 
 def build_footer(layout):
     bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25)
-    footer_label = Label(
+    footer_label = SafeLabel(
         text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved",
         font_size=12,
         halign="center",
@@ -228,7 +228,7 @@ class SettingsScreen(Screen):
 
         build_header(layout, "Benefit Buddy")
 
-        info_label = Label(
+        info_label = SafeLabel(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
             font_size=16,
             halign="center",
@@ -289,7 +289,7 @@ class DisclaimerScreen(Screen):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        disclaimer_text = Label(
+        disclaimer_text = SafeLabel(
             text=("Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
                   "It is for informational purposes only and does not constitute financial advice.\n\n\n"
                   "Guest access has limited functionality and will not save your data."),
@@ -437,7 +437,7 @@ class MainScreenFullAccess(Screen):
         self.receives_housing_support = False
 
     def create_popup(self, title, message):
-        lbl = Label(text=message, halign="center", color=get_color_from_hex(WHITE))
+        lbl = SafeLabel(text=message, halign="center", color=get_color_from_hex(WHITE))
         lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         return Popup(title=title, content=lbl, size_hint=(0.8, 0.4))        
         
@@ -464,7 +464,7 @@ class MainScreenFullAccess(Screen):
             on_press=lambda _: self.show_prediction_popup(self.income_input.text)
         )
 
-        content.add_widget(Label(
+        content.add_widget(SafeLabel(
             text="Enter your income:",
             font_size=20,
             halign="center",
@@ -488,7 +488,7 @@ class MainScreenFullAccess(Screen):
         except ValueError:
             message = "Invalid income entered. Please enter a numeric value."
 
-        result_label = Label(
+        result_label = SafeLabel(
             text=message,
             font_size=20,
             color=get_color_from_hex(WHITE)
@@ -595,7 +595,7 @@ class MainScreenGuestAccess(Screen):
         build_header(layout, "Benefit Buddy")
 
         # Info label
-        info_label = Label(
+        info_label = SafeLabel(
             text=("Guest Access has limited functionality.\n\n"
                   "A Full Access Mode with more features is currently in development.\n"
                   "Look out for updates and soon be able to have a payment prediction in seconds."),
@@ -662,7 +662,7 @@ class CreateAccountPage(Screen):
         build_header(layout, "Benefit Buddy")
 
         # Info label
-        info_label = Label(
+        info_label = SafeLabel(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
             font_size=16,
             halign="center",
@@ -711,7 +711,7 @@ class LoginPage(Screen):
         build_header(layout, "Benefit Buddy")
 
         # Info label
-        info_label = Label(
+        info_label = SafeLabel(
             text=("This section of the app is still currently in development.\n\n"
                   "When this feature is fully developed you will be able to have much more usability;\n"
                   "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement."),
@@ -831,15 +831,15 @@ class Calculator(Screen):
         self.add_widget(layout)
 
     # Stub methods
-    def create_intro_screen(self): return Label(text="Intro screen")
-    def create_claimant_details_screen(self): return Label(text="Claimant details")
-    def create_finances_screen(self): return Label(text="Finances")
-    def create_housing_screen(self): return Label(text="Housing")
-    def create_children_screen(self): return Label(text="Children")
-    def create_additional_elements_screen(self): return Label(text="Additional elements")
-    def create_sanction_screen(self): return Label(text="Sanctions")
-    def create_advance_payments_screen(self): return Label(text="Advance payments")
-    def create_calculate_screen(self): return Label(text="Summary")
+    def create_intro_screen(self): return SafeLabel(text="Intro screen")
+    def create_claimant_details_screen(self): return SafeLabel(text="Claimant details")
+    def create_finances_screen(self): return SafeLabel(text="Finances")
+    def create_housing_screen(self): return SafeLabel(text="Housing")
+    def create_children_screen(self): return SafeLabel(text="Children")
+    def create_additional_elements_screen(self): return SafeLabel(text="Additional elements")
+    def create_sanction_screen(self): return SafeLabel(text="Sanctions")
+    def create_advance_payments_screen(self): return SafeLabel(text="Advance payments")
+    def create_calculate_screen(self): return SafeLabel(text="Summary")
 
         
     def calculate(self, instance):
@@ -975,7 +975,7 @@ class Calculator(Screen):
 
             # Check housing type
             if not (hasattr(self, "housing_type_spinner") and self.housing_type_spinner.text and self.housing_type_spinner.text.lower() in ["rent", "own"]):
-                content = Label(
+                content = SafeLabel(
                     text="Please select a valid housing type (rent or own).",
                     text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                     halign="center",
@@ -992,7 +992,7 @@ class Calculator(Screen):
             if self.housing_type_spinner.text.lower() == "rent":
                 # Check if children option is selected
                 if not (hasattr(self, "has_children_yes") and (self.has_children_yes.active or (hasattr(self, "has_children_no") and self.has_children_no.active))):
-                    content = Label(
+                    content = SafeLabel(
                         text="Please specify if you have children.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1012,7 +1012,7 @@ class Calculator(Screen):
 
                 # Ensure Location is selected
                 if not (hasattr(self, "location_spinner") and self.location_spinner.text and self.location_spinner.text != "Select Location"):
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid Location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1028,7 +1028,7 @@ class Calculator(Screen):
 
                 # Ensure BRMA is selected
                 if not (hasattr(self, "brma_spinner") and self.brma_spinner.text and self.brma_spinner.text != "Select BRMA"):
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid BRMA.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1053,7 +1053,7 @@ class Calculator(Screen):
                 }
                 location = location_map.get(location_raw, location_raw)
                 if not location or location not in ["England", "Scotland", "Wales"]:
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid Location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1075,7 +1075,7 @@ class Calculator(Screen):
                 # Get the correct LHA rates file based on the selected location
                 lha_file = lha_file_map.get(location)
                 if not lha_file:
-                    content = Label(
+                    content = SafeLabel(
                         text="Unable to determine the correct LHA rates file for the selected location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1129,7 +1129,7 @@ class Calculator(Screen):
                                         lha_rate = 0
                                     break
                             if not found:
-                                content = Label(
+                                content = SafeLabel(
                                     text=f"Selected BRMA not found in the rates file.\n",
                                     text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                                     halign="center",
@@ -1143,7 +1143,7 @@ class Calculator(Screen):
                                 popup.open()
                                 return
                     except Exception as e:
-                        content = Label(
+                        content = SafeLabel(
                             text=f"Error reading LHA rates: {str(e)}",
                             text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                             halign="center",
@@ -1193,7 +1193,7 @@ class Calculator(Screen):
 
                 # Ensure Location is selected
                 if not (hasattr(self, "location_spinner") and self.location_spinner.text and self.location_spinner.text != "Select Location"):
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid Location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1209,7 +1209,7 @@ class Calculator(Screen):
 
                 # Ensure BRMA is selected
                 if not (hasattr(self, "brma_spinner") and self.brma_spinner.text and self.brma_spinner.text != "Select BRMA"):
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid BRMA.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1234,7 +1234,7 @@ class Calculator(Screen):
                 }
                 location = location_map.get(location_raw, location_raw)
                 if not location or location not in ["England", "Scotland", "Wales"]:
-                    content = Label(
+                    content = SafeLabel(
                         text="Please select a valid Location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1256,7 +1256,7 @@ class Calculator(Screen):
                 # Get the correct LHA rates file based on the selected location
                 lha_file = lha_file_map.get(location)
                 if not lha_file:
-                    content = Label(
+                    content = SafeLabel(
                         text="Unable to determine the correct LHA rates file for the selected location.",
                         text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                         halign="center",
@@ -1287,7 +1287,7 @@ class Calculator(Screen):
                                         lha_rate = 0
                                     break
                             if not found:
-                                content = Label(
+                                content = SafeLabel(
                                     text=f"Selected BRMA not found in the rates file.\n",
                                     text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                                     halign="center",
@@ -1301,7 +1301,7 @@ class Calculator(Screen):
                                 popup.open()
                                 return
                     except Exception as e:
-                        content = Label(
+                        content = SafeLabel(
                             text=f"Error reading LHA rates: {str(e)}",
                             text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                             halign="center",
@@ -1347,7 +1347,7 @@ class Calculator(Screen):
                 capital_income = 0
             elif capital >= 16000:
                 # Not eligible for UC
-                content = Label(
+                content = SafeLabel(
                     text="You are not eligible for Universal Credit due to capital over £16,000.",
                     text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                     halign="center",
@@ -1451,7 +1451,7 @@ class Calculator(Screen):
             entitlement = total_allowance - total_deductions
 
             # Show result
-            content = Label(
+            content = SafeLabel(
                 text=f"Your estimated Universal Credit entitlement is:\n£{entitlement:.2f}",
                 text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                 halign="center",
@@ -1464,7 +1464,7 @@ class Calculator(Screen):
             )
             popup.open()
         except Exception as e:
-            content = Label(
+            content = SafeLabel(
                 text=f"Error calculating entitlement:\n{str(e)}",
                 text_size=(self.width * 0.6, None) if hasattr(self, "width") else (400, None),
                 halign="center",
@@ -1484,8 +1484,8 @@ class Calculator(Screen):
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
 
         # Helper function to create a label that wraps text within the window width
-        def wrapped_label(text, font_size, height):
-            label = Label(
+        def wrapped_SafeLabel(text, font_size, height):
+            label = SafeLabel(
             text=text,
             font_size=font_size,
             halign="center",
@@ -1501,16 +1501,16 @@ class Calculator(Screen):
             update_text_size(label, None)
             return label
 
-        layout.add_widget(wrapped_label("Welcome to the Benefit Buddy Calculator", 18, 30))
-        layout.add_widget(wrapped_label("This calculator will help you estimate your Universal Credit entitlement.", 16, 30))
-        layout.add_widget(wrapped_label("Please follow the steps to enter your details.", 14, 24))
-        layout.add_widget(wrapped_label("You can navigate through the screens using the dropdown menu above.", 14, 24))
-        layout.add_widget(wrapped_label("Before you start, please ensure you have the following information ready:", 14, 24))
-        layout.add_widget(wrapped_label("- Your personal details (name, date of birth, etc.)", 14, 24))
-        layout.add_widget(wrapped_label("- Your income and capital details", 14, 24))
-        layout.add_widget(wrapped_label("- Your housing situation (rent or own)", 14, 24))
-        layout.add_widget(wrapped_label("- Details of any children or dependents", 14, 24))
-        layout.add_widget(wrapped_label("- Any additional elements that may apply to you", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("Welcome to the Benefit Buddy Calculator", 18, 30))
+        layout.add_widget(wrapped_SafeLabel("This calculator will help you estimate your Universal Credit entitlement.", 16, 30))
+        layout.add_widget(wrapped_SafeLabel("Please follow the steps to enter your details.", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("You can navigate through the screens using the dropdown menu above.", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("Before you start, please ensure you have the following information ready:", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("- Your personal details (name, date of birth, etc.)", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("- Your income and capital details", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("- Your housing situation (rent or own)", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
+        layout.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
 
         # Add a button to proceed to the next screen with consistent aesthetics
         proceed_button = RoundedButton(
@@ -1536,27 +1536,27 @@ class Calculator(Screen):
 
     def create_claimant_details_screen(self):
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        layout.add_widget(Label(text="Select Claimant Type", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
+        layout.add_widget(SafeLabel(text="Select Claimant Type", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
 
         # Create a horizontal layout for checkboxes and their labels
         claimant_type_layout = BoxLayout(orientation="horizontal", spacing=10)
         self.single_claimant_checkbox = CheckBox(group="claimant_type")
         self.couple_claim_checkbox = CheckBox(group="claimant_type")
-        claimant_type_layout.add_widget(Label(text="Single", font_size=18, color=get_color_from_hex(WHITE)))
+        claimant_type_layout.add_widget(SafeLabel(text="Single", font_size=18, color=get_color_from_hex(WHITE)))
         claimant_type_layout.add_widget(self.single_claimant_checkbox)
-        claimant_type_layout.add_widget(Label(text="Couple", font_size=18, color=get_color_from_hex(WHITE)))
+        claimant_type_layout.add_widget(SafeLabel(text="Couple", font_size=18, color=get_color_from_hex(WHITE)))
         claimant_type_layout.add_widget(self.couple_claim_checkbox)
         layout.add_widget(claimant_type_layout)
 
         self.couple_claim_checkbox.bind(active=self.on_couple_claim_checkbox_active)
         
-        layout.add_widget(Label(text="Enter Claimant Details", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
+        layout.add_widget(SafeLabel(text="Enter Claimant Details", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
         self.name_input = (CustomTextInput(hint_text="Name", multiline=False, font_size=18, background_color=get_color_from_hex(WHITE), foreground_color=get_color_from_hex(GOVUK_BLUE)))
         layout.add_widget(self.name_input)
         self.dob_input = DOBInput(hint_text="DD/MM/YYYY", multiline=False, font_size=18, background_color=get_color_from_hex(WHITE), foreground_color=get_color_from_hex(GOVUK_BLUE))
         layout.add_widget(self.dob_input)
         
-        layout.add_widget(Label(text="Enter Partner Details", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
+        layout.add_widget(SafeLabel(text="Enter Partner Details", font_size=20, halign="center", color=get_color_from_hex(WHITE)))
         self.partner_name_input = CustomTextInput(hint_text="Name", multiline=False, font_size=18, disabled=True, background_color=get_color_from_hex(WHITE), foreground_color=get_color_from_hex(GOVUK_BLUE))
         self.partner_dob_input = DOBInput(hint_text="DD/MM/YYYY", multiline=False, font_size=18, disabled=True, background_color=get_color_from_hex(WHITE), foreground_color=get_color_from_hex(GOVUK_BLUE))
         layout.add_widget(self.partner_name_input)
@@ -1566,7 +1566,7 @@ class Calculator(Screen):
 
     def create_finances_screen(self):
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        layout.add_widget(Label(text="Enter Income", font_size=24, halign="center", color=get_color_from_hex(WHITE)))
+        layout.add_widget(SafeLabel(text="Enter Income", font_size=24, halign="center", color=get_color_from_hex(WHITE)))
 
         # Subclass TextInput to handle Tab key
         class TabFocusTextInput(TextInput):
@@ -1585,7 +1585,7 @@ class Calculator(Screen):
         self.income_input = TabFocusTextInput(hint_text="Enter your monthly income", multiline=False, font_size=18, background_color=get_color_from_hex(WHITE), foreground_color=get_color_from_hex(GOVUK_BLUE), next_input=self.capital_input)
 
         layout.add_widget(self.income_input)
-        layout.add_widget(Label(text="Enter capital", font_size=24, halign="center", color=get_color_from_hex(WHITE)))
+        layout.add_widget(SafeLabel(text="Enter capital", font_size=24, halign="center", color=get_color_from_hex(WHITE)))
         layout.add_widget(self.capital_input)
 
         # Bind Enter key on income_input to focus capital_input
@@ -1817,16 +1817,16 @@ class Calculator(Screen):
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20, size_hint_y=None)
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
 
-        layout.add_widget(Label(text="Children Details", font_size=24, halign="center", color=get_color_from_hex(WHITE), size_hint_y=None, height=40))
+        layout.add_widget(SafeLabel(text="Children Details", font_size=24, halign="center", color=get_color_from_hex(WHITE), size_hint_y=None, height=40))
 
         # Yes/No checkbox for "Do you have children?"
         yn_layout = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=40)
-        layout.add_widget(Label(text="Do you have children?", font_size=18, color=get_color_from_hex(WHITE), size_hint_y=None, height=30))
+        layout.add_widget(SafeLabel(text="Do you have children?", font_size=18, color=get_color_from_hex(WHITE), size_hint_y=None, height=30))
         self.has_children_yes = CheckBox(group="has_children", size_hint=(None, None), size=(30, 30))
         self.has_children_no = CheckBox(group="has_children", size_hint=(None, None), size=(30, 30))
-        yn_layout.add_widget(Label(text="Yes", font_size=16, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
+        yn_layout.add_widget(SafeLabel(text="Yes", font_size=16, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
         yn_layout.add_widget(self.has_children_yes)
-        yn_layout.add_widget(Label(text="No", font_size=16, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
+        yn_layout.add_widget(SafeLabel(text="No", font_size=16, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
         yn_layout.add_widget(self.has_children_no)
         layout.add_widget(yn_layout)
 
@@ -1931,7 +1931,7 @@ class Calculator(Screen):
             ]:
                 row = BoxLayout(orientation="horizontal", spacing=8, size_hint_y=None, height=24)
                 row.add_widget(cb)
-                row.add_widget(Label(
+                row.add_widget(SafeLabel(
                     text=label,
                     font_size=14,
                     color=get_color_from_hex(WHITE),
@@ -2011,8 +2011,8 @@ class Calculator(Screen):
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
 
         # Helper function to create a label that wraps text within the window width
-        def wrapped_label(text, font_size, height):
-            label = Label(
+        def wrapped_SafeLabel(text, font_size, height):
+            label = SafeLabel(
                 text=text,
                 font_size=font_size,
                 halign="left",
@@ -2028,7 +2028,7 @@ class Calculator(Screen):
             return label
 
         # Instruction message
-        layout.add_widget(wrapped_label(
+        layout.add_widget(wrapped_SafeLabel(
             "Please Select The Following Additional Elements That Apply To You:\n",
             16,
             30
@@ -2061,8 +2061,8 @@ class Calculator(Screen):
                 cb = CheckBox(size_hint=(None, None), size=(30, 30))
                 row.add_widget(cb)
             # Add a little spacing between checkbox and label
-            row.add_widget(Label(size_hint_x=None, width=10))
-            element_label = wrapped_label(label_text, 16, 30)
+            row.add_widget(SafeLabel(size_hint_x=None, width=10))
+            element_label = wrapped_SafeLabel(label_text, 16, 30)
             element_label.size_hint_x = 1
             row.add_widget(element_label)
             layout.add_widget(row)
@@ -2078,8 +2078,8 @@ class Calculator(Screen):
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
 
         # Helper function to create a label that wraps text within the window width
-        def wrapped_label(text, font_size, height):
-            label = Label(
+        def wrapped_SafeLabel(text, font_size, height):
+            label = SafeLabel(
                 text=text,
                 font_size=font_size,
                 halign="left",
@@ -2102,10 +2102,10 @@ class Calculator(Screen):
         self.sanction_special_checkbox = None
 
         # Add vertical spacing to move the label down from the header
-        layout.add_widget(Label(size_hint_y=None, height=20))  # Spacer
+        layout.add_widget(SafeLabel(size_hint_y=None, height=20))  # Spacer
 
         # Yes/No option: "Do you have a sanction?" (put at the top, not in a row with the label)
-        sanction_yn_label = wrapped_label(
+        sanction_yn_label = wrapped_SafeLabel(
             "Do you have a sanction?\nIf so do you know the level of sanction, the number of sanctioned claimants, and the number of days sanctioned for?",
             16, 40
         )
@@ -2114,9 +2114,9 @@ class Calculator(Screen):
         sanction_yn_layout = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=40)
         self.has_sanction_yes = CheckBox(group="has_sanction", size_hint=(None, None), size=(30, 30))
         self.has_sanction_no = CheckBox(group="has_sanction", size_hint=(None, None), size=(30, 30))
-        sanction_yn_layout.add_widget(Label(text="Yes", font_size=14, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
+        sanction_yn_layout.add_widget(SafeLabel(text="Yes", font_size=14, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
         sanction_yn_layout.add_widget(self.has_sanction_yes)
-        sanction_yn_layout.add_widget(Label(text="No", font_size=14, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
+        sanction_yn_layout.add_widget(SafeLabel(text="No", font_size=14, color=get_color_from_hex(WHITE), size_hint_x=None, width=40))
         sanction_yn_layout.add_widget(self.has_sanction_no)
         layout.add_widget(sanction_yn_layout)
 
@@ -2208,7 +2208,7 @@ class Calculator(Screen):
         self.sanction_40_checkbox = CheckBox(size_hint=(None, None), size=(30, 30))
         row_40 = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
         row_40.add_widget(self.sanction_40_checkbox)
-        row_40.add_widget(Label(
+        row_40.add_widget(SafeLabel(
             text="Apply 40% reduction rate",
             font_size=14,
             color=get_color_from_hex(WHITE),
@@ -2221,7 +2221,7 @@ class Calculator(Screen):
         self.sanction_special_checkbox = CheckBox(size_hint=(None, None), size=(30, 30))
         row_special = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
         row_special.add_widget(self.sanction_special_checkbox)
-        row_special.add_widget(Label(
+        row_special.add_widget(SafeLabel(
             text="Special circumstance",
             font_size=14,
             color=get_color_from_hex(WHITE),
@@ -2295,8 +2295,8 @@ class Calculator(Screen):
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
         
         # Helper function to create a label that wraps text within the window width
-        def wrapped_label(text, font_size, height):
-            label = Label(
+        def wrapped_SafeLabel(text, font_size, height):
+            label = SafeLabel(
                 text=text,
                 font_size=font_size,
                 halign="left",
@@ -2312,7 +2312,7 @@ class Calculator(Screen):
             return label
         
         # Add a label for advance payment options
-        layout.add_widget(wrapped_label(
+        layout.add_widget(wrapped_SafeLabel(
             "Please select the advance payments that apply to you:",
             16, 30
         ))
@@ -2331,8 +2331,8 @@ class Calculator(Screen):
             cb = CheckBox(size_hint=(None, None), size=(30, 30), group=group_name)
             row.add_widget(cb)
             # Add a little spacing between checkbox and label
-            row.add_widget(Label(size_hint_x=None, width=10))
-            element_label = wrapped_label(label_text, 16, 30)
+            row.add_widget(SafeLabel(size_hint_x=None, width=10))
+            element_label = wrapped_SafeLabel(label_text, 16, 30)
             element_label.size_hint_x = 1
             row.add_widget(element_label)
             layout.add_widget(row)
@@ -2351,7 +2351,7 @@ class Calculator(Screen):
         layout.add_widget(self.advance_payments_input)
 
         # Add a label for advance payments delays
-        layout.add_widget(wrapped_label(
+        layout.add_widget(wrapped_SafeLabel(
             "Please select any advance payment delays that apply to you:",
             16, 30
         ))
@@ -2369,8 +2369,8 @@ class Calculator(Screen):
             cb = CheckBox(size_hint=(None, None), size=(30, 30), group=group_name)
             row.add_widget(cb)
             # Add a little spacing between checkbox and label
-            row.add_widget(Label(size_hint_x=None, width=10))
-            element_label = wrapped_label(label_text, 16, 30)
+            row.add_widget(SafeLabel(size_hint_x=None, width=10))
+            element_label = wrapped_SafeLabel(label_text, 16, 30)
             element_label.size_hint_x = 1
             row.add_widget(element_label)
             layout.add_widget(row)
@@ -2388,18 +2388,18 @@ class Calculator(Screen):
         summary_layout.bind(minimum_height=summary_layout.setter('height'))
 
         # Add a title for the summary
-        summary_title = Label(text="Summary:", font_size=20, halign="center", color=get_color_from_hex(WHITE), size_hint_y=None, height=30)
+        summary_title = SafeLabel(text="Summary:", font_size=20, halign="center", color=get_color_from_hex(WHITE), size_hint_y=None, height=30)
         summary_layout.add_widget(summary_title)
 
         # Create labels for the summary
-        self.claimant_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.partner_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.finances_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.housing_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.children_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.additional_elements_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.sanction_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
-        self.advance_payment_summary = Label(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.claimant_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.partner_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.finances_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.housing_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.children_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.additional_elements_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.sanction_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
+        self.advance_payment_summary = SafeLabel(font_size=14, halign="left", color=get_color_from_hex(WHITE), size_hint_y=None)
 
         # Add the labels to the layout
         summary_layout.add_widget(self.claimant_summary)
@@ -2715,6 +2715,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
