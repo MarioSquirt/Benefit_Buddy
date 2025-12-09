@@ -7,7 +7,13 @@ _orig_texture_update = Label.texture_update
 
 @wraps(_orig_texture_update)
 def texture_update(self, *args, **kwargs):
-    # Inspect types before render
+    """
+    Wrapper around Label.texture_update that:
+    - Detects string values in numeric properties
+    - Coerces them into safe numeric defaults
+    - Logs widget class, text, and offending value for debugging
+    """
+
     def _t(val):
         try:
             return type(val).__name__
@@ -16,9 +22,9 @@ def texture_update(self, *args, **kwargs):
 
     try:
         # font_size
-        if hasattr(self, "font_size") and isinstance(self.font_size, str):
-            print(f"⚠️ Label {self} font_size string {self.font_size!r} (type={_t(self.font_size)}) text={self.text!r}")
-            # Coerce common cases once
+        if isinstance(self.font_size, str):
+            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+                  f"font_size string {self.font_size!r} (type={_t(self.font_size)})")
             fs = self.font_size.strip()
             if fs.endswith("sp"):
                 try:
@@ -32,22 +38,42 @@ def texture_update(self, *args, **kwargs):
                     self.font_size = sp(16)
 
         # text_size
-        if hasattr(self, "text_size") and isinstance(self.text_size, str):
-            print(f"⚠️ Label {self} text_size string {self.text_size!r} (type={_t(self.text_size)}) text={self.text!r}")
-            self.text_size = (0, 0)
+        if isinstance(self.text_size, str):
+            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+                  f"text_size string {self.text_size!r} (type={_t(self.text_size)})")
+            try:
+                parts = [int(p) for p in self.text_size.replace(',', ' ').split()]
+                if len(parts) == 2:
+                    self.text_size = tuple(parts)
+                else:
+                    self.text_size = (0, 0)
+            except Exception:
+                self.text_size = (0, 0)
 
         # padding
-        if hasattr(self, "padding") and isinstance(self.padding, str):
-            print(f"⚠️ Label {self} padding string {self.padding!r} (type={_t(self.padding)})")
-            self.padding = (0, 0)
+        if isinstance(self.padding, str):
+            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+                  f"padding string {self.padding!r} (type={_t(self.padding)})")
+            try:
+                parts = [int(p) for p in self.padding.replace(',', ' ').split()]
+                if len(parts) in (2, 4):
+                    self.padding = tuple(parts)
+                else:
+                    self.padding = (0, 0)
+            except Exception:
+                self.padding = (0, 0)
 
         # line_height
-        if hasattr(self, "line_height") and isinstance(self.line_height, str):
-            print(f"⚠️ Label {self} line_height string {self.line_height!r} (type={_t(self.line_height)})")
-            self.line_height = 1.0
+        if isinstance(self.line_height, str):
+            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+                  f"line_height string {self.line_height!r} (type={_t(self.line_height)})")
+            try:
+                self.line_height = float(self.line_height)
+            except Exception:
+                self.line_height = 1.0
 
     except Exception as e:
-        print(f"⚠️ Error while checking properties: {e}")
+        print(f"⚠️ Error while coercing properties: {e}")
 
     return _orig_texture_update(self, *args, **kwargs)
 
