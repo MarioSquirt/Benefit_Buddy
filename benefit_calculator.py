@@ -32,6 +32,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.core.image import Image as CoreImage
 import tracemalloc
 from kivy.resources import resource_add_path, resource_find
+from main import SafeLabel
 
 # --- Register base paths for resources ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2715,6 +2716,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
