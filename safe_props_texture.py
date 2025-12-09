@@ -2,6 +2,7 @@
 from kivy.uix.label import Label
 from functools import wraps
 from kivy.metrics import sp
+import inspect
 
 _orig_texture_update = Label.texture_update
 
@@ -11,7 +12,7 @@ def texture_update(self, *args, **kwargs):
     Wrapper around Label.texture_update that:
     - Detects string values in numeric properties
     - Coerces them into safe numeric defaults
-    - Logs widget class, text, and offending value for debugging
+    - Logs widget class, text, offending value, and source location for debugging
     """
 
     def _t(val):
@@ -20,11 +21,19 @@ def texture_update(self, *args, **kwargs):
         except Exception:
             return "unknown"
 
+    def _log_issue(prop_name, value):
+        frame = inspect.currentframe().f_back
+        info = inspect.getframeinfo(frame)
+        print(
+            f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+            f"{prop_name} string {value!r} (type={_t(value)}) "
+            f"at {info.filename}:{info.lineno}"
+        )
+
     try:
         # font_size
         if isinstance(self.font_size, str):
-            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-                  f"font_size string {self.font_size!r} (type={_t(self.font_size)})")
+            _log_issue("font_size", self.font_size)
             fs = self.font_size.strip()
             if fs.endswith("sp"):
                 try:
@@ -39,8 +48,7 @@ def texture_update(self, *args, **kwargs):
 
         # text_size
         if isinstance(self.text_size, str):
-            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-                  f"text_size string {self.text_size!r} (type={_t(self.text_size)})")
+            _log_issue("text_size", self.text_size)
             try:
                 parts = [int(p) for p in self.text_size.replace(',', ' ').split()]
                 if len(parts) == 2:
@@ -52,8 +60,7 @@ def texture_update(self, *args, **kwargs):
 
         # padding
         if isinstance(self.padding, str):
-            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-                  f"padding string {self.padding!r} (type={_t(self.padding)})")
+            _log_issue("padding", self.padding)
             try:
                 parts = [int(p) for p in self.padding.replace(',', ' ').split()]
                 if len(parts) in (2, 4):
@@ -65,8 +72,7 @@ def texture_update(self, *args, **kwargs):
 
         # line_height
         if isinstance(self.line_height, str):
-            print(f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-                  f"line_height string {self.line_height!r} (type={_t(self.line_height)})")
+            _log_issue("line_height", self.line_height)
             try:
                 self.line_height = float(self.line_height)
             except Exception:
