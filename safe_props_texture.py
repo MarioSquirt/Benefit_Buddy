@@ -2,6 +2,7 @@
 from kivy.uix.label import Label
 from functools import wraps
 from kivy.metrics import sp
+from kivy.properties import ObservableList
 import inspect
 
 _orig_texture_update = Label.texture_update
@@ -10,9 +11,9 @@ _orig_texture_update = Label.texture_update
 def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
-    - Detects string or invalid values in numeric properties
-    - Coerces them into safe numeric defaults
-    - Logs widget class, text, offending value, and source location for debugging
+    - Normalizes string/ObservableList values into safe tuples/numbers
+    - Coerces invalid values into sane defaults
+    - Logs only when values are truly invalid (not just ObservableList types)
     """
 
     def _t(val):
@@ -25,13 +26,13 @@ def texture_update(self, *args, **kwargs):
         frame = inspect.currentframe().f_back
         info = inspect.getframeinfo(frame)
         print(
-            f"❌ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-            f"{prop_name} bad value {value!r} (type={_t(value)}) "
+            f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+            f"{prop_name} adjusted from {value!r} (type={_t(value)}) "
             f"at {info.filename}:{info.lineno}"
         )
 
     try:
-        # font_size
+        # --- FONT SIZE ---
         if not isinstance(self.font_size, (int, float)):
             _log_issue("font_size", self.font_size)
             fs = str(self.font_size).strip()
@@ -46,31 +47,38 @@ def texture_update(self, *args, **kwargs):
                 except Exception:
                     self.font_size = sp(16)
 
-        # text_size
-        if not (isinstance(self.text_size, tuple) and all(isinstance(x, (int, float)) for x in self.text_size)):
+        # --- TEXT SIZE ---
+        ts = self.text_size
+        if isinstance(ts, ObservableList):
+            ts = tuple(ts)
+        if not isinstance(ts, tuple) or len(ts) != 2:
             _log_issue("text_size", self.text_size)
-            try:
-                parts = [int(p) for p in str(self.text_size).replace(',', ' ').split()]
-                if len(parts) == 2:
-                    self.text_size = tuple(parts)
-                else:
-                    self.text_size = (0, 0)
-            except Exception:
-                self.text_size = (0, 0)
+            self.text_size = (self.width if hasattr(self, "width") else 400, None)
+        else:
+            # Replace None/0 with safe width
+            w, h = ts
+            if w in (None, 0):
+                w = self.width if hasattr(self, "width") else 400
+            if h is None:
+                h = 0
+            self.text_size = (w, h)
 
-        # padding
-        if not (isinstance(self.padding, tuple) and all(isinstance(x, (int, float)) for x in self.padding)):
+        # --- PADDING ---
+        pad = self.padding
+        if isinstance(pad, ObservableList):
+            pad = tuple(pad)
+        if isinstance(pad, (list, tuple)):
+            pad = tuple(pad)
+            if all(v == 0 for v in pad):
+                _log_issue("padding", self.padding)
+                self.padding = (10, 10)
+            else:
+                self.padding = pad
+        else:
             _log_issue("padding", self.padding)
-            try:
-                parts = [int(p) for p in str(self.padding).replace(',', ' ').split()]
-                if len(parts) in (2, 4):
-                    self.padding = tuple(parts)
-                else:
-                    self.padding = (0, 0)
-            except Exception:
-                self.padding = (0, 0)
+            self.padding = (10, 10)
 
-        # line_height
+        # --- LINE HEIGHT ---
         if not isinstance(self.line_height, (int, float)):
             _log_issue("line_height", self.line_height)
             try:
@@ -84,4 +92,3 @@ def texture_update(self, *args, **kwargs):
     return _orig_texture_update(self, *args, **kwargs)
 
 Label.texture_update = texture_update
-
