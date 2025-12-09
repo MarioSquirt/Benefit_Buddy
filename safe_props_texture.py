@@ -10,7 +10,7 @@ _orig_texture_update = Label.texture_update
 def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
-    - Detects string values in numeric properties
+    - Detects string or invalid values in numeric properties
     - Coerces them into safe numeric defaults
     - Logs widget class, text, offending value, and source location for debugging
     """
@@ -25,16 +25,16 @@ def texture_update(self, *args, **kwargs):
         frame = inspect.currentframe().f_back
         info = inspect.getframeinfo(frame)
         print(
-            f"⚠️ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
-            f"{prop_name} string {value!r} (type={_t(value)}) "
+            f"❌ {self.__class__.__name__} text={getattr(self, 'text', None)!r} "
+            f"{prop_name} bad value {value!r} (type={_t(value)}) "
             f"at {info.filename}:{info.lineno}"
         )
 
     try:
         # font_size
-        if isinstance(self.font_size, str):
+        if not isinstance(self.font_size, (int, float)):
             _log_issue("font_size", self.font_size)
-            fs = self.font_size.strip()
+            fs = str(self.font_size).strip()
             if fs.endswith("sp"):
                 try:
                     self.font_size = sp(int(fs[:-2]))
@@ -47,10 +47,10 @@ def texture_update(self, *args, **kwargs):
                     self.font_size = sp(16)
 
         # text_size
-        if isinstance(self.text_size, str):
+        if not (isinstance(self.text_size, tuple) and all(isinstance(x, (int, float)) for x in self.text_size)):
             _log_issue("text_size", self.text_size)
             try:
-                parts = [int(p) for p in self.text_size.replace(',', ' ').split()]
+                parts = [int(p) for p in str(self.text_size).replace(',', ' ').split()]
                 if len(parts) == 2:
                     self.text_size = tuple(parts)
                 else:
@@ -59,10 +59,10 @@ def texture_update(self, *args, **kwargs):
                 self.text_size = (0, 0)
 
         # padding
-        if isinstance(self.padding, str):
+        if not (isinstance(self.padding, tuple) and all(isinstance(x, (int, float)) for x in self.padding)):
             _log_issue("padding", self.padding)
             try:
-                parts = [int(p) for p in self.padding.replace(',', ' ').split()]
+                parts = [int(p) for p in str(self.padding).replace(',', ' ').split()]
                 if len(parts) in (2, 4):
                     self.padding = tuple(parts)
                 else:
@@ -71,7 +71,7 @@ def texture_update(self, *args, **kwargs):
                 self.padding = (0, 0)
 
         # line_height
-        if isinstance(self.line_height, str):
+        if not isinstance(self.line_height, (int, float)):
             _log_issue("line_height", self.line_height)
             try:
                 self.line_height = float(self.line_height)
@@ -84,3 +84,4 @@ def texture_update(self, *args, **kwargs):
     return _orig_texture_update(self, *args, **kwargs)
 
 Label.texture_update = texture_update
+
