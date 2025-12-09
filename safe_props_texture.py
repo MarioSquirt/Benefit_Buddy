@@ -11,9 +11,10 @@ _orig_texture_update = Label.texture_update
 def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
-    - Normalizes string/ObservableList values into safe tuples/numbers
+    - Normalizes ObservableList and list values into safe tuples
+    - Ensures text_size and padding are always valid integers
     - Coerces invalid values into sane defaults
-    - Logs only when values are truly invalid (not just ObservableList types)
+    - Logs only when values are genuinely invalid
     """
 
     def _t(val):
@@ -53,22 +54,21 @@ def texture_update(self, *args, **kwargs):
             ts = tuple(ts)
         if not isinstance(ts, tuple) or len(ts) != 2:
             _log_issue("text_size", self.text_size)
-            self.text_size = (self.width if hasattr(self, "width") else 400, None)
+            self.text_size = (self.width if hasattr(self, "width") else 400, 0)
         else:
-            # Replace None/0 with safe width
             w, h = ts
             if w in (None, 0):
                 w = self.width if hasattr(self, "width") else 400
             if h is None:
                 h = 0
-            self.text_size = (w, h)
+            self.text_size = (int(w), int(h))
 
         # --- PADDING ---
         pad = self.padding
         if isinstance(pad, ObservableList):
             pad = tuple(pad)
         if isinstance(pad, (list, tuple)):
-            pad = tuple(pad)
+            pad = tuple(int(v) for v in pad)
             if all(v == 0 for v in pad):
                 _log_issue("padding", self.padding)
                 self.padding = (10, 10)
