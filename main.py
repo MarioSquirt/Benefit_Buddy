@@ -46,16 +46,17 @@ class SafeLabel(Label):
             else:
                 kwargs["text_size"] = ts
         elif isinstance(ts, (list, tuple)):
-            if tuple(ts) in [(None, None), (0, 0)]:
+            ts = tuple(ts)
+            if ts in [(None, None), (0, 0)]:
                 kwargs["text_size"] = (Window.width - 60, None)
             else:
-                kwargs["text_size"] = tuple(ts)
+                kwargs["text_size"] = ts
         else:
             kwargs["text_size"] = (Window.width - 60, None)
 
         # --- PADDING ---
         pad = kwargs.get("padding", None)
-        if isinstance(pad, str) or pad in [(0, 0), None]:
+        if isinstance(pad, str) or pad in [(0, 0), (0, 0, 0, 0), None]:
             kwargs["padding"] = (10, 10)
         elif isinstance(pad, ObservableList):
             pad = tuple(pad)
@@ -69,6 +70,14 @@ class SafeLabel(Label):
             kwargs["padding"] = (10, 10)
 
         super().__init__(**kwargs)
+
+        # 🔑 Bind text_size dynamically to widget width and window resize
+        self.bind(width=self._update_text_size)
+        Window.bind(size=lambda *_: self._update_text_size())
+
+    def _update_text_size(self, *args):
+        # Always keep text_size tied to current width
+        self.text_size = (self.width - 20, None)
 
 # ===============================================================
 # 🔧 Cross-Platform Asset Setup
@@ -113,3 +122,4 @@ except ImportError:
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
     benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class
+
