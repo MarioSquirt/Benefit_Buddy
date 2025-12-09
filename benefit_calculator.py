@@ -33,6 +33,8 @@ from kivy.core.image import Image as CoreImage
 import tracemalloc
 from kivy.resources import resource_add_path, resource_find
 from main import SafeLabel
+from kivy.metrics import sp
+from kivy.properties import ObservableList
 
 # --- Register base paths for resources ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -169,23 +171,54 @@ class DOBInput(CustomTextInput):
 # Create a custom button with rounded corners
 class RoundedButton(Button):
     def __init__(self, **kwargs):
+        # --- FONT SIZE ---
+        fs = kwargs.get("font_size", 16)
+        if isinstance(fs, str):
+            try:
+                fs = fs.strip().replace("sp", "")
+                kwargs["font_size"] = sp(int(fs))
+            except Exception:
+                kwargs["font_size"] = sp(16)
+        elif isinstance(fs, (int, float)):
+            kwargs["font_size"] = sp(fs)
+        else:
+            kwargs["font_size"] = sp(16)
+
+        # --- TEXT SIZE ---
+        ts = kwargs.get("text_size", None)
+        if not ts or ts in [(None, None), (0, 0)] or isinstance(ts, ObservableList):
+            kwargs["text_size"] = (Window.width - 60, None)
+
+        # --- PADDING ---
+        pad = kwargs.get("padding", None)
+        if not pad or pad in [(0, 0), (0, 0, 0, 0)] or isinstance(pad, ObservableList):
+            kwargs["padding"] = (10, 10)
+
         super().__init__(**kwargs)
-        with self.canvas.before:  # Use canvas.before to draw behind the button text
-            # Set the color of the widget
+
+        # --- Rounded rectangle background ---
+        with self.canvas.before:
             self.color_instruction = Color(rgba=get_color_from_hex("#FFDD00"))  # GOVUK_YELLOW
-            # Draw a RoundedRectangle with rounded corners
             self.rect = RoundedRectangle(
                 pos=self.pos,
                 size=self.size,
-                radius=[20]  # Radius for all corners
+                radius=[20]
             )
+
         # Bind position and size to update the rectangle dynamically
         self.bind(pos=self.update_rect, size=self.update_rect)
 
+        # 🔑 Bind text_size dynamically to widget width and window resize
+        self.bind(width=self._update_text_size)
+        Window.bind(size=lambda *_: self._update_text_size())
+
     def update_rect(self, *args):
-        # Ensure the rectangle's position and size are updated
         self.rect.pos = self.pos
         self.rect.size = self.size
+
+    def _update_text_size(self, *args):
+        # Always keep text_size tied to current width
+        self.text_size = (self.width - 20, None)
 
 # Customizing Spinner to change dropdown background color
 class CustomSpinnerOption(SpinnerOption):
@@ -2716,6 +2749,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
