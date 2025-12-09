@@ -14,11 +14,65 @@ from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.utils import platform as kivy_platform
 from kivy.resources import resource_find, resource_add_path
+from kivy.metrics import sp
+from kivy.properties import ObservableList
+
+# ===============================================================
+# 🛡️ SafeLabel wrapper
+# ===============================================================
+class SafeLabel(Label):
+    def __init__(self, **kwargs):
+        # --- FONT SIZE ---
+        fs = kwargs.get("font_size", 16)
+        if isinstance(fs, str):
+            try:
+                fs = fs.strip().replace("sp", "")
+                kwargs["font_size"] = sp(int(fs))
+            except Exception:
+                kwargs["font_size"] = sp(16)
+        elif isinstance(fs, (int, float)):
+            kwargs["font_size"] = sp(fs)
+        else:
+            kwargs["font_size"] = sp(16)
+
+        # --- TEXT SIZE ---
+        ts = kwargs.get("text_size", None)
+        if isinstance(ts, str):
+            kwargs["text_size"] = (Window.width - 60, None)
+        elif isinstance(ts, ObservableList):
+            ts = tuple(ts)
+            if ts in [(None, None), (0, 0)]:
+                kwargs["text_size"] = (Window.width - 60, None)
+            else:
+                kwargs["text_size"] = ts
+        elif isinstance(ts, (list, tuple)):
+            if tuple(ts) in [(None, None), (0, 0)]:
+                kwargs["text_size"] = (Window.width - 60, None)
+            else:
+                kwargs["text_size"] = tuple(ts)
+        else:
+            kwargs["text_size"] = (Window.width - 60, None)
+
+        # --- PADDING ---
+        pad = kwargs.get("padding", None)
+        if isinstance(pad, str) or pad in [(0, 0), None]:
+            kwargs["padding"] = (10, 10)
+        elif isinstance(pad, ObservableList):
+            pad = tuple(pad)
+            if all(v == 0 for v in pad):
+                kwargs["padding"] = (10, 10)
+            else:
+                kwargs["padding"] = pad
+        elif isinstance(pad, (list, tuple)):
+            kwargs["padding"] = tuple(pad)
+        else:
+            kwargs["padding"] = (10, 10)
+
+        super().__init__(**kwargs)
 
 # ===============================================================
 # 🔧 Cross-Platform Asset Setup
 # ===============================================================
-
 IS_ANDROID = kivy_platform == "android"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -29,24 +83,19 @@ for folder in ["data", "images", "font", "assets"]:
         resource_add_path(full_path)
         Logger.info(f"BenefitBuddy: Added resource path → {full_path}")
 
-
 def get_asset_path(filename: str) -> str:
     """Return an absolute path for assets, working cross-platform."""
     if not filename:
         return ""
-
     filename = filename.replace("\\", "/")
     found = resource_find(filename)
     if found:
         return found
-
     local_path = os.path.join(BASE_DIR, filename)
     if os.path.exists(local_path):
         return local_path
-
     Logger.warning(f"BenefitBuddy: Missing asset → {filename}")
     return filename
-
 
 # ===============================================================
 # ✅ Import the main app logic
@@ -63,7 +112,4 @@ except ImportError:
 # ===============================================================
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
-    benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class, not a bare function
-
-
-
+    benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class
