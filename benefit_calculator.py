@@ -395,14 +395,20 @@ class DisclaimerScreen(Screen):
 class MainScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
 
-        # Reusable GOV.UK header
-        build_header(layout, "Benefit Buddy")
+        # Main vertical layout
+        layout = BoxLayout(orientation='vertical', spacing=20, padding=20)
 
-        # Logo
+        # Header pinned to the top
+        header_anchor = AnchorLayout(anchor_x='center', anchor_y='top', size_hint_y=None, height=80)
+        build_header(header_anchor, "Benefit Buddy")
+        layout.add_widget(header_anchor)
+
+        # Logo centered
+        logo_anchor = AnchorLayout(anchor_x='center', anchor_y='center', size_hint_y=None, height=200)
         logo = Image(source="logo.png", size_hint=(None, None), size=(150, 150))
-        layout.add_widget(logo)
+        logo_anchor.add_widget(logo)
+        layout.add_widget(logo_anchor)
 
         # Shared button style
         button_style = {
@@ -414,29 +420,23 @@ class MainScreen(Screen):
         }
 
         # GOV.UK blue buttons
-        layout.add_widget(RoundedButton(text="Create Account", **button_style,
-                                        font_size=20, font_name="roboto",
-                                        color=get_color_from_hex("#005EA5"),
-                                        on_press=self.go_to_create_account))
-        layout.add_widget(RoundedButton(text="Login", **button_style,
-                                        font_size=20, font_name="roboto",
-                                        color=get_color_from_hex("#005EA5"),
-                                        on_press=self.go_to_login))
-        layout.add_widget(RoundedButton(text="Guest", **button_style,
-                                        font_size=20, font_name="roboto",
-                                        color=get_color_from_hex("#005EA5"),
-                                        on_press=self.go_to_guest_access))
-        layout.add_widget(RoundedButton(text="Settings", **button_style,
-                                        font_size=20, font_name="roboto",
-                                        color=get_color_from_hex("#005EA5"),
-                                        on_press=self.go_to_settings))
-        layout.add_widget(RoundedButton(text="Exit", **button_style,
-                                        font_size=20, font_name="roboto",
-                                        color=get_color_from_hex("#005EA5"),
-                                        on_press=self.exit_app))
+        for text, handler in [
+            ("Create Account", self.go_to_create_account),
+            ("Login", self.go_to_login),
+            ("Guest", self.go_to_guest_access),
+            ("Settings", self.go_to_settings),
+            ("Exit", self.exit_app),
+        ]:
+            btn = RoundedButton(text=text, **button_style,
+                                font_size=20, font_name="roboto",
+                                color=get_color_from_hex("#005EA5"),
+                                on_press=handler)
+            layout.add_widget(btn)
 
-        # Reusable GOV.UK footer
-        build_footer(layout)
+        # Footer pinned to bottom
+        footer_anchor = AnchorLayout(anchor_x='center', anchor_y='bottom', size_hint_y=None, height=60)
+        build_footer(footer_anchor)
+        layout.add_widget(footer_anchor)
 
         self.add_widget(layout)
 
@@ -2796,6 +2796,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
