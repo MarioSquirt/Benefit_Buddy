@@ -1,40 +1,51 @@
 #BenefitCalculator.py
 
+
 # import necessary libraries
+
+# --- Kivy core ---
 from kivy.app import App
+from kivy.lang import Builder
+from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.core.image import Image as CoreImage
+from kivy.metrics import sp
+from kivy.utils import get_color_from_hex
+from kivy.resources import resource_add_path, resource_find
+
+# --- Kivy UI widgets/layouts ---
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
 from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.widget import Widget
-from kivy.clock import Clock
-from kivy.graphics import Ellipse, Color
-from kivy.animation import Animation
-from math import sin, cos, radians
-from kivy.core.window import Window
-from kivy.utils import get_color_from_hex
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.widget import Widget
 from kivy.uix.checkbox import CheckBox
-from kivy.uix.spinner import Spinner
-from kivy.uix.spinner import SpinnerOption
+from kivy.uix.spinner import Spinner, SpinnerOption
 from kivy.uix.textinput import TextInput
-from kivy.uix.popup import Popup # type: ignore
-from kivy.lang import Builder
-from kivy.graphics import Color, Line, RoundedRectangle, Rectangle
+from kivy.uix.popup import Popup  # type: ignore
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem, TabbedPanelHeader
+from kivy.uix.scrollview import ScrollView
+
+# --- Kivy graphics/animation ---
+from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle
+from kivy.animation import Animation
+
+# --- Project-specific ---
+from main import SafeLabel
+
+# --- Standard library ---
 import os
 import sys
-from datetime import datetime
-from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem, TabbedPanelHeader
 import csv
-from kivy.uix.scrollview import ScrollView
-from kivy.core.image import Image as CoreImage
 import tracemalloc
-from kivy.resources import resource_add_path, resource_find
-from main import SafeLabel
-from kivy.metrics import sp
-from kivy.properties import ObservableList
+from math import sin, cos, radians
+from datetime import datetime
+
+
 
 # --- Register base paths for resources ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2817,6 +2828,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
