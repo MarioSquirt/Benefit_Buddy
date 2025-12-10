@@ -1769,7 +1769,9 @@ class Calculator(Screen):
 
             try:
                 # Lookup postcode in the master CSV
-                file_path = resource_find("pcode_brma_lookup.csv") or os.path.join(BASE_DIR, ".venv", "pcode_brma_lookup.csv")
+                file_path = resource_find("data/pcode_brma_lookup.csv")
+                if not file_path:
+                    raise FileNotFoundError("pcode_brma_lookup.csv not packaged in APK")
                 with open(file_path, newline='', encoding='utf-8') as csvfile:
                     reader = csv.reader(csvfile)
                     headers = next(reader, None)
@@ -1850,8 +1852,9 @@ class Calculator(Screen):
                     return
 
                 filename = LHA_FILES[value]
-                file_path = resource_find(filename) or os.path.join(BASE_DIR, ".venv", filename)
-
+                file_path = resource_find(f"data/{filename}")
+                if not file_path:
+                    raise FileNotFoundError(f"{filename} not packaged in APK")
                 with open(file_path, newline='', encoding='utf-8') as csvfile:
                     reader = csv.reader(csvfile)
                     next(reader, None)  # Skip header
@@ -2814,6 +2817,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
