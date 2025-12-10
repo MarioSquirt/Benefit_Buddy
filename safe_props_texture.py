@@ -5,27 +5,23 @@ from kivy.metrics import sp
 from kivy.properties import ObservableList
 import inspect
 
-# Some Kivy builds expose ObservableReferenceList via properties lists.
-# We can’t import it directly everywhere, so handle generically.
 def _as_tuple(value):
-    # Normalize any Kivy list-like / sequences to a plain tuple
+    """Normalize any Kivy list-like / sequences to a plain tuple."""
     try:
         if isinstance(value, (list, tuple, ObservableList)):
             return tuple(value)
-        # Fallback: try iter(value) for other reactive lists (e.g., ObservableReferenceList)
         iter(value)  # raises TypeError if not iterable
         return tuple(value)
     except Exception:
         return None
 
 def _to_int_safe(v, default=0):
-    # Convert v to int if it’s numeric or numeric string; otherwise return default
+    """Convert v to int if possible, otherwise return default."""
     if v is None:
         return default
     try:
         if isinstance(v, (int, float)):
             return int(v)
-        # Strings like "24", "24.0", "  24  " → 24
         s = str(v).strip()
         if s == "":
             return default
@@ -40,7 +36,7 @@ def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
     - Unwraps any Kivy reactive list types into tuples
-    - Ensures text_size and padding are integer tuples with safe defaults
+    - Ensures text_size and padding are safe tuples
     - Parses font_size strings (e.g., '20sp') and line_height reliably
     - Logs only when values are genuinely adjusted
     """
@@ -82,12 +78,12 @@ def texture_update(self, *args, **kwargs):
         if ts is None or len(ts) != 2:
             _log_adjust("text_size", raw_ts)
             safe_w = _to_int_safe(getattr(self, "width", None), default=400)
-            self.text_size = (safe_w, 0)
+            self.text_size = (safe_w, None)  # <-- allow None for auto height
         else:
             w, h = ts
             safe_w = _to_int_safe(w, default=_to_int_safe(getattr(self, "width", None), default=400))
-            safe_h = _to_int_safe(h, default=0)
-            # If width ends up 0, use widget width or 400
+            # Height: allow None for auto height
+            safe_h = None if h in (None, 0) else _to_int_safe(h, default=0)
             if safe_w == 0:
                 safe_w = _to_int_safe(getattr(self, "width", None), default=400)
             self.text_size = (safe_w, safe_h)
@@ -99,7 +95,6 @@ def texture_update(self, *args, **kwargs):
             _log_adjust("padding", raw_pad)
             self.padding = (10, 10)
         else:
-            # Coerce each element safely; support 2 or 4 values
             coerced = tuple(_to_int_safe(v, default=0) for v in pad)
             if len(coerced) not in (2, 4):
                 _log_adjust("padding", raw_pad)
