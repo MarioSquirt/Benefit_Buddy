@@ -124,6 +124,55 @@ class BenefitBuddy(App):
         # Add more screens as needed
         return sm
 
+    def on_start(self):
+        self.run_startup_diagnostics()
+
+    def run_startup_diagnostics(self):
+        print("=== Startup Diagnostics ===")
+
+        # --- Asset check ---
+        required_assets = [
+            "images/logo.png",
+            "data/pcode_brma_lookup.csv",
+            "kv/main.kv",
+            "fonts/roboto.ttf"
+        ]
+        for asset in required_assets:
+            path = resource_find(asset)
+            if path and os.path.exists(path):
+                print(f"[OK] Asset: {asset}")
+            else:
+                print(f"[MISSING] Asset: {asset}")
+
+        # --- Widget check ---
+        critical_widgets = [
+            ("Claimant Name Input", getattr(self, "name_input", None)),
+            ("Claimant DOB Input", getattr(self, "dob_input", None)),
+            ("Partner Name Input", getattr(self, "partner_name_input", None)),
+            ("Partner DOB Input", getattr(self, "partner_dob_input", None)),
+            ("Income Input", getattr(self, "income_input", None)),
+            ("Capital Input", getattr(self, "capital_input", None)),
+            ("Housing Type Spinner", getattr(self, "housing_type_spinner", None)),
+            ("Location Spinner", getattr(self, "location_spinner", None)),
+            ("BRMA Spinner", getattr(self, "brma_spinner", None)),
+            ("Sanction Level Spinner", getattr(self, "sanction_level_spinner", None)),
+            ("Advance Payments Input", getattr(self, "advance_payments_input", None)),
+        ]
+
+        for label, widget in critical_widgets:
+            if widget is None:
+                print(f"[MISSING] Widget: {label}")
+            else:
+                try:
+                    # Simple sanity check: can we access text/value?
+                    if hasattr(widget, "text"):
+                        _ = widget.text
+                    print(f"[OK] Widget: {label}")
+                except Exception as e:
+                    print(f"[ERROR] Widget: {label} failed with {e}")
+
+        print("===========================")
+
 
 
 # Create a custom TextInput class to handle multiple inputs and keyboard events
@@ -317,39 +366,63 @@ class PNGSequenceAnimationWidget(Image):
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        build_header(layout, "Benefit Buddy")
+        # Main vertical layout
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
 
+        # Header pinned to top
+        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
+        build_header(header_anchor, "Benefit Buddy")
+        layout.add_widget(header_anchor)
+
+        # Info label centered
+        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=Window.height * 0.3)
         info_label = SafeLabel(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
             font_size=16,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#FFFFFF"),
-            size_hint_y=None,
-            height=Window.height * 0.3
+            color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(info_label)
+        info_anchor.add_widget(info_label)
+        layout.add_widget(info_anchor)
 
-        layout.add_widget(RoundedButton(
+        # Shared button style with centered text
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5},
+            "halign": "center",
+            "valign": "middle",
+            "text_size": (250, None)
+        }
+
+        # Back button centered
+        back_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=80)
+        back_button = RoundedButton(
             text="Back to Main Menu",
-            size_hint=(None, None), size=(250, 50),
-            background_color=(0, 0, 0, 0), background_normal="",
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_to_main
-        ))
+        )
+        back_anchor.add_widget(back_button)
+        layout.add_widget(back_anchor)
 
-        build_footer(layout)
+        # Footer pinned to bottom
+        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
+        build_footer(footer_anchor)
+        layout.add_widget(footer_anchor)
+
         self.add_widget(layout)
 
     def go_to_main(self, instance):
         self.manager.current = "main"
 
 
-# Define the Splash Screen
 # Define the Splash Screen
 class SplashScreen(Screen):
     def __init__(self, **kwargs):
@@ -2810,6 +2883,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
