@@ -274,7 +274,7 @@ class CustomSpinnerOption(SpinnerOption):
         Window.bind(size=lambda *_: self._update_text_size())
 
     def _update_text_size(self, *args):
-        self.text_size = (self.width - 20, 0)
+        self.text_size = (self.width - 20, None)
 
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
@@ -410,6 +410,9 @@ class MainScreen(Screen):
         logo_anchor.add_widget(logo)
         layout.add_widget(logo_anchor)
 
+        # Spacer above buttons
+        layout.add_widget(Widget(size_hint_y=0.1))
+
         # Shared button style
         button_style = {
             "size_hint": (None, None),
@@ -419,7 +422,8 @@ class MainScreen(Screen):
             "pos_hint": {"center_x": 0.5}
         }
 
-        # GOV.UK blue buttons
+        # Grouped buttons in their own BoxLayout
+        buttons_box = BoxLayout(orientation='vertical', spacing=15, size_hint_y=0.5)
         for text, handler in [
             ("Create Account", self.go_to_create_account),
             ("Login", self.go_to_login),
@@ -431,7 +435,12 @@ class MainScreen(Screen):
                                 font_size=20, font_name="roboto",
                                 color=get_color_from_hex("#005EA5"),
                                 on_press=handler)
-            layout.add_widget(btn)
+            buttons_box.add_widget(btn)
+
+        layout.add_widget(buttons_box)
+
+        # Spacer below buttons
+        layout.add_widget(Widget(size_hint_y=0.1))
 
         # Footer pinned to bottom
         footer_anchor = AnchorLayout(anchor_x='center', anchor_y='bottom', size_hint_y=None, height=60)
@@ -848,9 +857,9 @@ class LoginPage(Screen):
 class Calculator(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation="vertical", spacing=5, padding=5)
+        layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
 
-        # Reusable GOV.UK header with back button
+        # Header with back button
         build_header(layout, "Benefit Buddy")
         back_button = RoundedButton(
             text="Back",
@@ -864,7 +873,7 @@ class Calculator(Screen):
         back_button.pos_hint = {"center_x": 0.5}
         layout.add_widget(back_button)
 
-        # Define screens (stubbed for now)
+        # Define screens
         self.screens = [
             ("Introduction", self.create_intro_screen),
             ("Claimant Details", self.create_claimant_details_screen),
@@ -877,7 +886,11 @@ class Calculator(Screen):
             ("Summary", self.create_calculate_screen)
         ]
 
-        # Spinner
+        # Spacer before spinner
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Spinner centered in its own anchor
+        spinner_anchor = AnchorLayout(anchor_x='center', anchor_y='center', size_hint_y=None, height=60)
         self.screen_spinner = Spinner(
             text="Introduction ▼",
             values=[name for name, _ in self.screens],
@@ -888,6 +901,8 @@ class Calculator(Screen):
             option_cls=CustomSpinnerOption,
             pos_hint={"center_x": 0.5}
         )
+        spinner_anchor.add_widget(self.screen_spinner)
+        layout.add_widget(spinner_anchor)
 
         # Container for screen content
         self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
@@ -903,15 +918,19 @@ class Calculator(Screen):
 
         self.screen_spinner.bind(text=on_screen_select)
 
-        layout.add_widget(self.screen_spinner)
         layout.add_widget(self.screen_content)
 
-        # Reusable GOV.UK footer
-        build_footer(layout)
+        # Spacer before footer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Footer pinned to bottom
+        footer_anchor = AnchorLayout(anchor_x='center', anchor_y='bottom', size_hint_y=None, height=60)
+        build_footer(footer_anchor)
+        layout.add_widget(footer_anchor)
 
         self.add_widget(layout)
 
-    # Stub methods
+    # Screen methods
     def create_intro_screen(self): return SafeLabel(text="Intro screen")
     def create_claimant_details_screen(self): return SafeLabel(text="Claimant details")
     def create_finances_screen(self): return SafeLabel(text="Finances")
@@ -921,7 +940,6 @@ class Calculator(Screen):
     def create_sanction_screen(self): return SafeLabel(text="Sanctions")
     def create_advance_payments_screen(self): return SafeLabel(text="Advance payments")
     def create_calculate_screen(self): return SafeLabel(text="Summary")
-
         
     def calculate(self, instance):
         # Gather input values
@@ -2796,6 +2814,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
