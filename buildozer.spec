@@ -4,6 +4,7 @@ package.name = benefitbuddy
 package.domain = org.benefitbuddy.app
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json,ttf,otf,csv
+source.include_patterns = data/*.csv, font/*.ttf, images/*.png, images/*.jpg, images/*.gif
 version = 1.0.0
 requirements = python3,kivy,kivymd
 orientation = portrait
