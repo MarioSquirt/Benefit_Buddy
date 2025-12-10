@@ -78,4 +78,52 @@ def texture_update(self, *args, **kwargs):
         raw_ts = self.text_size
         ts = _as_tuple(raw_ts)
         if ts is None or len(ts) != 2:
-            _log_adjust("text
+            _log_adjust("text_size", raw_ts)
+            safe_w = _to_int_safe(getattr(self, "width", None), default=400)
+            self.text_size = (safe_w, None)  # allow None for auto height
+        else:
+            w, h = ts
+            safe_w = _to_int_safe(w, default=_to_int_safe(getattr(self, "width", None), default=400))
+            safe_h = None if h in (None, 0) else _to_int_safe(h, default=0)
+            if safe_w == 0:
+                safe_w = _to_int_safe(getattr(self, "width", None), default=400)
+            self.text_size = (safe_w, safe_h)
+
+        # --- Dynamic width binding ---
+        def _update_text_size(*args):
+            self.text_size = (self.width - 20, None)
+        self.bind(width=_update_text_size)
+        Window.bind(size=lambda *_: _update_text_size())
+
+        # --- PADDING ---
+        raw_pad = self.padding
+        pad = _as_tuple(raw_pad)
+        if pad is None:
+            _log_adjust("padding", raw_pad)
+            self.padding = (10, 10)
+        else:
+            coerced = tuple(_to_int_safe(v, default=0) for v in pad)
+            if len(coerced) not in (2, 4):
+                _log_adjust("padding", raw_pad)
+                self.padding = (10, 10)
+            else:
+                if all(v == 0 for v in coerced):
+                    _log_adjust("padding", raw_pad)
+                    self.padding = (10, 10)
+                else:
+                    self.padding = coerced
+
+        # --- LINE HEIGHT ---
+        if not isinstance(self.line_height, (int, float)):
+            _log_adjust("line_height", self.line_height)
+            try:
+                self.line_height = float(str(self.line_height).strip())
+            except Exception:
+                self.line_height = 1.0
+
+    except Exception as e:
+        print(f"⚠️ Error while coercing properties: {e}")
+
+    return _orig_texture_update(self, *args, **kwargs)
+
+Label.texture_update = texture_update
