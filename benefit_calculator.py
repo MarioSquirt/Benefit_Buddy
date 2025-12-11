@@ -602,49 +602,45 @@ class MainScreenFullAccess(Screen):
         build_header(header_anchor, "Benefit Buddy")
         layout.add_widget(header_anchor)
 
-        # Shared button style with centered text
+        # Shared GOV.UK-style button style
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
             "background_normal": "",
+            "background_color": get_color_from_hex("#FFDD00"),  # GOV.UK yellow
             "pos_hint": {"center_x": 0.5},
             "halign": "center",
             "valign": "middle",
-            "text_size": (250, None)
+            "text_size": (250, None),
+            "font_size": 20,
+            "font_name": "roboto",
+            "color": get_color_from_hex("#005EA5")  # GOV.UK blue text
         }
 
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Grouped buttons in a vertical box (flexible height)
+        # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+
         buttons_box.add_widget(RoundedButton(
             text="Predict Next Payment",
             **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
             on_press=self.predict_payment
         ))
         buttons_box.add_widget(RoundedButton(
             text="View Previous Payments",
             **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
             on_press=lambda x: print("Payments feature not yet implemented")
         ))
         buttons_box.add_widget(RoundedButton(
             text="Update Details",
             **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
             on_press=lambda x: print("Update details feature not yet implemented")
         ))
         buttons_box.add_widget(RoundedButton(
             text="Log Out",
             **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
             on_press=self.log_out
         ))
 
@@ -661,41 +657,63 @@ class MainScreenFullAccess(Screen):
         self.add_widget(layout)
 
         # Initialize attributes to avoid AttributeError
-        self.dob_input = TextInput(hint_text="DD-MM-YYYY")          # aligned with parser
-        self.partner_dob_input = TextInput(hint_text="DD-MM-YYYY")  # aligned with parser
+        self.dob_input = TextInput(hint_text="DD-MM-YYYY")
+        self.partner_dob_input = TextInput(hint_text="DD-MM-YYYY")
         self.relationship_input = TextInput(hint_text="single/couple")
         self.children_dob_inputs = []
         self.is_carer = False
         self.lcw = False
         self.receives_housing_support = False
 
+    # ------------------------
+    # Popup helpers
+    # ------------------------
     def create_popup(self, title, message):
-        lbl = SafeLabel(text=message, halign="center", color=get_color_from_hex(WHITE))
+        lbl = SafeLabel(
+            text=message,
+            halign="center",
+            color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
+            font_size=18,
+            font_name="roboto"
+        )
         lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        return Popup(title=title, content=lbl, size_hint=(0.8, 0.4))        
+        return Popup(
+            title=title,
+            content=lbl,
+            size_hint=(0.8, 0.4),
+            title_color=get_color_from_hex("#005EA5"),  # styled popup title
+            separator_color=get_color_from_hex("#FFDD00")  # GOV.UK yellow separator
+        )
 
+    # ------------------------
+    # Predict Payment Flow
+    # ------------------------
     def predict_payment(self, instance):
-        # Create a popup for income input
-        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content = BoxLayout(orientation="vertical", spacing=20, padding=20)
 
         self.income_input = TextInput(
             hint_text="Enter your income for this assessment period",
             font_size=18,
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            foreground_color=get_color_from_hex("#005EA5"),
+            font_name="roboto"
         )
 
         submit_button = RoundedButton(
             text="Submit",
-            size_hint=(None, None),
-            size=(250, 50),
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            background_color=(0, 0, 0, 0),
-            background_normal="",
-            halign="center", valign="middle",
-            text_size=(250, None),
+            **{
+                "size_hint": (None, None),
+                "size": (250, 50),
+                "background_normal": "",
+                "background_color": get_color_from_hex("#FFDD00"),
+                "font_size": 20,
+                "font_name": "roboto",
+                "color": get_color_from_hex("#005EA5"),
+                "pos_hint": {"center_x": 0.5},
+                "halign": "center",
+                "valign": "middle",
+                "text_size": (250, None)
+            },
             on_press=lambda _: self.show_prediction_popup(self.income_input.text)
         )
 
@@ -703,7 +721,8 @@ class MainScreenFullAccess(Screen):
             text="Enter your income:",
             font_size=20,
             halign="center",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5"),
+            font_name="roboto"
         ))
         content.add_widget(self.income_input)
         content.add_widget(submit_button)
@@ -711,32 +730,36 @@ class MainScreenFullAccess(Screen):
         popup = Popup(
             title="Payment Prediction",
             content=content,
-            size_hint=(0.8, 0.4)
+            size_hint=(0.8, 0.5),
+            title_color=get_color_from_hex("#005EA5"),
+            separator_color=get_color_from_hex("#FFDD00")
         )
         popup.open()
 
     def show_prediction_popup(self, income):
         income = income.strip() if income else ""
-    
         try:
             value = float(income)
             predicted_payment = self.payment_prediction(value)
             message = f"Your next payment is predicted to be: £{predicted_payment:.2f}"
         except (ValueError, TypeError):
             message = "Invalid income entered. Please enter a numeric value."
-    
+
         result_label = SafeLabel(
             text=message,
             font_size=20,
             halign="center",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5"),
+            font_name="roboto"
         )
         result_label.bind(size=lambda inst, val: setattr(inst, 'text_size', (val[0], None)))
-    
+
         result_popup = Popup(
             title="Prediction Result",
             content=result_label,
-            size_hint=(0.8, 0.4)
+            size_hint=(0.8, 0.4),
+            title_color=get_color_from_hex("#005EA5"),
+            separator_color=get_color_from_hex("#FFDD00")
         )
         result_popup.open()
 
@@ -745,7 +768,6 @@ class MainScreenFullAccess(Screen):
         return self.calculate_entitlement()
 
     def calculate_entitlement(self):
-        """Calculate entitlement based on user details."""
         try:
             dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
             partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
@@ -805,6 +827,7 @@ class MainScreenFullAccess(Screen):
 
     def log_out(self, instance):
         self.manager.current = "main"
+``
 
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
@@ -1285,7 +1308,7 @@ def calculate(self, instance):
     def create_intro_screen(self):
         # Use a ScrollView to make the intro screen vertically scrollable
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
-        layout = BoxLayout(orientation="vertical", spacing=30, padding=20, size_hint_y=None)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
 
         # Helper function to create a label that wraps text within the window width
@@ -1348,7 +1371,7 @@ def calculate(self, instance):
     def create_claimant_details_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -1458,7 +1481,7 @@ def calculate(self, instance):
     def create_finances_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -1566,7 +1589,7 @@ def calculate(self, instance):
     def create_housing_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -1722,7 +1745,7 @@ def calculate(self, instance):
     def create_children_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -1816,7 +1839,7 @@ def calculate(self, instance):
     def create_additional_elements_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -1924,7 +1947,7 @@ def calculate(self, instance):
     def create_sanction_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -2020,7 +2043,7 @@ def calculate(self, instance):
     def create_advance_payments_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -2116,7 +2139,7 @@ def calculate(self, instance):
     def create_calculate_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
@@ -2215,6 +2238,7 @@ def calculate(self, instance):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
