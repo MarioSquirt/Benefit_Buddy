@@ -491,29 +491,62 @@ class MainScreen(Screen):
         # Root layout fills the whole screen
         layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
-        # Header pinned to top (fixed height)
+        # Header pinned to top
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
         build_header(header_anchor, "Benefit Buddy")
         layout.add_widget(header_anchor)
 
-        # Logo centered (flexible height)
-        logo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=200)
-        logo = Image(source="images/logo.png", size_hint=(None, None), size=(200, 200))
+        # Logo centered and resized
+        logo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=250)
+        logo = Image(
+            source="images/logo.png",
+            size_hint=(None, None),
+            size=(250, 250),   # balanced size for tablets
+            allow_stretch=True,
+            keep_ratio=True
+        )
         logo_anchor.add_widget(logo)
         layout.add_widget(logo_anchor)
 
-        # Buttons block expands horizontally
-        button_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, 1))
-        button_layout = BoxLayout(orientation="vertical", spacing=20, size_hint=(None, None))
-        button_layout.add_widget(RoundedButton(text="Create Account", on_press=self.go_to_create_account))
-        button_layout.add_widget(RoundedButton(text="Login", on_press=self.go_to_login))
-        button_layout.add_widget(RoundedButton(text="Guest Access", on_press=self.go_to_guest))
-        button_layout.add_widget(RoundedButton(text="Settings", on_press=self.go_to_settings))
-        button_layout.add_widget(RoundedButton(text="Exit", on_press=self.exit_app))
-        button_anchor.add_widget(button_layout)
-        layout.add_widget(button_anchor)
+        # Spacer above buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Footer pinned to bottom (fixed height)
+        # Shared button style for consistency
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
+
+        # Grouped buttons in a vertical box
+        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+        for text, handler in [
+            ("Create Account", self.go_to_create_account),
+            ("Login", self.go_to_login),
+            ("Guest Access", self.go_to_guest_access),
+            ("Settings", self.go_to_settings),
+            ("Exit", self.exit_app),
+        ]:
+            btn = RoundedButton(
+                text=text,
+                **button_style,
+                font_size=20,
+                font_name="roboto",
+                color=get_color_from_hex("#005EA5"),
+                halign="center", valign="middle",
+                text_size=(250, None),
+                on_press=handler
+            )
+            buttons_box.add_widget(btn)
+
+        layout.add_widget(buttons_box)
+
+        # Spacer below buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Footer pinned to bottom
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
         build_footer(footer_anchor)
         layout.add_widget(footer_anchor)
@@ -527,7 +560,7 @@ class MainScreen(Screen):
     def go_to_login(self, instance):
         self.manager.current = "login"
 
-    def go_to_guest(self, instance):
+    def go_to_guest_access(self, instance):
         self.manager.current = "main_guest_access"
 
     def go_to_settings(self, instance):
@@ -2722,6 +2755,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
