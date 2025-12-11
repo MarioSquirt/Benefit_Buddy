@@ -987,6 +987,19 @@ class Calculator(Screen):
         # Spacer before spinner
         layout.add_widget(Widget(size_hint_y=0.05))
 
+        # Define screens (fixed Housing entry)
+        self.screens = [
+            ("Introduction", self.create_intro_screen),
+            ("Claimant Details", self.create_claimant_details_screen),
+            ("Finances", self.create_finances_screen),
+            ("Housing", self.create_housing_screen),
+            ("Children", self.create_children_screen),
+            ("Additional Elements", self.create_additional_elements_screen),
+            ("Sanctions", self.create_sanction_screen),
+            ("Advanced Payment", self.create_advance_payments_screen),
+            ("Summary", self.create_calculate_screen)
+        ]
+
         # Spinner
         spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.screen_spinner = Spinner(
@@ -1030,18 +1043,6 @@ class Calculator(Screen):
 
         self.add_widget(layout)
 
-        # Define screens (fixed Housing entry)
-        self.screens = [
-            ("Introduction", self.create_intro_screen),
-            ("Claimant Details", self.create_claimant_details_screen),
-            ("Finances", self.create_finances_screen),
-            ("Housing", self.create_housing_screen),
-            ("Children", self.create_children_screen),
-            ("Additional Elements", self.create_additional_elements_screen),
-            ("Sanctions", self.create_sanction_screen),
-            ("Advanced Payment", self.create_advance_payments_screen),
-            ("Summary", self.create_calculate_screen)
-        ]
 
     # Screen methods
     def create_intro_screen(self): return SafeLabel(text="Intro screen")
@@ -2760,6 +2761,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
