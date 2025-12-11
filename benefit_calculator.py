@@ -405,7 +405,8 @@ class SettingsScreen(Screen):
         self.add_widget(layout)
 
     # Navigation
-    def go_to_main(self, instance
+    def go_to_main(self, instance):
+        self.manager.current = "main"
 
 
 # Define the Splash Screen
@@ -2721,6 +2722,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
