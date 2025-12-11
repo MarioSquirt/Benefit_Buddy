@@ -814,6 +814,13 @@ class CreateAccountPage(Screen):
     def go_back(self, instance):
         self.manager.current = "main"
 
+    # Submit handler (stub for now)
+    def submit_account(self, instance):
+        print("Submit account pressed")
+        # TODO: implement account creation logic
+        # For now, just navigate back or show a popup
+        self.manager.current = "main"
+
 
 
 # Define the Login Screen
@@ -2649,6 +2656,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
