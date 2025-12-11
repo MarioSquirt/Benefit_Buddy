@@ -367,57 +367,37 @@ class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
+        build_header(layout, "Benefit Buddy")
 
-        # Info label centered
-        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=Window.height * 0.3)
+        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=200)
         info_label = SafeLabel(
             text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
-            font_size=16,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex(WHITE)
+            font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
         layout.add_widget(info_anchor)
 
-        # Shared button style with centered text
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None)
-        }
-
-        # Back button centered
         back_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=80)
         back_button = RoundedButton(
             text="Back to Main Menu",
-            **button_style,
+            size_hint=(None, None), size=(250, 60),
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
+            background_color=(0, 0, 0, 0), background_normal="",
+            halign="center", valign="middle", text_size=(250, None),
             on_press=self.go_to_main
         )
         back_anchor.add_widget(back_button)
         layout.add_widget(back_anchor)
 
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
+        build_footer(layout)
+        self.add_widget(outer)
 
     def go_to_main(self, instance):
         self.manager.current = "main"
@@ -503,89 +483,33 @@ class MainScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation='vertical', spacing=20, padding=20)
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-        # Header pinned to the top
-        header_anchor = AnchorLayout(anchor_x='center', anchor_y='top', size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
+        # Header
+        build_header(layout, "Benefit Buddy")
 
-        # Logo centered and resized
-        logo_anchor = AnchorLayout(anchor_x='center', anchor_y='center', size_hint_y=None, height=250)
-        logo = Image(
-            source="images/logo.png",              # ensure correct path
-            size_hint=(None, None),
-            size=(300, 300),                       # doubled size
-            allow_stretch=True,
-            keep_ratio=True
-        )
+        # Logo centered
+        logo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=150)
+        logo = Image(source="images/logo.png", size_hint=(None, None), size=(200, 200))
         logo_anchor.add_widget(logo)
         layout.add_widget(logo_anchor)
 
-        # Spacer above buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
+        # Buttons block centered
+        button_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=250)
+        button_layout = BoxLayout(orientation="vertical", spacing=20, size_hint=(None, None))
+        button_layout.add_widget(RoundedButton(text="Create Account", on_press=self.go_to_create))
+        button_layout.add_widget(RoundedButton(text="Login", on_press=self.go_to_login))
+        button_layout.add_widget(RoundedButton(text="Guest Access", on_press=self.go_to_guest))
+        button_layout.add_widget(RoundedButton(text="Settings", on_press=self.go_to_settings))
+        button_anchor.add_widget(button_layout)
+        layout.add_widget(button_anchor)
 
-        # Shared button style
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
-
-        # Grouped buttons in their own BoxLayout
-        buttons_box = BoxLayout(orientation='vertical', spacing=20, size_hint_y=None, height=350)
-        for text, handler in [
-            ("Create Account", self.go_to_create_account),
-            ("Login", self.go_to_login),
-            ("Guest", self.go_to_guest_access),
-            ("Settings", self.go_to_settings),
-            ("Exit", self.exit_app),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",          # center text
-                text_size=(250, None),                     # match button width
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-
-        layout.add_widget(buttons_box)
-
-        # Spacer below buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x='center', anchor_y='bottom', size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
-
-    # Navigation methods
-    def go_to_create_account(self, instance):
-        self.manager.current = "create_account"
-
-    def go_to_login(self, instance):
-        self.manager.current = "login"
-
-    def go_to_guest_access(self, instance):
-        self.manager.current = "main_guest_access"
-
-    def go_to_settings(self, instance):
-        self.manager.current = "settings"
-
-    def go_to_home(self, instance):
-        self.manager.current = "main"
-
-    def exit_app(self, instance):
-        App.get_running_app().stop()
+        # Footer
+        build_footer(layout)
+        self.add_widget(outer)
 
 
 # Define the Main Screen for Full Access
@@ -709,13 +633,22 @@ class MainScreenFullAccess(Screen):
         popup.open()
 
     def show_prediction_popup(self, income):
+        income = income.strip() if income else ""
+    
         try:
-            income = float(income)
-            predicted_payment = self.payment_prediction(income)
+            # Always convert to float, whether input is "1500" or "1500.00"
+            value = float(income)
+    
+            # Run your prediction logic
+            predicted_payment = self.payment_prediction(value)
+    
+            # Always format to two decimal places
             message = f"Your next payment is predicted to be: £{predicted_payment:.2f}"
-        except ValueError:
+    
+        except (ValueError, TypeError):
+            # Catch invalid or empty input
             message = "Invalid income entered. Please enter a numeric value."
-
+    
         result_label = SafeLabel(
             text=message,
             font_size=20,
@@ -723,7 +656,7 @@ class MainScreenFullAccess(Screen):
             color=get_color_from_hex(WHITE)
         )
         result_label.bind(size=lambda inst, val: setattr(inst, 'text_size', (val[0], None)))
-
+    
         result_popup = Popup(
             title="Prediction Result",
             content=result_label,
@@ -806,78 +739,23 @@ class MainScreenGuestAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
+        build_header(layout, "Guest Access")
 
-        # Info label centered
-        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=Window.height * 0.3)
-        info_label = SafeLabel(
-            text=("Guest Access has limited functionality.\n\n"
-                  "A Full Access Mode with more features is currently in development.\n"
-                  "Look out for updates and soon be able to have a payment prediction in seconds."),
-            font_size=16,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex(WHITE)
-        )
-        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        info_anchor.add_widget(info_label)
-        layout.add_widget(info_anchor)
+        # Centered guest options
+        guest_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=250)
+        guest_layout = BoxLayout(orientation="vertical", spacing=15, size_hint=(None, None))
+        guest_layout.add_widget(RoundedButton(text="Calculator", on_press=self.go_to_calculator))
+        guest_layout.add_widget(RoundedButton(text="Summary", on_press=self.go_to_summary))
+        guest_anchor.add_widget(guest_layout)
+        layout.add_widget(guest_anchor)
 
-        # Shared button style with centered text
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None)
-        }
-
-        # Buttons grouped in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint_y=None, height=140)
-        buttons_box.add_widget(RoundedButton(
-            text="Calculate Universal Credit",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_to_calculator
-        ))
-        buttons_box.add_widget(RoundedButton(
-            text="Log Out",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.log_out
-        ))
-        layout.add_widget(buttons_box)
-
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
-
-    # Navigation methods
-    def go_to_calculator(self, instance):
-        print("Navigating to the calculator...")
-        self.manager.current = "calculator"
-
-    def log_out(self, instance):
-        print("Logging out...")
-        self.manager.current = "main"
-
-    def go_back(self, instance):
-        self.manager.current = "main"
-
+        build_footer(layout)
+        self.add_widget(outer)
 
 
 # Define the Create Account Screen
@@ -885,60 +763,24 @@ class CreateAccountPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
+        build_header(layout, "Create Account")
 
-        # Info label centered
-        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=Window.height * 0.3)
-        info_label = SafeLabel(
-            text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
-            font_size=16,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex(WHITE)
-        )
-        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        info_anchor.add_widget(info_label)
-        layout.add_widget(info_anchor)
+        # Centered form fields
+        form_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=300)
+        form_layout = BoxLayout(orientation="vertical", spacing=15, size_hint=(None, None))
+        form_layout.add_widget(CustomTextInput(hint_text="Username"))
+        form_layout.add_widget(CustomTextInput(hint_text="Password"))
+        form_layout.add_widget(RoundedButton(text="Submit", on_press=self.submit_account))
+        form_anchor.add_widget(form_layout)
+        layout.add_widget(form_anchor)
 
-        # Shared button style with centered text
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None)
-        }
-
-        # Back button centered
-        back_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        back_button = RoundedButton(
-            text="Back to Home",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_back
-        )
-        back_anchor.add_widget(back_button)
-        layout.add_widget(back_anchor)
-
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
-
-    def go_back(self, instance):
-        self.manager.current = "main"
+        build_footer(layout)
+        self.add_widget(outer)
 
 
 
@@ -947,72 +789,24 @@ class LoginPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
+        build_header(layout, "Login")
 
-        # Info label centered
-        info_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=Window.height * 0.3)
-        info_label = SafeLabel(
-            text=("This section of the app is still currently in development.\n\n"
-                  "When this feature is fully developed you will be able to have much more usability;\n"
-                  "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement."),
-            font_size=16,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex(WHITE)
-        )
-        info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        info_anchor.add_widget(info_label)
-        layout.add_widget(info_anchor)
+        # Centered login form
+        form_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=250)
+        form_layout = BoxLayout(orientation="vertical", spacing=15, size_hint=(None, None))
+        form_layout.add_widget(CustomTextInput(hint_text="Username"))
+        form_layout.add_widget(CustomTextInput(hint_text="Password"))
+        form_layout.add_widget(RoundedButton(text="Login", on_press=self.login))
+        form_anchor.add_widget(form_layout)
+        layout.add_widget(form_anchor)
 
-        # Shared button style with centered text
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None)
-        }
-
-        # Buttons grouped in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint_y=None, height=140)
-        buttons_box.add_widget(RoundedButton(
-            text="Log In",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.log_in
-        ))
-        buttons_box.add_widget(RoundedButton(
-            text="Back to Home",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_back
-        ))
-        layout.add_widget(buttons_box)
-
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
-
-    def log_in(self, instance):
-        print("Logging in...")
-        self.manager.current = "main_full_access"
-
-    def go_back(self, instance):
-        self.manager.current = "main"
+        build_footer(layout)
+        self.add_widget(outer)
 
 
 # Define the Calculator Screen
@@ -1045,7 +839,7 @@ class Calculator(Screen):
             ("Introduction", self.create_intro_screen),
             ("Claimant Details", self.create_claimant_details_screen),
             ("Finances", self.create_finances_screen),
-            ("Housing", self.create_housing_screen),
+            ("Housing", self._screen),
             ("Children", self.create_children_screen),
             ("Additional Elements", self.create_additional_elements_screen),
             ("Sanctions", self.create_sanction_screen),
@@ -1062,8 +856,9 @@ class Calculator(Screen):
             text="Introduction ▼",
             values=[name for name, _ in self.screens],
             size_hint=(None, None), size=(250, 50),
-            background_color=(0, 0, 0, 0), background_normal="",
-            color=get_color_from_hex("#005EA5"),
+            background_normal="",  # remove default image
+            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK Yellow background
+            color=get_color_from_hex("#005EA5"),  # GOV.UK Blue text
             font_size=20, font_name="roboto",
             option_cls=CustomSpinnerOption,
             halign="center", valign="middle",             # center text
@@ -1102,7 +897,7 @@ class Calculator(Screen):
     def create_intro_screen(self): return SafeLabel(text="Intro screen")
     def create_claimant_details_screen(self): return SafeLabel(text="Claimant details")
     def create_finances_screen(self): return SafeLabel(text="Finances")
-    def create_housing_screen(self): return SafeLabel(text="Housing")
+    def _screen(self): return SafeLabel(text="Housing")
     def create_children_screen(self): return SafeLabel(text="Children")
     def create_additional_elements_screen(self): return SafeLabel(text="Additional elements")
     def create_sanction_screen(self): return SafeLabel(text="Sanctions")
@@ -1981,245 +1776,170 @@ class Calculator(Screen):
         return layout
 
     
-        def create_housing_screen(self):
-            layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-
-            # Housing type spinner centered
-            housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-            self.housing_type_spinner = Spinner(
-                text="Select Housing Type",
-                values=("Rent", "Own", "Shared Accommodation"),
-                size_hint=(None, None), size=(250, 50),
-                background_color=(0, 0, 0, 0), background_normal="",
-                color=get_color_from_hex("#005EA5"),
-                font_size=20, font_name="roboto",
-                option_cls=CustomSpinnerOption,
-                halign="center", valign="middle",
-                text_size=(250, None),
-                pos_hint={"center_x": 0.5}
-            )
-            housing_anchor.add_widget(self.housing_type_spinner)
-            layout.add_widget(housing_anchor)
-
-            # Rent/Mortgage inputs
-            self.rent_mortgage_input = CustomTextInput(
-                hint_text="Enter monthly rent amount (£)",
-                multiline=False,
-                font_size=18,
-                background_color=get_color_from_hex("#00000000"),
-                foreground_color=get_color_from_hex(YELLOW)
-            )
-            self.mortgage_input = CustomTextInput(
-                hint_text="Enter monthly mortgage amount (£)",
-                multiline=False,
-                font_size=18,
-                background_color=get_color_from_hex("#00000000"),
-                foreground_color=get_color_from_hex(YELLOW)
-            )
-
-            # Show appropriate input based on housing type
-            def update_amount_input(spinner, value):
-                if self.rent_mortgage_input.parent:
-                    layout.remove_widget(self.rent_mortgage_input)
-                if self.mortgage_input.parent:
-                    layout.remove_widget(self.mortgage_input)
-                if value.lower() == "rent":
-                    layout.add_widget(self.rent_mortgage_input)
-                elif value.lower() == "own":
-                    layout.add_widget(self.mortgage_input)
-
-            self.housing_type_spinner.bind(text=update_amount_input)
-            update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
-
-            # Postcode input
-            self.postcode_input = CustomTextInput(
-                hint_text="Enter postcode (e.g. SW1A 1AA)",
-                multiline=False,
-                font_size=18,
-                background_color=get_color_from_hex("#00000000"),
-                foreground_color=get_color_from_hex(YELLOW)
-            )
-            layout.add_widget(self.postcode_input)
-
-            # Find BRMA button centered
-            find_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
-            find_brma_btn = RoundedButton(
-                text="Find BRMA",
-                size_hint=(None, None), size=(150, 40),
-                font_size=16, font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                background_color=(0, 0, 0, 0),
-                background_normal="",
-                halign="center", valign="middle",
-                text_size=(150, None),
-                pos_hint={"center_x": 0.5}
-            )
-            find_anchor.add_widget(find_brma_btn)
-            layout.add_widget(find_anchor)
-
-            def on_find_brma(instance):
-                find_brma_btn.text = "Finding BRMA"
-                postcode = self.postcode_input.text.strip().replace(" ", "").upper()
-
-                if not postcode:
-                    self.brma_spinner.text = "Enter postcode"
-                    find_brma_btn.text = "Find BRMA"
-                    return
-
-                try:
-                    file_path = resource_find("data/pcode_brma_lookup.csv")
-                    if not file_path:
-                        raise FileNotFoundError("pcode_brma_lookup.csv not packaged in APK")
-                    with open(file_path, newline='', encoding='utf-8') as csvfile:
-                        reader = csv.reader(csvfile)
-                        headers = next(reader, None)
-                        found = False
-
-                        for row in reader:
-                            for idx in [1, 2, 3]:
-                                if idx < len(row):
-                                    pcode = row[idx].replace(" ", "").upper()
-                                    if pcode == postcode:
-                                        country_code = row[headers.index("country")] if "country" in headers else ""
-                                        brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
-                                        country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
-                                        location = country_map.get(country_code.upper(), "")
-
-                                        def update_spinners(dt):
-                                            if location in self.location_spinner.values:
-                                                self.location_spinner.text = location
-                                                update_brma_spinner(self.location_spinner, location)
-                                            if brma in self.brma_spinner.values:
-                                                self.brma_spinner.text = brma
-                                                find_brma_btn.text = "Find BRMA"
-
-                                        Clock.schedule_once(update_spinners, 0)
-                                        found = True
-                                        break
-                            if found:
-                                break
-
-                        if not found:
-                            self.brma_spinner.text = "Not found"
-                            find_brma_btn.text = "Find BRMA"
-
-                except Exception as e:
-                    self.brma_spinner.text = f"Error: {str(e)}"
-                    find_brma_btn.text = "Find BRMA"
-
-            find_brma_btn.bind(on_press=on_find_brma)
-
-            # Location spinner centered
-            location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-            self.location_spinner = Spinner(
-                text="Select Location",
-                values=("England", "Scotland", "Wales"),
-                size_hint=(None, None), size=(250, 50),
-                background_color=(0, 0, 0, 0), background_normal="",
-                color=get_color_from_hex("#005EA5"),
-                font_size=20, font_name="roboto",
-                option_cls=CustomSpinnerOption,
-                halign="center", valign="middle",
-                text_size=(250, None),
-                pos_hint={"center_x": 0.5}
-            )
-            location_anchor.add_widget(self.location_spinner)
-            layout.add_widget(location_anchor)
-
-            # BRMA spinner centered
-            brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-            self.brma_spinner = Spinner(
-                text="Select BRMA",
-                values=[],
-                size_hint=(None, None), size=(250, 50),
-                background_color=(0, 0, 0, 0), background_normal="",
-                color=get_color_from_hex("#005EA5"),
-                font_size=20, font_name="roboto",
-                option_cls=CustomSpinnerOption,
-                halign="center", valign="middle",
-                text_size=(250, None),
-                pos_hint={"center_x": 0.5}
-            )
-            brma_anchor.add_widget(self.brma_spinner)
-            layout.add_widget(brma_anchor)
-
-            return layout
-
-        # Update BRMA spinner based on location selection
-        LHA_FILES = {
-            "England": "LHA-England.csv",
-            "Scotland": "LHA-Scotland.csv",
-            "Wales": "LHA-Wales.csv"
-        }
-
-        def update_brma_spinner(instance, value):
+    def create_housing_screen(self):
+        # Outer anchor to center content vertically
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(None, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
+    
+        # Housing type spinner (default to Rent so input shows immediately)
+        housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.housing_type_spinner = Spinner(
+            text="Rent",  # default instead of "Select Housing Type"
+            values=("Rent", "Own", "Shared Accommodation"),
+            size_hint=(None, None), size=(250, 50),
+            background_normal="", background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
+            font_size=20, font_name="roboto",
+            option_cls=CustomSpinnerOption,
+            halign="center", valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5}
+        )
+        housing_anchor.add_widget(self.housing_type_spinner)
+        layout.add_widget(housing_anchor)
+    
+        # Rent/Mortgage inputs
+        self.rent_mortgage_input = CustomTextInput(
+            hint_text="Enter monthly rent amount (£)",
+            multiline=False, font_size=18,
+            background_color=get_color_from_hex("#00000000"),
+            foreground_color=get_color_from_hex(YELLOW)
+        )
+        self.mortgage_input = CustomTextInput(
+            hint_text="Enter monthly mortgage amount (£)",
+            multiline=False, font_size=18,
+            background_color=get_color_from_hex("#00000000"),
+            foreground_color=get_color_from_hex(YELLOW)
+        )
+    
+        # Show appropriate input based on housing type
+        def update_amount_input(spinner, value):
+            if self.rent_mortgage_input.parent:
+                layout.remove_widget(self.rent_mortgage_input)
+            if self.mortgage_input.parent:
+                layout.remove_widget(self.mortgage_input)
+            if value.lower() == "rent":
+                layout.add_widget(self.rent_mortgage_input)
+            elif value.lower() == "own":
+                layout.add_widget(self.mortgage_input)
+    
+        self.housing_type_spinner.bind(text=update_amount_input)
+        update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
+    
+        # Postcode input
+        self.postcode_input = CustomTextInput(
+            hint_text="Enter postcode (e.g. SW1A 1AA)",
+            multiline=False, font_size=18,
+            background_color=get_color_from_hex("#00000000"),
+            foreground_color=get_color_from_hex(YELLOW)
+        )
+        layout.add_widget(self.postcode_input)
+    
+        # Find BRMA button
+        find_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
+        find_brma_btn = RoundedButton(
+            text="Find BRMA",
+            size_hint=(None, None), size=(150, 40),
+            font_size=16, font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            background_color=(0, 0, 0, 0), background_normal="",
+            halign="center", valign="middle",
+            text_size=(150, None),
+            pos_hint={"center_x": 0.5}
+        )
+        find_anchor.add_widget(find_brma_btn)
+        layout.add_widget(find_anchor)
+    
+        def on_find_brma(instance):
+            find_brma_btn.text = "Finding BRMA"
+            postcode = self.postcode_input.text.strip().replace(" ", "").upper()
+    
+            if not postcode:
+                self.brma_spinner.text = "Enter postcode"
+                find_brma_btn.text = "Find BRMA"
+                return
+    
             try:
-                if value not in LHA_FILES:
-                    self.brma_spinner.values = []
-                    self.brma_spinner.text = "Select BRMA"
-                    return
-
-                filename = LHA_FILES[value]
-                file_path = resource_find(f"data/{filename}")
+                file_path = resource_find("data/pcode_brma_lookup.csv")
                 if not file_path:
-                    raise FileNotFoundError(f"{filename} not packaged in APK")
+                    raise FileNotFoundError("pcode_brma_lookup.csv not packaged in APK")
                 with open(file_path, newline='', encoding='utf-8') as csvfile:
                     reader = csv.reader(csvfile)
-                    next(reader, None)  # Skip header
-                    brma_values = [row[0] for row in reader if row]
-
-                self.brma_spinner.values = brma_values[1:] if len(brma_values) > 1 else ["No BRMAs"]
-                self.brma_spinner.text = self.brma_spinner.values[0]
-
-            except FileNotFoundError:
-                self.brma_spinner.values = ["Error: File not found"]
-                self.brma_spinner.text = "Error"
+                    headers = next(reader, None)
+                    found = False
+    
+                    for row in reader:
+                        for idx in [1, 2, 3]:
+                            if idx < len(row):
+                                pcode = row[idx].replace(" ", "").upper()
+                                if pcode == postcode:
+                                    country_code = row[headers.index("country")] if "country" in headers else ""
+                                    brma = row[headers.index("brma_name")] if "brma_name" in headers else ""
+                                    country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+                                    location = country_map.get(country_code.upper(), "")
+    
+                                    def update_spinners(dt):
+                                        if location in self.location_spinner.values:
+                                            self.location_spinner.text = location
+                                            update_brma_spinner(self.location_spinner, location)
+                                        if brma in self.brma_spinner.values:
+                                            self.brma_spinner.text = brma
+                                        find_brma_btn.text = "Find BRMA"
+    
+                                    Clock.schedule_once(update_spinners, 0)
+                                    found = True
+                                    break
+                        if found:
+                            break
+    
+                    if not found:
+                        self.brma_spinner.text = "Not found"
+                        find_brma_btn.text = "Find BRMA"
+    
             except Exception as e:
-                self.brma_spinner.values = [f"Error: {str(e)}"]
-                self.brma_spinner.text = "Error"
+                self.brma_spinner.text = f"Error: {str(e)}"
+                find_brma_btn.text = "Find BRMA"
+    
+        find_brma_btn.bind(on_press=on_find_brma)
+    
+        # Location spinner
+        location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.location_spinner = Spinner(
+            text="Select Location",
+            values=("England", "Scotland", "Wales"),
+            size_hint=(None, None), size=(250, 50),
+            background_normal="", background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
+            font_size=20, font_name="roboto",
+            option_cls=CustomSpinnerOption,
+            halign="center", valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5}
+        )
+        location_anchor.add_widget(self.location_spinner)
+        layout.add_widget(location_anchor)
+    
+        # BRMA spinner with fallback
+        brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.brma_spinner = Spinner(
+            text="Select BRMA",
+            values=["No BRMAs loaded"],  # fallback
+            size_hint=(None, None), size=(250, 50),
+            background_normal="", background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
+            font_size=20, font_name="roboto",
+            option_cls=CustomSpinnerOption,
+            halign="center", valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5}
+        )
+        brma_anchor.add_widget(self.brma_spinner)
+        layout.add_widget(brma_anchor)
+    
+        return outer
 
-        self.location_spinner.bind(text=update_brma_spinner)
-        
-        # Style the Spinner widgets to match the RoundedButton appearance
-        spinner_style = {
-            "size_hint": (None, None),
-            "size": (250, 50),
-            "background_color": (0, 0, 0, 0),  # Transparent background
-            "background_normal": "",  # Remove default background image
-            "color": get_color_from_hex("#005EA5"),  # GOVUK_BLUE text color
-            "font_size": 20,
-            "font_name": "roboto"
-        }
-
-        for spinner in [self.housing_type_spinner, self.location_spinner, self.brma_spinner]:
-            spinner.size_hint = spinner_style["size_hint"]
-            spinner.size = spinner_style["size"]
-            spinner.background_color = spinner_style["background_color"]
-            spinner.background_normal = spinner_style["background_normal"]
-            spinner.color = spinner_style["color"]
-            spinner.font_size = spinner_style["font_size"]
-            spinner.font_name = spinner_style["font_name"]
-            spinner.option_cls = CustomSpinnerOption  # Use custom dropdown option
-
-        # Add a canvas.before to draw rounded rectangle behind each spinner
-        def add_spinner_background(spinner):
-            with spinner.canvas.before:
-                spinner.bg_color = Color(rgba=get_color_from_hex("#FFDD00"))  # GOVUK_YELLOW
-                spinner.bg_rect = RoundedRectangle(
-                    pos=spinner.pos,
-                    size=spinner.size,
-                    radius=[20]
-                )
-            def update_bg_rect(instance, value):
-                spinner.bg_rect.pos = spinner.pos
-                spinner.bg_rect.size = spinner.size
-            spinner.bind(pos=update_bg_rect, size=update_bg_rect)
-
-        add_spinner_background(self.housing_type_spinner)
-        add_spinner_background(self.location_spinner)
-        add_spinner_background(self.brma_spinner)
-        
-        return layout
 
     def create_children_screen(self):
         # Use a ScrollView to make the screen vertically scrollable
@@ -2549,8 +2269,9 @@ class Calculator(Screen):
             text="Select Sanction Level",
             values=sanction_levels,
             size_hint=(None, None), size=(250, 50),
-            background_color=(0, 0, 0, 0), background_normal="",
-            color=get_color_from_hex("#005EA5"),
+            background_normal="",  # remove default image
+            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK Yellow background
+            color=get_color_from_hex("#005EA5"),  # GOV.UK Blue text
             font_size=16, font_name="roboto",
             option_cls=CustomSpinnerOption,
             halign="center", valign="middle",
@@ -2565,8 +2286,9 @@ class Calculator(Screen):
             text="Select Sanctioned Claimants",
             values=["1", "2"],
             size_hint=(None, None), size=(250, 50),
-            background_color=(0, 0, 0, 0), background_normal="",
-            color=get_color_from_hex("#005EA5"),
+            background_normal="",  # remove default image
+            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK Yellow background
+            color=get_color_from_hex("#005EA5"),  # GOV.UK Blue text
             font_size=16, font_name="roboto",
             option_cls=CustomSpinnerOption,
             halign="center", valign="middle",
@@ -2773,22 +2495,26 @@ def create_calculate_screen(self):
 
     # Update summary function (unchanged logic, just ensures labels wrap and resize)
     def update_summary():
-        # Claimant
-        self.claimant_summary.text = f"Claimant Details:\nName: {self.name_input.text}\nDate of Birth: {self.dob_input.text}\n"
-        self.claimant_summary.texture_update()
-        self.claimant_summary.height = self.claimant_summary.texture_size[1] + 10
-
-        # Partner
-        self.partner_summary.text = (
-            f"Partner Details:\nName: {self.partner_name_input.text}\nDate of Birth: {self.partner_dob_input.text}\n"
-        ) if self.couple_claim_checkbox.active else "Partner Details: N/A"
-        self.partner_summary.texture_update()
-        self.partner_summary.height = self.partner_summary.texture_size[1] + 10
-
-        # Finances
-        self.finances_summary.text = f"Income: £{self.income_input.text}\nCapital: £{self.capital_input.text}\n"
-        self.finances_summary.texture_update()
-        self.finances_summary.height = self.finances_summary.texture_size[1] + 10
+        # Claimant details
+        if hasattr(self, "name_input") and self.name_input.text:
+            claimant_name = self.name_input.text
+        else:
+            claimant_name = "N/A"
+    
+        if hasattr(self, "dob_input") and self.dob_input.text:
+            claimant_dob = self.dob_input.text
+        else:
+            claimant_dob = "N/A"
+    
+        self.claimant_summary.text = f"Claimant Details:\nName: {claimant_name}\nDate of Birth: {claimant_dob}\n"
+    
+        # Partner details
+        if hasattr(self, "partner_name_input") and self.couple_claim_checkbox.active:
+            partner_name = self.partner_name_input.text
+            partner_dob = self.partner_dob_input.text if hasattr(self, "partner_dob_input") else "N/A"
+            self.partner_summary.text = f"Partner Details:\nName: {partner_name}\nDate of Birth: {partner_dob}\n"
+        else:
+            self.partner_summary.text = "Partner Details: N/A"
 
         # Housing
         rent_or_mortgage = ""
@@ -2883,6 +2609,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
