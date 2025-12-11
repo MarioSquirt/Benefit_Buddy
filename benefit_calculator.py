@@ -117,7 +117,7 @@ class BenefitBuddy(App):
         sm.add_widget(SettingsScreen(name="settings"))
         sm.add_widget(MainScreen(name="main"))
         sm.add_widget(CreateAccountPage(name="create_account"))
-        sm.add_widget(LoginPage(name="login"))
+        sm.add_widget(LoginPage(name="log_in"))
         sm.add_widget(MainScreenGuestAccess(name="main_guest_access"))
         sm.add_widget(MainScreenFullAccess(name="main_full_access"))
         sm.add_widget(Calculator(name="calculator")) 
@@ -778,6 +778,10 @@ class MainScreenGuestAccess(Screen):
         print("Navigating to the calculator...")
         self.manager.current = "calculator"
 
+    def go_to_summary(self, instance):
+        print("Navigating to the summary...")
+        self.manager.current = "summary"
+
     def log_out(self, instance):
         print("Logging out...")
         self.manager.current = "main"
@@ -840,7 +844,7 @@ class LoginPage(Screen):
         form_layout = BoxLayout(orientation="vertical", spacing=15, size_hint=(None, None))
         form_layout.add_widget(CustomTextInput(hint_text="Username"))
         form_layout.add_widget(CustomTextInput(hint_text="Password"))
-        form_layout.add_widget(RoundedButton(text="Login", on_press=self.login))
+        form_layout.add_widget(RoundedButton(text="Login", on_press=self.log_in))
         form_anchor.add_widget(form_layout)
         layout.add_widget(form_anchor)
 
@@ -2656,6 +2660,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
