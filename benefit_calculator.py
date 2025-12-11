@@ -500,7 +500,7 @@ class MainScreen(Screen):
         # Buttons block centered
         button_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=250)
         button_layout = BoxLayout(orientation="vertical", spacing=20, size_hint=(None, None))
-        button_layout.add_widget(RoundedButton(text="Create Account", on_press=self.go_to_create))
+        button_layout.add_widget(RoundedButton(text="Create Account", on_press=self.go_to_create_account))
         button_layout.add_widget(RoundedButton(text="Login", on_press=self.go_to_login))
         button_layout.add_widget(RoundedButton(text="Guest Access", on_press=self.go_to_guest))
         button_layout.add_widget(RoundedButton(text="Settings", on_press=self.go_to_settings))
@@ -2609,6 +2609,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
