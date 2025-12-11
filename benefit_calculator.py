@@ -574,7 +574,7 @@ class MainScreenFullAccess(Screen):
         super().__init__(**kwargs)
 
         # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header pinned to top
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
@@ -593,8 +593,11 @@ class MainScreenFullAccess(Screen):
             "text_size": (250, None)
         }
 
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint_y=None, height=300)
+        # Spacer above buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Grouped buttons in a vertical box (flexible height)
+        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         buttons_box.add_widget(RoundedButton(
             text="Predict Next Payment",
             **button_style,
@@ -626,6 +629,9 @@ class MainScreenFullAccess(Screen):
 
         layout.add_widget(buttons_box)
 
+        # Spacer below buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
+
         # Footer pinned to bottom
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
         build_footer(footer_anchor)
@@ -634,8 +640,8 @@ class MainScreenFullAccess(Screen):
         self.add_widget(layout)
 
         # Initialize attributes to avoid AttributeError
-        self.dob_input = TextInput(hint_text="DD/MM/YYYY")
-        self.partner_dob_input = TextInput(hint_text="DD/MM/YYYY")
+        self.dob_input = TextInput(hint_text="DD-MM-YYYY")          # aligned with parser
+        self.partner_dob_input = TextInput(hint_text="DD-MM-YYYY")  # aligned with parser
         self.relationship_input = TextInput(hint_text="single/couple")
         self.children_dob_inputs = []
         self.is_carer = False
@@ -692,17 +698,10 @@ class MainScreenFullAccess(Screen):
         income = income.strip() if income else ""
     
         try:
-            # Always convert to float, whether input is "1500" or "1500.00"
             value = float(income)
-    
-            # Run your prediction logic
             predicted_payment = self.payment_prediction(value)
-    
-            # Always format to two decimal places
             message = f"Your next payment is predicted to be: £{predicted_payment:.2f}"
-    
         except (ValueError, TypeError):
-            # Catch invalid or empty input
             message = "Invalid income entered. Please enter a numeric value."
     
         result_label = SafeLabel(
@@ -721,7 +720,6 @@ class MainScreenFullAccess(Screen):
         result_popup.open()
 
     def payment_prediction(self, income):
-        """Calculate the payment prediction based on the user's details."""
         self.income_input.text = str(income)
         return self.calculate_entitlement()
 
@@ -731,7 +729,7 @@ class MainScreenFullAccess(Screen):
             dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
             partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
         except ValueError:
-            Popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
+            self.create_popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
             return
 
         current_date = datetime.now()
@@ -745,7 +743,7 @@ class MainScreenFullAccess(Screen):
         elif relationship_status == "couple":
             standard_allowance = 497.55 if age < 25 and partner_age < 25 else 628.10
         else:
-            Popup("Invalid Relationship Status", "Please select single or couple").open()
+            self.create_popup("Invalid Relationship Status", "Please select single or couple").open()
             return
 
         child_element = 0
@@ -755,7 +753,7 @@ class MainScreenFullAccess(Screen):
                 dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
                 children_dobs.append(dob)
             except ValueError:
-                Popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
+                self.create_popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
                 return
 
         for i, dob in enumerate(children_dobs):
@@ -772,7 +770,7 @@ class MainScreenFullAccess(Screen):
         try:
             income = float(self.income_input.text)
         except ValueError:
-            Popup("Invalid Income", "Please enter a numeric income").open()
+            self.create_popup("Invalid Income", "Please enter a numeric income").open()
             return
 
         children = len(children_dobs)
@@ -785,9 +783,7 @@ class MainScreenFullAccess(Screen):
         return entitlement
 
     def log_out(self, instance):
-        print("Logging out...")
         self.manager.current = "main"
-
 
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
@@ -958,56 +954,52 @@ class LoginPage(Screen):
 class Calculator(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header
-        build_header(layout, "Benefit Buddy")
+        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
+        build_header(header_anchor, "Benefit Buddy")
+        layout.add_widget(header_anchor)
 
-        # Back button centered and text aligned
-        back_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=50)
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Back button (consistent style, centered)
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5},
+            "halign": "center",
+            "valign": "middle",
+            "text_size": (250, None)
+        }
         back_button = RoundedButton(
-            text="Back",
-            size_hint=(None, None), size=(120, 40),
-            background_color=get_color_from_hex("#005EA5"),
-            background_normal="",
-            font_size=16, font_name="roboto",
-            color=get_color_from_hex("#FFDD00"),
-            halign="center", valign="middle",             # center text
-            text_size=(120, None),                        # match button width
+            text="Back to Guest Access",
+            **button_style,
+            font_size=20, font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
             on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
         )
-        back_anchor.add_widget(back_button)
-        layout.add_widget(back_anchor)
-
-        # Define screens
-        self.screens = [
-            ("Introduction", self.create_intro_screen),
-            ("Claimant Details", self.create_claimant_details_screen),
-            ("Finances", self.create_finances_screen),
-            ("Housing", self._screen),
-            ("Children", self.create_children_screen),
-            ("Additional Elements", self.create_additional_elements_screen),
-            ("Sanctions", self.create_sanction_screen),
-            ("Advanced Payment", self.create_advance_payments_screen),
-            ("Summary", self.create_calculate_screen)
-        ]
+        layout.add_widget(back_button)
 
         # Spacer before spinner
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Spinner centered with proper text alignment
+        # Spinner
         spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.screen_spinner = Spinner(
             text="Introduction ▼",
             values=[name for name, _ in self.screens],
             size_hint=(None, None), size=(250, 50),
-            background_normal="",  # remove default image
-            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK Yellow background
-            color=get_color_from_hex("#005EA5"),  # GOV.UK Blue text
+            background_normal="",
+            background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
             font_size=20, font_name="roboto",
             option_cls=CustomSpinnerOption,
-            halign="center", valign="middle",             # center text
-            text_size=(250, None),                        # match spinner width
+            halign="center", valign="middle",
+            text_size=(250, None),
             pos_hint={"center_x": 0.5}
         )
         spinner_anchor.add_widget(self.screen_spinner)
@@ -1015,7 +1007,7 @@ class Calculator(Screen):
 
         # Container for screen content
         self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        self.screen_content.add_widget(self.screens[0][1]())
+        self.screen_content.add_widget(self.create_intro_screen())
 
         def on_screen_select(_, text):
             clean_text = text.replace(" ▼", "")
@@ -1031,23 +1023,37 @@ class Calculator(Screen):
         # Spacer before footer
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Footer pinned to bottom
+        # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
         build_footer(footer_anchor)
         layout.add_widget(footer_anchor)
 
         self.add_widget(layout)
 
+        # Define screens (fixed Housing entry)
+        self.screens = [
+            ("Introduction", self.create_intro_screen),
+            ("Claimant Details", self.create_claimant_details_screen),
+            ("Finances", self.create_finances_screen),
+            ("Housing", self.create_housing_screen),
+            ("Children", self.create_children_screen),
+            ("Additional Elements", self.create_additional_elements_screen),
+            ("Sanctions", self.create_sanction_screen),
+            ("Advanced Payment", self.create_advance_payments_screen),
+            ("Summary", self.create_calculate_screen)
+        ]
+
     # Screen methods
     def create_intro_screen(self): return SafeLabel(text="Intro screen")
     def create_claimant_details_screen(self): return SafeLabel(text="Claimant details")
     def create_finances_screen(self): return SafeLabel(text="Finances")
-    def _screen(self): return SafeLabel(text="Housing")
+    def create_housing_screen(self): return SafeLabel(text="Housing")
     def create_children_screen(self): return SafeLabel(text="Children")
     def create_additional_elements_screen(self): return SafeLabel(text="Additional elements")
     def create_sanction_screen(self): return SafeLabel(text="Sanctions")
     def create_advance_payments_screen(self): return SafeLabel(text="Advance payments")
-    def create_calculate_screen(self): return Safe
+    def create_calculate_screen(self): return SafeLabel(text="Summary")
+
         
     def calculate(self, instance):
         # Gather input values
@@ -2754,6 +2760,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
