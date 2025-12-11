@@ -511,6 +511,22 @@ class MainScreen(Screen):
         build_footer(layout)
         self.add_widget(outer)
 
+        # Navigation methods
+    def go_to_create_account(self, instance):
+        self.manager.current = "create_account"
+
+    def go_to_login(self, instance):
+        self.manager.current = "login"
+
+    def go_to_guest(self, instance):
+        self.manager.current = "main_guest_access"
+
+    def go_to_settings(self, instance):
+        self.manager.current = "settings"
+
+    def exit_app(self, instance):
+        App.get_running_app().stop()
+
 
 # Define the Main Screen for Full Access
 class MainScreenFullAccess(Screen):
@@ -757,6 +773,18 @@ class MainScreenGuestAccess(Screen):
         build_footer(layout)
         self.add_widget(outer)
 
+    # Navigation methods
+    def go_to_calculator(self, instance):
+        print("Navigating to the calculator...")
+        self.manager.current = "calculator"
+
+    def log_out(self, instance):
+        print("Logging out...")
+        self.manager.current = "main"
+
+    def go_back(self, instance):
+        self.manager.current = "main"
+
 
 # Define the Create Account Screen
 class CreateAccountPage(Screen):
@@ -781,6 +809,10 @@ class CreateAccountPage(Screen):
 
         build_footer(layout)
         self.add_widget(outer)
+
+    # Navigation methods
+    def go_back(self, instance):
+        self.manager.current = "main"
 
 
 
@@ -807,6 +839,14 @@ class LoginPage(Screen):
 
         build_footer(layout)
         self.add_widget(outer)
+
+    # Navigation methods
+    def log_in(self, instance):
+        print("Logging in...")
+        self.manager.current = "main_full_access"
+
+    def go_back(self, instance):
+        self.manager.current = "main"
 
 
 # Define the Calculator Screen
@@ -2609,6 +2649,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
