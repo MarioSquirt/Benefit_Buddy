@@ -426,7 +426,7 @@ class SplashScreen(Screen):
         logo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=0.4)
         logo = Image(
             source="images/logo.png",          # ensure correct path
-            size_hint=(0.5, 0.5)  # half the width/height of its anchor
+            size_hint=(0.5, 0.5),  # half the width/height of its anchor
             allow_stretch=True,
             keep_ratio=True
         )
@@ -2722,6 +2722,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
