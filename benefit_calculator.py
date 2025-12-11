@@ -367,8 +367,7 @@ class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Root layout fills screen
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
@@ -378,24 +377,26 @@ class SettingsScreen(Screen):
         # Info label
         info_anchor = AnchorLayout(anchor_x="center", anchor_y="center")
         info_label = SafeLabel(
-            text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
+            text="Settings are currently in development.\n\nPlease check back later.",
             font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
         layout.add_widget(info_anchor)
 
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
         # Back button
-        back_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=80)
+        button_style = {"size_hint": (None, None), "size": (250, 60), "pos_hint": {"center_x": 0.5}}
         back_button = RoundedButton(
             text="Back to Main Menu",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_to_main
         )
-        back_anchor.add_widget(back_button)
-        layout.add_widget(back_anchor)
+        layout.add_widget(back_button)
 
         # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
@@ -404,10 +405,8 @@ class SettingsScreen(Screen):
 
         self.add_widget(layout)
 
-    # Navigation
     def go_to_main(self, instance):
         self.manager.current = "main"
-
 
 # Define the Splash Screen
 class SplashScreen(Screen):
@@ -796,7 +795,7 @@ class MainScreenGuestAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
@@ -806,32 +805,34 @@ class MainScreenGuestAccess(Screen):
         # Info label
         info_anchor = AnchorLayout(anchor_x="center", anchor_y="center")
         info_label = SafeLabel(
-            text=("Guest Access has limited functionality.\n\n"
-                  "A Full Access Mode with more features is currently in development.\n"
-                  "Look out for updates and soon be able to have a payment prediction in seconds."),
+            text="Guest Access has limited functionality.\n\nFull Access Mode is in development.",
             font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
         layout.add_widget(info_anchor)
 
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
         # Buttons
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(None, None))
-        buttons_box.add_widget(RoundedButton(
+        button_style = {"size_hint": (None, None), "size": (250, 60), "pos_hint": {"center_x": 0.5}}
+        calc_button = RoundedButton(
             text="Calculate Universal Credit",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_to_calculator
-        ))
-        buttons_box.add_widget(RoundedButton(
+        )
+        logout_button = RoundedButton(
             text="Log Out",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.log_out
-        ))
-        layout.add_widget(buttons_box)
+        )
+        layout.add_widget(calc_button)
+        layout.add_widget(logout_button)
 
         # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
@@ -840,15 +841,12 @@ class MainScreenGuestAccess(Screen):
 
         self.add_widget(layout)
 
-    # Navigation
     def go_to_calculator(self, instance):
         self.manager.current = "calculator"
 
     def log_out(self, instance):
         self.manager.current = "main"
 
-    def go_back(self, instance):
-        self.manager.current = "main"
 
 
 # Define the Create Account Screen
@@ -856,7 +854,7 @@ class CreateAccountPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
@@ -866,24 +864,26 @@ class CreateAccountPage(Screen):
         # Info label
         info_anchor = AnchorLayout(anchor_x="center", anchor_y="center")
         info_label = SafeLabel(
-            text="This section of the app is still currently in development.\n\nPlease check back later for updates.",
+            text="This section is still in development.\n\nPlease check back later for updates.",
             font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
         layout.add_widget(info_anchor)
 
-        # Back button
-        back_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Buttons
+        button_style = {"size_hint": (None, None), "size": (250, 60), "pos_hint": {"center_x": 0.5}}
         back_button = RoundedButton(
             text="Back to Home",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_back
         )
-        back_anchor.add_widget(back_button)
-        layout.add_widget(back_anchor)
+        layout.add_widget(back_button)
 
         # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
@@ -892,7 +892,6 @@ class CreateAccountPage(Screen):
 
         self.add_widget(layout)
 
-    # Navigation
     def go_back(self, instance):
         self.manager.current = "main"
 
@@ -903,7 +902,7 @@ class LoginPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
         # Header
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
@@ -913,32 +912,34 @@ class LoginPage(Screen):
         # Info label
         info_anchor = AnchorLayout(anchor_x="center", anchor_y="center")
         info_label = SafeLabel(
-            text=("This section of the app is still currently in development.\n\n"
-                  "When this feature is fully developed you will be able to have much more usability;\n"
-                  "e.g. Returning monthly to only require inputting that month's income to see your predicted entitlement."),
+            text="Login functionality is in development.\n\nFuture versions will allow full account access.",
             font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
         layout.add_widget(info_anchor)
 
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=0.05))
+
         # Buttons
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(None, None))
-        buttons_box.add_widget(RoundedButton(
+        button_style = {"size_hint": (None, None), "size": (250, 60), "pos_hint": {"center_x": 0.5}}
+        login_button = RoundedButton(
             text="Log In",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.log_in
-        ))
-        buttons_box.add_widget(RoundedButton(
+        )
+        back_button = RoundedButton(
             text="Back to Home",
-            size_hint=(None, None), size=(250, 60),
+            **button_style,
             font_size=20, font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             on_press=self.go_back
-        ))
-        layout.add_widget(buttons_box)
+        )
+        layout.add_widget(login_button)
+        layout.add_widget(back_button)
 
         # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
@@ -947,9 +948,7 @@ class LoginPage(Screen):
 
         self.add_widget(layout)
 
-    # Navigation
     def log_in(self, instance):
-        print("Logging in...")
         self.manager.current = "main_full_access"
 
     def go_back(self, instance):
@@ -2755,6 +2754,7 @@ def create_calculate_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
