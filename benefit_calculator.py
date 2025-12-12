@@ -1831,19 +1831,6 @@ class Calculator(Screen):
         # Dynamic list of child DOB inputs
         self.children_dob_inputs = []
     
-        def add_child_input(instance=None, prefill_text=""):
-            child_input = TextInput(
-                hint_text="Child Date of Birth (DD-MM-YYYY)",
-                multiline=False, font_size=18,
-                size_hint=(None, None), size=(250, 50),
-                background_color=get_color_from_hex(WHITE),
-                foreground_color=get_color_from_hex(GOVUK_BLUE),
-                text=prefill_text
-            )
-            self.children_dob_inputs.append(child_input)
-            # Insert above the buttons box (last two widgets are spacer + buttons)
-            layout.add_widget(child_input, index=len(layout.children)-2)
-    
         # Add first child input by default if none saved
         if not self.user_data.get("children"):
             add_child_input()
@@ -1900,6 +1887,21 @@ class Calculator(Screen):
         layout.add_widget(save_button)
     
         return outer
+
+    def add_child_input(self, instance=None, prefill_text=""):
+        """Add a new child DOB input to the layout"""
+        child_input = TextInput(
+            hint_text="Child Date of Birth (DD-MM-YYYY)",
+            multiline=False, font_size=18,
+            size_hint=(None, None), size=(250, 50),
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE),
+            text=prefill_text
+        )
+        self.children_dob_inputs.append(child_input)
+        # Insert above the buttons box (last two widgets are spacer + buttons)
+        if hasattr(self, "children_layout"):
+            self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
     
     def save_children_details(self, instance):
         """Save children DOBs into user_data"""
@@ -2350,6 +2352,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
