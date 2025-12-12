@@ -1161,17 +1161,6 @@ class Calculator(Screen):
         update_text_size(label, None)
         return label
 
-    # Screen methods
-    def create_intro_screen(self): return SafeLabel(text="Intro screen")
-    def create_claimant_details_screen(self): return SafeLabel(text="Claimant details")
-    def create_finances_screen(self): return SafeLabel(text="Finances")
-    def create_housing_screen(self): return SafeLabel(text="Housing")
-    def create_children_screen(self): return SafeLabel(text="Children")
-    def create_additional_elements_screen(self): return SafeLabel(text="Additional elements")
-    def create_sanction_screen(self): return SafeLabel(text="Sanctions")
-    def create_advance_payments_screen(self): return SafeLabel(text="Advance payments")
-    def create_calculate_screen(self): return SafeLabel(text="Summary")
-
         
 def calculate(self, instance):
     try:
@@ -2347,6 +2336,7 @@ def calculate(self, instance):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
