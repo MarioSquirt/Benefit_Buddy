@@ -1105,7 +1105,7 @@ class Calculator(Screen):
         # Spacer before spinner
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Define screens (fixed Housing entry)
+        # Define screens
         self.screens = [
             ("Introduction", self.create_intro_screen),
             ("Claimant Details", self.create_claimant_details_screen),
@@ -1145,7 +1145,27 @@ class Calculator(Screen):
             self.screen_content.clear_widgets()
             for name, builder in self.screens:
                 if name == clean_text:
-                    self.screen_content.add_widget(builder())
+                    widget = builder()
+                    self.screen_content.add_widget(widget)
+                    # Manually trigger the right pre_enter
+                    if name == "Introduction":
+                        self.on_pre_enter_intro()
+                    elif name == "Claimant Details":
+                        self.on_pre_enter_claimant()
+                    elif name == "Finances":
+                        self.on_pre_enter_finances()
+                    elif name == "Housing":
+                        self.on_pre_enter_housing()
+                    elif name == "Children":
+                        self.on_pre_enter_children()
+                    elif name == "Additional Elements":
+                        self.on_pre_enter_additional()
+                    elif name == "Sanctions":
+                        self.on_pre_enter_sanctions()
+                    elif name == "Advanced Payment":
+                        self.on_pre_enter_advance()
+                    elif name == "Summary":
+                        self.on_pre_enter_summary()
                     break
 
         self.screen_spinner.bind(text=on_screen_select)
@@ -1355,7 +1375,7 @@ class Calculator(Screen):
         # Switch spinner to Claimant Details
         self.screen_spinner.text = "Claimant Details ▼"
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_intro(self, *args):
         """Repopulate intro state when re-entering"""
         if self.user_data.get("intro_seen"):
             # Optionally disable the proceed button or change its text
@@ -1504,7 +1524,7 @@ class Calculator(Screen):
             self.user_data["partner_name"] = ""
             self.user_data["partner_dob"] = ""
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_claimant(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.name_input.text = self.user_data.get("claimant_name", "")
         self.dob_input.text = self.user_data.get("claimant_dob", "")
@@ -1624,7 +1644,7 @@ class Calculator(Screen):
         self.user_data["savings"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
 
-    def on_pre_enter(self, *args):
+    def on_pre_enter_finances(self, *args):
         self.income_input.text = self.user_data.get("income", "")
         self.savings_input.text = self.user_data.get("savings", "")
         self.debts_input.text = self.user_data.get("debts", "")
@@ -1774,7 +1794,7 @@ class Calculator(Screen):
         self.user_data["location"] = self.location_spinner.text.strip()
         self.user_data["brma"] = self.brma_spinner.text.strip()
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_housing(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.housing_type_spinner.text = self.user_data.get("housing_type", "Rent").capitalize()
         self.rent_input.text = self.user_data.get("rent", "")
@@ -1889,7 +1909,7 @@ class Calculator(Screen):
             child.text.strip() for child in self.children_dob_inputs if child.text.strip()
         ]
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_children(self, *args):
         """Repopulate child DOB inputs when re-entering the screen"""
         children = self.user_data.get("children", [])
         # Ensure enough inputs exist
@@ -2012,7 +2032,7 @@ class Calculator(Screen):
         self.user_data["disability"] = self.disability_input.text.strip().lower() == "yes"
         self.user_data["childcare"] = self.childcare_input.text.strip()
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_additional(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.is_carer_input.text = "yes" if self.user_data.get("carer") else "no"
         self.disability_input.text = "yes" if self.user_data.get("disability") else "no"
@@ -2111,7 +2131,7 @@ class Calculator(Screen):
         self.user_data["sanction_type"] = self.sanction_type_input.text.strip().lower()
         self.user_data["sanction_duration"] = self.sanction_duration_input.text.strip()
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_sanctions(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.sanction_type_input.text = self.user_data.get("sanction_type", "")
         self.sanction_duration_input.text = self.user_data.get("sanction_duration", "")
@@ -2211,7 +2231,7 @@ class Calculator(Screen):
         self.user_data["advance_amount"] = self.advance_amount_input.text.strip()
         self.user_data["repayment_period"] = self.repayment_period_input.text.strip()
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_advance(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.advance_amount_input.text = self.user_data.get("advance_amount", "")
         self.repayment_period_input.text = self.user_data.get("repayment_period", "")
@@ -2297,7 +2317,7 @@ class Calculator(Screen):
         self.summary_label.text = result_text
         self.user_data["calculation_result"] = result_text
     
-    def on_pre_enter(self, *args):
+    def on_pre_enter_summary(self, *args):
         """Repopulate summary when re-entering the screen"""
         self.summary_label.text = self.user_data.get("calculation_result", "No calculation yet.")
 
@@ -2336,6 +2356,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
