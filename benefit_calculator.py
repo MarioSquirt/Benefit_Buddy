@@ -1162,152 +1162,152 @@ class Calculator(Screen):
         return label
 
         
-def calculate(self, instance):
-    try:
-        data = self.manager.user_data  # central state dictionary
-
-        # Claimant details
-        dob_str = data.get("claimant_dob", "")
-        if not dob_str:
-            content = SafeLabel(text="Please enter your date of birth.", halign="center", valign="middle")
-            Popup(title="Missing Input", content=content, size_hint=(0.8, 0.4)).open()
-            return
-
+    def calculate(self, instance):
         try:
-            dob = datetime.strptime(dob_str, "%d/%m/%Y")
-        except Exception:
-            content = SafeLabel(text="Please enter DOB in format DD/MM/YYYY.", halign="center", valign="middle")
-            Popup(title="Invalid Input", content=content, size_hint=(0.8, 0.4)).open()
-            return
-
-        age = (datetime.now() - dob).days // 365
-        is_single = data.get("relationship", "single").lower() == "single"
-
-        partner_age = None
-        if data.get("relationship") == "couple" and data.get("partner_dob"):
+            data = self.manager.user_data  # central state dictionary
+    
+            # Claimant details
+            dob_str = data.get("claimant_dob", "")
+            if not dob_str:
+                content = SafeLabel(text="Please enter your date of birth.", halign="center", valign="middle")
+                Popup(title="Missing Input", content=content, size_hint=(0.8, 0.4)).open()
+                return
+    
             try:
-                partner_dob = datetime.strptime(data["partner_dob"], "%d/%m/%Y")
-                partner_age = (datetime.now() - partner_dob).days // 365
+                dob = datetime.strptime(dob_str, "%d/%m/%Y")
             except Exception:
-                content = SafeLabel(text="Partner DOB must be DD/MM/YYYY.", halign="center", valign="middle")
+                content = SafeLabel(text="Please enter DOB in format DD/MM/YYYY.", halign="center", valign="middle")
                 Popup(title="Invalid Input", content=content, size_hint=(0.8, 0.4)).open()
                 return
-
-        # Income and capital
-        try:
-            income = float(data.get("income", 0) or 0)
-        except Exception:
-            Popup(title="Invalid Input", content=SafeLabel(text="Income must be a number."), size_hint=(0.8, 0.4)).open()
-            return
-
-        try:
-            capital = float(data.get("savings", 0) or 0)
-        except Exception:
-            Popup(title="Invalid Input", content=SafeLabel(text="Savings must be a number."), size_hint=(0.8, 0.4)).open()
-            return
-
-        # Children
-        child_elements = 0
-        children_dobs = data.get("children", [])
-        for i, dob_str in enumerate(children_dobs):
+    
+            age = (datetime.now() - dob).days // 365
+            is_single = data.get("relationship", "single").lower() == "single"
+    
+            partner_age = None
+            if data.get("relationship") == "couple" and data.get("partner_dob"):
+                try:
+                    partner_dob = datetime.strptime(data["partner_dob"], "%d/%m/%Y")
+                    partner_age = (datetime.now() - partner_dob).days // 365
+                except Exception:
+                    content = SafeLabel(text="Partner DOB must be DD/MM/YYYY.", halign="center", valign="middle")
+                    Popup(title="Invalid Input", content=content, size_hint=(0.8, 0.4)).open()
+                    return
+    
+            # Income and capital
             try:
-                child_dob = datetime.strptime(dob_str, "%d/%m/%Y")
-                if i == 0:
-                    child_elements += 339 if child_dob < datetime(2017, 4, 6) else 292.81
-                elif i == 1:
-                    child_elements += 292.81
-                else:
-                    child_elements += 292.81  # add special flags if stored
+                income = float(data.get("income", 0) or 0)
             except Exception:
-                Popup(title="Invalid Date", content=SafeLabel(text="Children DOBs must be DD/MM/YYYY."), size_hint=(0.8, 0.4)).open()
+                Popup(title="Invalid Input", content=SafeLabel(text="Income must be a number."), size_hint=(0.8, 0.4)).open()
                 return
-
-        # Additional elements
-        carer_element = 201.68 if data.get("carer") else 0
-        childcare_costs = float(data.get("childcare", 0) or 0)
-
-        # Work capability
-        work_capability = 0
-        if data.get("lcwra"):
-            work_capability = 423.27
-        elif data.get("lcw_2017"):
-            work_capability = 158.76
-
-        # Standard allowance
-        standard_allowance = 0
-        if is_single:
-            standard_allowance = 316.98 if age < 25 else 400.14
-        else:
-            if partner_age is not None:
-                standard_allowance = 497.55 if age < 25 and partner_age < 25 else 628.10
-
-        # Housing element
-        housing_element = 0
-        housing_type = data.get("housing_type", "").lower()
-        if housing_type == "rent":
-            rent_value = float(data.get("rent", 0) or 0)
-            brma = data.get("brma", "")
-            location = data.get("location", "")
-            if not location or not brma:
-                Popup(title="Missing Housing Info", content=SafeLabel(text="Please select Location and BRMA."), size_hint=(0.8, 0.4)).open()
+    
+            try:
+                capital = float(data.get("savings", 0) or 0)
+            except Exception:
+                Popup(title="Invalid Input", content=SafeLabel(text="Savings must be a number."), size_hint=(0.8, 0.4)).open()
                 return
-            # TODO: plug in your LHA lookup logic here
-            lha_rate = rent_value
-            housing_element = min(rent_value, lha_rate)
-        elif housing_type == "own":
-            housing_element = float(data.get("mortgage", 0) or 0)
-        elif housing_type == "shared accommodation":
-            housing_element = float(data.get("rent", 0) or 0)
-
-        # Work allowance
-        has_children = len(children_dobs) > 0
-        receives_housing_support = housing_type == "rent"
-        work_allowance = 411 if (has_children or data.get("lcw")) and receives_housing_support else (684 if has_children else 0)
-
-        # Total before deductions
-        total_allowance = (
-            standard_allowance +
-            housing_element +
-            child_elements +
-            childcare_costs +
-            carer_element +
-            work_capability
-        )
-
-        # Capital income deduction
-        capital_income = 0
-        if capital < 6000:
+    
+            # Children
+            child_elements = 0
+            children_dobs = data.get("children", [])
+            for i, dob_str in enumerate(children_dobs):
+                try:
+                    child_dob = datetime.strptime(dob_str, "%d/%m/%Y")
+                    if i == 0:
+                        child_elements += 339 if child_dob < datetime(2017, 4, 6) else 292.81
+                    elif i == 1:
+                        child_elements += 292.81
+                    else:
+                        child_elements += 292.81  # add special flags if stored
+                except Exception:
+                    Popup(title="Invalid Date", content=SafeLabel(text="Children DOBs must be DD/MM/YYYY."), size_hint=(0.8, 0.4)).open()
+                    return
+    
+            # Additional elements
+            carer_element = 201.68 if data.get("carer") else 0
+            childcare_costs = float(data.get("childcare", 0) or 0)
+    
+            # Work capability
+            work_capability = 0
+            if data.get("lcwra"):
+                work_capability = 423.27
+            elif data.get("lcw_2017"):
+                work_capability = 158.76
+    
+            # Standard allowance
+            standard_allowance = 0
+            if is_single:
+                standard_allowance = 316.98 if age < 25 else 400.14
+            else:
+                if partner_age is not None:
+                    standard_allowance = 497.55 if age < 25 and partner_age < 25 else 628.10
+    
+            # Housing element
+            housing_element = 0
+            housing_type = data.get("housing_type", "").lower()
+            if housing_type == "rent":
+                rent_value = float(data.get("rent", 0) or 0)
+                brma = data.get("brma", "")
+                location = data.get("location", "")
+                if not location or not brma:
+                    Popup(title="Missing Housing Info", content=SafeLabel(text="Please select Location and BRMA."), size_hint=(0.8, 0.4)).open()
+                    return
+                # TODO: plug in your LHA lookup logic here
+                lha_rate = rent_value
+                housing_element = min(rent_value, lha_rate)
+            elif housing_type == "own":
+                housing_element = float(data.get("mortgage", 0) or 0)
+            elif housing_type == "shared accommodation":
+                housing_element = float(data.get("rent", 0) or 0)
+    
+            # Work allowance
+            has_children = len(children_dobs) > 0
+            receives_housing_support = housing_type == "rent"
+            work_allowance = 411 if (has_children or data.get("lcw")) and receives_housing_support else (684 if has_children else 0)
+    
+            # Total before deductions
+            total_allowance = (
+                standard_allowance +
+                housing_element +
+                child_elements +
+                childcare_costs +
+                carer_element +
+                work_capability
+            )
+    
+            # Capital income deduction
             capital_income = 0
-        elif capital >= 16000:
-            Popup(title="Calculation Result", content=SafeLabel(text="Not eligible due to capital over £16,000."), size_hint=(0.8, 0.4)).open()
-            return
-        else:
-            blocks = ((capital - 6000) + 249) // 250
-            capital_income = blocks * 4.35
-
-        # Sanctions
-        sanctions = float(data.get("sanctions", 0) or 0)
-
-        # Advance payments
-        advance_amount = float(data.get("advance_amount", 0) or 0)
-        repayment_period = int(data.get("repayment_period", 0) or 0)
-        advance_payments = advance_amount / repayment_period if repayment_period > 0 else 0
-
-        # Final entitlement
-        entitlement = total_allowance - capital_income - sanctions - advance_payments
-        
-        # Update summary label
-        self.summary_label.text = f"Your predicted entitlement is: £{entitlement:.2f}"
-        
-        # ALSO show a popup
-        content = SafeLabel(
-            text=f"Your predicted entitlement is: £{entitlement:.2f}",
-            halign="center", valign="middle"
-        )
-        Popup(title="Calculation Result", content=content, size_hint=(0.8, 0.4)).open()
-
-    except Exception as e:
-        Popup(title="Error", content=SafeLabel(text=str(e)), size_hint=(0.8, 0.4)).open()
+            if capital < 6000:
+                capital_income = 0
+            elif capital >= 16000:
+                Popup(title="Calculation Result", content=SafeLabel(text="Not eligible due to capital over £16,000."), size_hint=(0.8, 0.4)).open()
+                return
+            else:
+                blocks = ((capital - 6000) + 249) // 250
+                capital_income = blocks * 4.35
+    
+            # Sanctions
+            sanctions = float(data.get("sanctions", 0) or 0)
+    
+            # Advance payments
+            advance_amount = float(data.get("advance_amount", 0) or 0)
+            repayment_period = int(data.get("repayment_period", 0) or 0)
+            advance_payments = advance_amount / repayment_period if repayment_period > 0 else 0
+    
+            # Final entitlement
+            entitlement = total_allowance - capital_income - sanctions - advance_payments
+            
+            # Update summary label
+            self.summary_label.text = f"Your predicted entitlement is: £{entitlement:.2f}"
+            
+            # ALSO show a popup
+            content = SafeLabel(
+                text=f"Your predicted entitlement is: £{entitlement:.2f}",
+                halign="center", valign="middle"
+            )
+            Popup(title="Calculation Result", content=content, size_hint=(0.8, 0.4)).open()
+    
+        except Exception as e:
+            Popup(title="Error", content=SafeLabel(text=str(e)), size_hint=(0.8, 0.4)).open()
 
      
     def create_intro_screen(self):
@@ -2336,6 +2336,7 @@ def calculate(self, instance):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
