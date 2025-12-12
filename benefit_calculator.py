@@ -1143,6 +1143,23 @@ class Calculator(Screen):
 
         self.add_widget(layout)
 
+    # Helper function to create a label that wraps text within the window width
+    def wrapped_SafeLabel(text, font_size, height):
+        label = SafeLabel(
+            text=text,
+            font_size=font_size,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex(WHITE),
+            size_hint_y=None,
+            height=height
+        )
+        # Bind the label's width to the window width minus padding
+        def update_text_size(instance, value):
+            instance.text_size = (Window.width - 60, None)
+        label.bind(width=update_text_size)
+        update_text_size(label, None)
+        return label
 
     # Screen methods
     def create_intro_screen(self): return SafeLabel(text="Intro screen")
@@ -1309,25 +1326,7 @@ def calculate(self, instance):
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
         layout = BoxLayout(orientation="vertical", spacing=30, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter('height'))  # Let layout expand vertically
-
-        # Helper function to create a label that wraps text within the window width
-        def wrapped_SafeLabel(text, font_size, height):
-            label = SafeLabel(
-                text=text,
-                font_size=font_size,
-                halign="center",
-                valign="middle",
-                color=get_color_from_hex(WHITE),
-                size_hint_y=None,
-                height=height
-            )
-            # Bind the label's width to the window width minus padding
-            def update_text_size(instance, value):
-                instance.text_size = (Window.width - 60, None)
-            label.bind(width=update_text_size)
-            update_text_size(label, None)
-            return label
-
+    
         # Introductory text
         layout.add_widget(wrapped_SafeLabel("Welcome to the Benefit Buddy Calculator", 18, 30))
         layout.add_widget(wrapped_SafeLabel("This calculator will help you estimate your Universal Credit entitlement.", 16, 30))
@@ -1339,143 +1338,200 @@ def calculate(self, instance):
         layout.add_widget(wrapped_SafeLabel("- Your housing situation (rent or own)", 14, 24))
         layout.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
         layout.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
-
+    
         # Proceed button centered with proper text alignment
         proceed_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=80)
         proceed_button = RoundedButton(
             text="Proceed to Claimant Details",
             size_hint=(None, None),
             size=(250, 60),
-            background_color=(0, 0, 0, 0),  # Transparent background
-            background_normal="",           # Remove default background image
+            background_normal="",
+            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK yellow
             font_size=20,
             font_name="roboto",
-            color=get_color_from_hex("#005EA5"),  # GOVUK_BLUE text color
+            color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
             halign="center", valign="middle",
             text_size=(250, None),
-            on_press=lambda x: setattr(self.screen_spinner, 'text', "Claimant Details ▼")
+            on_press=self.save_intro_and_proceed
         )
         proceed_anchor.add_widget(proceed_button)
         layout.add_widget(proceed_anchor)
-
+    
         scroll.add_widget(layout)
         return scroll
+    
+    def save_intro_and_proceed(self, instance):
+        """Mark intro as seen and move to claimant details"""
+        self.user_data["intro_seen"] = True
+        # Switch spinner to Claimant Details
+        self.screen_spinner.text = "Claimant Details ▼"
+    
+    def on_pre_enter(self, *args):
+        """Repopulate intro state when re-entering"""
+        if self.user_data.get("intro_seen"):
+            # Optionally disable the proceed button or change its text
+            # Example: show 'Continue' instead of 'Proceed'
+            for child in self.screen_content.children:
+                if isinstance(child, RoundedButton) and child.text.startswith("Proceed"):
+                    child.text = "Continue to Claimant Details"
 
         
     def on_couple_claim_checkbox_active(self, checkbox, value):
         # Enable/disable partner fields based on checkbox
         self.partner_name_input.disabled = not value
         self.partner_dob_input.disabled = not value
-
-    def create_claimant_details_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
-        layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
     
-        # Instruction label
-        instruction = SafeLabel(
-            text="Enter claimant details:",
-            font_size=18,
+    def create_claimant_details_screen(self):
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+    
+        # Section header
+        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=60)
+        header_label = SafeLabel(
+            text="Select Claimant Type",
+            font_size=20,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(instruction)
+        header_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        header_anchor.add_widget(header_label)
+        layout.add_widget(header_anchor)
     
-        # Claimant DOB
-        self.dob_input = TextInput(
-            hint_text="Claimant Date of Birth (DD-MM-YYYY)",
-            multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+        # Horizontal layout for checkboxes and labels
+        claimant_type_layout = BoxLayout(orientation="horizontal", spacing=20, size_hint_y=None, height=50)
+        self.single_claimant_checkbox = CheckBox(group="claimant_type")
+        self.couple_claim_checkbox = CheckBox(group="claimant_type")
+    
+        claimant_type_layout.add_widget(SafeLabel(
+            text="Single", font_size=18, halign="center", color=get_color_from_hex("#005EA5")
+        ))
+        claimant_type_layout.add_widget(self.single_claimant_checkbox)
+        claimant_type_layout.add_widget(SafeLabel(
+            text="Couple", font_size=18, halign="center", color=get_color_from_hex("#005EA5")
+        ))
+        claimant_type_layout.add_widget(self.couple_claim_checkbox)
+    
+        layout.add_widget(claimant_type_layout)
+    
+        # Bind couple checkbox to enable partner fields
+        self.couple_claim_checkbox.bind(active=self.on_couple_claim_checkbox_active)
+    
+        # Claimant details section
+        claimant_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
+        claimant_label = SafeLabel(
+            text="Enter Claimant Details",
+            font_size=20,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        claimant_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        claimant_anchor.add_widget(claimant_label)
+        layout.add_widget(claimant_anchor)
+    
+        self.name_input = CustomTextInput(
+            hint_text="Name",
+            multiline=False,
+            font_size=18,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.name_input)
+    
+        self.dob_input = DOBInput(
+            hint_text="DD/MM/YYYY",
+            multiline=False,
+            font_size=18,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.dob_input)
     
-        # Partner DOB
-        self.partner_dob_input = TextInput(
-            hint_text="Partner Date of Birth (DD-MM-YYYY)",
-            multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+        # Partner details section
+        partner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
+        partner_label = SafeLabel(
+            text="Enter Partner Details",
+            font_size=20,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        partner_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        partner_anchor.add_widget(partner_label)
+        layout.add_widget(partner_anchor)
+    
+        self.partner_name_input = CustomTextInput(
+            hint_text="Name",
+            multiline=False,
+            font_size=18,
+            disabled=True,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
+        self.partner_dob_input = DOBInput(
+            hint_text="DD/MM/YYYY",
+            multiline=False,
+            font_size=18,
+            disabled=True,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.partner_name_input)
         layout.add_widget(self.partner_dob_input)
     
-        # Relationship status
-        self.relationship_input = TextInput(
-            hint_text="Relationship Status (single/couple)",
-            multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
-        )
-        layout.add_widget(self.relationship_input)
-
         # Save button
         save_button = RoundedButton(
             text="Save Claimant Details",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_claimant_details
         )
         layout.add_widget(save_button)
     
-        # Spacer above buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
+        return layout
     
-        # Shared button style for consistency
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
-    
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-            ("Save Details", self.save_claimant_details),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
-        layout.add_widget(buttons_box)
-    
-        # Spacer below buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-    
-        return outer
-
     def save_claimant_details(self, instance):
         """Save claimant details into user_data"""
+        # Relationship based on checkbox state
+        if self.single_claimant_checkbox.active:
+            self.user_data["relationship"] = "single"
+        elif self.couple_claim_checkbox.active:
+            self.user_data["relationship"] = "couple"
+        else:
+            self.user_data["relationship"] = ""
+    
+        # Claimant details
+        self.user_data["claimant_name"] = self.name_input.text.strip()
         self.user_data["claimant_dob"] = self.dob_input.text.strip()
-        self.user_data["partner_dob"] = self.partner_dob_input.text.strip()
-        self.user_data["relationship"] = self.relationship_input.text.strip().lower()
-
+    
+        # Partner details (only if couple selected)
+        if self.couple_claim_checkbox.active:
+            self.user_data["partner_name"] = self.partner_name_input.text.strip()
+            self.user_data["partner_dob"] = self.partner_dob_input.text.strip()
+        else:
+            self.user_data["partner_name"] = ""
+            self.user_data["partner_dob"] = ""
+    
     def on_pre_enter(self, *args):
         """Repopulate inputs when re-entering the screen"""
+        self.name_input.text = self.user_data.get("claimant_name", "")
         self.dob_input.text = self.user_data.get("claimant_dob", "")
+    
+        # Relationship checkboxes
+        rel = self.user_data.get("relationship", "")
+        self.single_claimant_checkbox.active = (rel == "single")
+        self.couple_claim_checkbox.active = (rel == "couple")
+    
+        # Partner fields
+        self.partner_name_input.text = self.user_data.get("partner_name", "")
         self.partner_dob_input.text = self.user_data.get("partner_dob", "")
-        self.relationship_input.text = self.user_data.get("relationship", "")
-
+        # Disable if not couple
+        is_couple = (rel == "couple")
+        self.partner_name_input.disabled = not is_couple
+        self.partner_dob_input.disabled = not is_couple
 
     def create_finances_screen(self):
         # Outer anchor to center content vertically
@@ -1595,7 +1651,7 @@ def calculate(self, instance):
         # Housing type spinner
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.housing_type_spinner = Spinner(
-            text="Rent",
+            text=self.user_data.get("housing_type", "Rent").capitalize(),
             values=("Rent", "Own", "Shared Accommodation"),
             size_hint=(None, None), size=(250, 50),
             background_normal="", background_color=get_color_from_hex("#FFDD00"),
@@ -1610,7 +1666,7 @@ def calculate(self, instance):
         layout.add_widget(housing_anchor)
     
         # Rent/Mortgage inputs
-        self.rent_mortgage_input = TextInput(
+        self.rent_input = TextInput(
             hint_text="Enter monthly rent amount (£)",
             multiline=False, font_size=18,
             size_hint=(None, None), size=(250, 50),
@@ -1626,12 +1682,14 @@ def calculate(self, instance):
         )
     
         def update_amount_input(spinner, value):
-            if self.rent_mortgage_input.parent:
-                layout.remove_widget(self.rent_mortgage_input)
+            # Remove both if present
+            if self.rent_input.parent:
+                layout.remove_widget(self.rent_input)
             if self.mortgage_input.parent:
                 layout.remove_widget(self.mortgage_input)
+            # Add the correct one
             if value.lower() == "rent":
-                layout.add_widget(self.rent_mortgage_input)
+                layout.add_widget(self.rent_input)
             elif value.lower() == "own":
                 layout.add_widget(self.mortgage_input)
     
@@ -1648,22 +1706,14 @@ def calculate(self, instance):
         )
         layout.add_widget(self.postcode_input)
     
-        # Shared button style
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
-    
         # Find BRMA button
         find_brma_btn = RoundedButton(
             text="Find BRMA",
-            **button_style,
-            font_size=20,
-            font_name="roboto",
+            size_hint=(None, None), size=(250, 60),
+            background_normal="",
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             halign="center", valign="middle",
             text_size=(250, None)
         )
@@ -1672,7 +1722,7 @@ def calculate(self, instance):
         def on_find_brma(instance):
             find_brma_btn.text = "Finding BRMA"
             postcode = self.postcode_input.text.strip().replace(" ", "").upper()
-            # ... keep your CSV lookup logic here ...
+            # TODO: plug in your CSV lookup logic here
             # Reset button text after lookup
             find_brma_btn.text = "Find BRMA"
     
@@ -1681,7 +1731,7 @@ def calculate(self, instance):
         # Location spinner
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.location_spinner = Spinner(
-            text="Select Location",
+            text=self.user_data.get("location", "Select Location"),
             values=("England", "Scotland", "Wales"),
             size_hint=(None, None), size=(250, 50),
             background_normal="", background_color=get_color_from_hex("#FFDD00"),
@@ -1698,7 +1748,7 @@ def calculate(self, instance):
         # BRMA spinner
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.brma_spinner = Spinner(
-            text="Select BRMA",
+            text=self.user_data.get("brma", "Select BRMA"),
             values=["No BRMAs loaded"],
             size_hint=(None, None), size=(250, 50),
             background_normal="", background_color=get_color_from_hex("#FFDD00"),
@@ -1711,35 +1761,46 @@ def calculate(self, instance):
         )
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
-
+    
         # Save button
         save_button = RoundedButton(
             text="Save Housing",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_housing_details
         )
         layout.add_widget(save_button)
     
         return outer
-
+    
     def save_housing_details(self, instance):
+        """Save housing details into user_data"""
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
         self.user_data["rent"] = self.rent_input.text.strip()
         self.user_data["mortgage"] = self.mortgage_input.text.strip()
         self.user_data["postcode"] = self.postcode_input.text.strip()
+        self.user_data["location"] = self.location_spinner.text.strip()
         self.user_data["brma"] = self.brma_spinner.text.strip()
-
+    
     def on_pre_enter(self, *args):
-        self.housing_type_spinner.text = self.user_data.get("housing_type", "Select Housing Type").capitalize()
+        """Repopulate inputs when re-entering the screen"""
+        self.housing_type_spinner.text = self.user_data.get("housing_type", "Rent").capitalize()
         self.rent_input.text = self.user_data.get("rent", "")
         self.mortgage_input.text = self.user_data.get("mortgage", "")
         self.postcode_input.text = self.user_data.get("postcode", "")
+        self.location_spinner.text = self.user_data.get("location", "Select Location")
         self.brma_spinner.text = self.user_data.get("brma", "Select BRMA")
-
+    
+        # Ensure correct input is visible based on housing type
+        if self.housing_type_spinner.text.lower() == "rent":
+            if not self.rent_input.parent:
+                self.screen_content.add_widget(self.rent_input)
+        elif self.housing_type_spinner.text.lower() == "own":
+            if not self.mortgage_input.parent:
+                self.screen_content.add_widget(self.mortgage_input)
 
     def create_children_screen(self):
         # Outer anchor to center content vertically
@@ -1754,7 +1815,7 @@ def calculate(self, instance):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
         instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(instruction)
@@ -1762,19 +1823,26 @@ def calculate(self, instance):
         # Dynamic list of child DOB inputs
         self.children_dob_inputs = []
     
-        def add_child_input(instance=None):
+        def add_child_input(instance=None, prefill_text=""):
             child_input = TextInput(
                 hint_text="Child Date of Birth (DD-MM-YYYY)",
                 multiline=False, font_size=18,
                 size_hint=(None, None), size=(250, 50),
                 background_color=get_color_from_hex(WHITE),
-                foreground_color=get_color_from_hex(GOVUK_BLUE)
+                foreground_color=get_color_from_hex(GOVUK_BLUE),
+                text=prefill_text
             )
             self.children_dob_inputs.append(child_input)
-            layout.add_widget(child_input, index=len(layout.children)-2)  # keep above buttons
+            # Insert above the buttons box (last two widgets are spacer + buttons)
+            layout.add_widget(child_input, index=len(layout.children)-2)
     
-        # Add first child input by default
-        add_child_input()
+        # Add first child input by default if none saved
+        if not self.user_data.get("children"):
+            add_child_input()
+        else:
+            # Repopulate saved children
+            for dob in self.user_data["children"]:
+                add_child_input(prefill_text=dob)
     
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -1811,26 +1879,43 @@ def calculate(self, instance):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Save button
+    
+        # Save button (duplicate of above, optional — you can remove if redundant)
         save_button = RoundedButton(
             text="Save Children",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_children_details
         )
         layout.add_widget(save_button)
     
         return outer
-
+    
     def save_children_details(self, instance):
-        self.user_data["children"] = [child.text.strip() for child in self.children_dob_inputs if child.text.strip()]
-
+        """Save children DOBs into user_data"""
+        self.user_data["children"] = [
+            child.text.strip() for child in self.children_dob_inputs if child.text.strip()
+        ]
+    
     def on_pre_enter(self, *args):
+        """Repopulate child DOB inputs when re-entering the screen"""
         children = self.user_data.get("children", [])
+        # Ensure enough inputs exist
+        while len(self.children_dob_inputs) < len(children):
+            # Add extra inputs if needed
+            child_input = TextInput(
+                hint_text="Child Date of Birth (DD-MM-YYYY)",
+                multiline=False, font_size=18,
+                size_hint=(None, None), size=(250, 50),
+                background_color=get_color_from_hex(WHITE),
+                foreground_color=get_color_from_hex(GOVUK_BLUE)
+            )
+            self.children_dob_inputs.append(child_input)
+    
+        # Repopulate texts
         for i, child_input in enumerate(self.children_dob_inputs):
             child_input.text = children[i] if i < len(children) else ""
 
@@ -1848,7 +1933,7 @@ def calculate(self, instance):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
         instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(instruction)
@@ -1917,27 +2002,29 @@ def calculate(self, instance):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Save button
+    
+        # Save button (optional duplicate — you can remove if redundant)
         save_button = RoundedButton(
             text="Save Additional Elements",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_additional_elements
         )
         layout.add_widget(save_button)
     
         return outer
-
+    
     def save_additional_elements(self, instance):
+        """Save additional elements into user_data"""
         self.user_data["carer"] = self.is_carer_input.text.strip().lower() == "yes"
         self.user_data["disability"] = self.disability_input.text.strip().lower() == "yes"
         self.user_data["childcare"] = self.childcare_input.text.strip()
-
+    
     def on_pre_enter(self, *args):
+        """Repopulate inputs when re-entering the screen"""
         self.is_carer_input.text = "yes" if self.user_data.get("carer") else "no"
         self.disability_input.text = "yes" if self.user_data.get("disability") else "no"
         self.childcare_input.text = self.user_data.get("childcare", "")
@@ -1956,7 +2043,7 @@ def calculate(self, instance):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
         instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(instruction)
@@ -2015,26 +2102,28 @@ def calculate(self, instance):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Save button
+    
+        # Save button (optional duplicate — you can remove if redundant)
         save_button = RoundedButton(
             text="Save Sanctions",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_sanction_details
         )
         layout.add_widget(save_button)
     
         return outer
-
+    
     def save_sanction_details(self, instance):
+        """Save sanction details into user_data"""
         self.user_data["sanction_type"] = self.sanction_type_input.text.strip().lower()
         self.user_data["sanction_duration"] = self.sanction_duration_input.text.strip()
-
+    
     def on_pre_enter(self, *args):
+        """Repopulate inputs when re-entering the screen"""
         self.sanction_type_input.text = self.user_data.get("sanction_type", "")
         self.sanction_duration_input.text = self.user_data.get("sanction_duration", "")
 
@@ -2052,7 +2141,7 @@ def calculate(self, instance):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
         instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(instruction)
@@ -2063,7 +2152,8 @@ def calculate(self, instance):
             multiline=False, font_size=18,
             size_hint=(None, None), size=(250, 50),
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            foreground_color=get_color_from_hex(GOVUK_BLUE),
+            text=self.user_data.get("advance_amount", "")
         )
         layout.add_widget(self.advance_amount_input)
     
@@ -2073,7 +2163,8 @@ def calculate(self, instance):
             multiline=False, font_size=18,
             size_hint=(None, None), size=(250, 50),
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            foreground_color=get_color_from_hex(GOVUK_BLUE),
+            text=self.user_data.get("repayment_period", "")
         )
         layout.add_widget(self.repayment_period_input)
     
@@ -2111,26 +2202,28 @@ def calculate(self, instance):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Save button
+    
+        # Save button (optional duplicate — you can remove if redundant)
         save_button = RoundedButton(
             text="Save Advance Payment",
             size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
             background_normal="",
-            font_size=20,
+            background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
+            font_size=20,
             on_press=self.save_advance_payment
         )
         layout.add_widget(save_button)
     
         return outer
-
+    
     def save_advance_payment(self, instance):
+        """Save advance payment details into user_data"""
         self.user_data["advance_amount"] = self.advance_amount_input.text.strip()
         self.user_data["repayment_period"] = self.repayment_period_input.text.strip()
-
+    
     def on_pre_enter(self, *args):
+        """Repopulate inputs when re-entering the screen"""
         self.advance_amount_input.text = self.user_data.get("advance_amount", "")
         self.repayment_period_input.text = self.user_data.get("repayment_period", "")
 
@@ -2148,18 +2241,18 @@ def calculate(self, instance):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
         )
         instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(instruction)
     
         # Result label placeholder
         self.summary_label = SafeLabel(
-            text="No calculation yet.",
+            text=self.user_data.get("calculation_result", "No calculation yet."),
             font_size=16,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")
         )
         self.summary_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(self.summary_label)
@@ -2200,7 +2293,24 @@ def calculate(self, instance):
         layout.add_widget(Widget(size_hint_y=0.05))
     
         return outer
-
+    
+    def run_calculation(self, instance):
+        """Perform calculation and update summary label + user_data"""
+        # Call your existing calculation logic here
+        try:
+            # Example: entitlement calculation already implemented elsewhere
+            entitlement = self.calculate_entitlement()  # replace with your actual method
+            result_text = f"Your predicted entitlement is: £{entitlement:.2f}"
+        except Exception as e:
+            result_text = f"Error during calculation: {str(e)}"
+    
+        # Update label and user_data
+        self.summary_label.text = result_text
+        self.user_data["calculation_result"] = result_text
+    
+    def on_pre_enter(self, *args):
+        """Repopulate summary when re-entering the screen"""
+        self.summary_label.text = self.user_data.get("calculation_result", "No calculation yet.")
 
 
 # TO DO:
@@ -2237,6 +2347,7 @@ def calculate(self, instance):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
