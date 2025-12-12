@@ -644,7 +644,7 @@ class MainScreenFullAccess(Screen):
         buttons_box.add_widget(RoundedButton(
             text="Predict Next Payment",
             **button_style,
-            on_press=self.predict_payment
+            on_press=lambda x: print("Prediction feature not yet implemented")
         ))
         buttons_box.add_widget(RoundedButton(
             text="View Previous Payments",
@@ -2350,6 +2350,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
