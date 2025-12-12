@@ -1618,7 +1618,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Save Details", self.save_finances),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -1868,9 +1867,8 @@ class Calculator(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
-            ("Add Another Child", add_child_input),
+            ("Add Another Child", self.add_child_input),
             ("Save Children Details", self.save_children_details),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -1993,7 +1991,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Save Additional Elements", self.save_additional_elements),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2093,7 +2090,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Save Sanction Details", self.save_sanction_details),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2193,7 +2189,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Save Advance Payment", self.save_advance_payment),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2282,7 +2277,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Run Calculation", self.run_calculation),
-            ("Back to Calculator Menu", self.go_back_to_calculator),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2356,6 +2350,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
