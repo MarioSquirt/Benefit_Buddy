@@ -80,6 +80,24 @@ def adjust_layout(instance, value):
 
 Window.bind(size=adjust_layout)
 
+# Helper function to create a label that wraps text within the window width
+def wrapped_SafeLabel(text, font_size, height):
+    label = SafeLabel(
+        text=text,
+        font_size=font_size,
+        halign="center",
+        valign="middle",
+        color=get_color_from_hex(WHITE),
+        size_hint_y=None,
+        height=height
+    )
+    # Bind the label's width to the window width minus padding
+    def update_text_size(instance, value):
+        instance.text_size = (Window.width - 60, None)
+    label.bind(width=update_text_size)
+    update_text_size(label, None)
+    return label
+
 def build_header(layout, title_text):
     top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
     title = SafeLabel(
@@ -1142,24 +1160,6 @@ class Calculator(Screen):
         layout.add_widget(footer_anchor)
 
         self.add_widget(layout)
-
-    # Helper function to create a label that wraps text within the window width
-    def wrapped_SafeLabel(text, font_size, height):
-        label = SafeLabel(
-            text=text,
-            font_size=font_size,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex(WHITE),
-            size_hint_y=None,
-            height=height
-        )
-        # Bind the label's width to the window width minus padding
-        def update_text_size(instance, value):
-            instance.text_size = (Window.width - 60, None)
-        label.bind(width=update_text_size)
-        update_text_size(label, None)
-        return label
 
         
     def calculate(self, instance):
@@ -2336,6 +2336,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
