@@ -620,19 +620,13 @@ class MainScreenFullAccess(Screen):
         build_header(header_anchor, "Benefit Buddy")
         layout.add_widget(header_anchor)
 
-        # Shared GOV.UK-style button style
+        # Shared button style for consistency (only button-level props)
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_normal": "",
-            "background_color": get_color_from_hex("#FFDD00"),  # GOV.UK yellow
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None),
-            "font_size": 20,
-            "font_name": "roboto",
-            "color": get_color_from_hex("#005EA5")  # GOV.UK blue text
+            "background_color": (0, 0, 0, 0),  # transparent background
+            "pos_hint": {"center_x": 0.5}
         }
 
         # Spacer above buttons
@@ -641,26 +635,23 @@ class MainScreenFullAccess(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
 
-        buttons_box.add_widget(RoundedButton(
-            text="Predict Next Payment",
-            **button_style,
-            on_press=lambda x: print("Prediction feature not yet implemented")
-        ))
-        buttons_box.add_widget(RoundedButton(
-            text="View Previous Payments",
-            **button_style,
-            on_press=lambda x: print("Payments feature not yet implemented")
-        ))
-        buttons_box.add_widget(RoundedButton(
-            text="Update Details",
-            **button_style,
-            on_press=lambda x: print("Update details feature not yet implemented")
-        ))
-        buttons_box.add_widget(RoundedButton(
-            text="Log Out",
-            **button_style,
-            on_press=self.log_out
-        ))
+        for text, handler in [
+            ("Predict Next Payment", lambda x: print("Prediction feature not yet implemented")),
+            ("View Previous Payments", lambda x: print("Payments feature not yet implemented")),
+            ("Update Details", lambda x: print("Update details feature not yet implemented")),
+            ("Log Out", self.log_out),
+        ]:
+            btn = RoundedButton(
+                text=text,
+                **button_style,
+                font_size=20,
+                font_name="roboto",
+                color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
+                halign="center", valign="middle",
+                text_size=(250, None),
+                on_press=handler
+            )
+            buttons_box.add_widget(btn)
 
         layout.add_widget(buttons_box)
 
@@ -719,19 +710,15 @@ class MainScreenFullAccess(Screen):
 
         submit_button = RoundedButton(
             text="Submit",
-            **{
-                "size_hint": (None, None),
-                "size": (250, 50),
-                "background_normal": "",
-                "background_color": get_color_from_hex("#FFDD00"),
-                "font_size": 20,
-                "font_name": "roboto",
-                "color": get_color_from_hex("#005EA5"),
-                "pos_hint": {"center_x": 0.5},
-                "halign": "center",
-                "valign": "middle",
-                "text_size": (250, None)
-            },
+            size_hint=(None, None), size=(250, 50),
+            background_normal="",
+            background_color=get_color_from_hex("#FFDD00"),
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            pos_hint={"center_x": 0.5},
+            halign="center", valign="middle",
+            text_size=(250, None),
             on_press=lambda _: self.show_prediction_popup(self.income_input.text)
         )
 
@@ -845,6 +832,7 @@ class MainScreenFullAccess(Screen):
 
     def log_out(self, instance):
         self.manager.current = "main"
+
 
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
@@ -1816,6 +1804,9 @@ class Calculator(Screen):
         layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
+
+        # Keep a reference for add_child_input
+        self.children_layout = layout
     
         # Instruction label
         instruction = SafeLabel(
@@ -1833,11 +1824,11 @@ class Calculator(Screen):
     
         # Add first child input by default if none saved
         if not self.user_data.get("children"):
-            add_child_input()
+            self.add_child_input()
         else:
             # Repopulate saved children
             for dob in self.user_data["children"]:
-                add_child_input(prefill_text=dob)
+                self.add_child_input(prefill_text=dob)
     
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -1888,7 +1879,7 @@ class Calculator(Screen):
     
         return outer
 
-    def add_child_input(self, instance=None, prefill_text=""):
+    def (self, instance=None, prefill_text=""):
         """Add a new child DOB input to the layout"""
         child_input = TextInput(
             hint_text="Child Date of Birth (DD-MM-YYYY)",
@@ -2352,6 +2343,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
