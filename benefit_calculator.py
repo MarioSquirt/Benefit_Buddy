@@ -1879,7 +1879,7 @@ class Calculator(Screen):
     
         return outer
 
-    def (self, instance=None, prefill_text=""):
+    def add_child_input(self, instance=None, prefill_text=""):
         """Add a new child DOB input to the layout"""
         child_input = TextInput(
             hint_text="Child Date of Birth (DD-MM-YYYY)",
@@ -2343,6 +2343,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
