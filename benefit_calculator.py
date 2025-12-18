@@ -516,7 +516,7 @@ class DisclaimerScreen(Screen):
         self.add_widget(layout)
 
     def on_enter(self):
-        Clock.schedule_once(self.switch_to_main, 8)
+        Clock.schedule_once(self.switch_to_main, 5)
 
     def switch_to_main(self, dt):
         self.manager.current = "main"
@@ -992,7 +992,10 @@ class LoginPage(Screen):
         info_anchor = AnchorLayout(anchor_x="center", anchor_y="center")
         info_label = SafeLabel(
             text="Login functionality is in development.\n\nFuture versions will allow full account access.",
-            font_size=16, halign="center", valign="middle", color=get_color_from_hex(WHITE)
+            font_size=16,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex(WHITE)
         )
         info_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         info_anchor.add_widget(info_label)
@@ -1001,24 +1004,31 @@ class LoginPage(Screen):
         # Spacer
         layout.add_widget(Widget(size_hint_y=0.05))
 
+        # Shared button style for consistency
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
+
         # Buttons
-        button_style = {"size_hint": (None, None), "size": (250, 60), "pos_hint": {"center_x": 0.5}}
-        login_button = RoundedButton(
-            text="Log In",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.log_in
-        )
-        back_button = RoundedButton(
-            text="Back to Home",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.go_back
-        )
-        layout.add_widget(login_button)
-        layout.add_widget(back_button)
+        for text, handler in [
+            ("Log In", self.log_in),
+            ("Back to Home", self.go_back),
+        ]:
+            btn = RoundedButton(
+                text=text,
+                **button_style,
+                font_size=20,
+                font_name="roboto",
+                color=get_color_from_hex("#005EA5"),
+                halign="center", valign="middle",
+                text_size=(250, None),
+                on_press=handler
+            )
+            layout.add_widget(btn)
 
         # Footer
         footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
@@ -1458,7 +1468,7 @@ class Calculator(Screen):
         layout.add_widget(partner_anchor)
     
         self.partner_name_input = CustomTextInput(
-            hint_text="Name",
+            hint_text="Partner Name",
             multiline=False,
             font_size=18,
             disabled=True,
@@ -1476,14 +1486,24 @@ class Calculator(Screen):
         layout.add_widget(self.partner_name_input)
         layout.add_widget(self.partner_dob_input)
     
-        # Save button
+        # Shared button style for consistency
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
+    
+        # Save button (styled consistently)
         save_button = RoundedButton(
             text="Save Claimant Details",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+            **button_style,
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center", valign="middle",
+            text_size=(250, None),
             on_press=self.save_claimant_details
         )
         layout.add_widget(save_button)
@@ -1529,6 +1549,7 @@ class Calculator(Screen):
         is_couple = (rel == "couple")
         self.partner_name_input.disabled = not is_couple
         self.partner_dob_input.disabled = not is_couple
+
 
     def create_finances_screen(self):
         # Outer anchor to center content vertically
@@ -1577,18 +1598,6 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.debts_input)
-
-        # Save button
-        save_button = RoundedButton(
-            text="Save Finances",
-            size_hint=(None, None), size=(250, 60),
-            background_color=(0, 0, 0, 0),
-            background_normal="",
-            font_size=20,
-            color=get_color_from_hex("#005EA5"),
-            on_press=self.save_finances
-        )
-        layout.add_widget(save_button)
     
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -1605,7 +1614,7 @@ class Calculator(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
-            ("Save Details", self.save_finances),
+            ("Save Finances", self.save_finances),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -1625,12 +1634,12 @@ class Calculator(Screen):
         layout.add_widget(Widget(size_hint_y=0.05))
     
         return outer
-
+    
     def save_finances(self, instance):
         self.user_data["income"] = self.income_input.text.strip()
         self.user_data["savings"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
-
+    
     def on_pre_enter_finances(self, *args):
         self.income_input.text = self.user_data.get("income", "")
         self.savings_input.text = self.user_data.get("savings", "")
@@ -1644,20 +1653,34 @@ class Calculator(Screen):
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
+        # Shared style dicts
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_normal": "",
+            "background_color": (0, 0, 0, 0),
+            "pos_hint": {"center_x": 0.5}
+        }
+        spinner_style = {
+            "size_hint": (None, None),
+            "size": (250, 50),
+            "background_normal": "",
+            "background_color": (0, 0, 0, 0),
+            "color": get_color_from_hex("#005EA5"),
+            "font_size": 20,
+            "font_name": "roboto",
+            "option_cls": CustomSpinnerOption,
+            "pos_hint": {"center_x": 0.5}
+        }
+    
         # Housing type spinner
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.housing_type_spinner = Spinner(
             text=self.user_data.get("housing_type", "Rent").capitalize(),
             values=("Rent", "Own", "Shared Accommodation"),
-            size_hint=(None, None), size=(250, 50),
-            background_normal="", background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            font_size=20, font_name="roboto",
-            option_cls=CustomSpinnerOption,
-            halign="center", valign="middle",
-            text_size=(250, None),
-            pos_hint={"center_x": 0.5}
+            **spinner_style
         )
+        self.housing_type_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
     
@@ -1678,12 +1701,10 @@ class Calculator(Screen):
         )
     
         def update_amount_input(spinner, value):
-            # Remove both if present
             if self.rent_input.parent:
                 layout.remove_widget(self.rent_input)
             if self.mortgage_input.parent:
                 layout.remove_widget(self.mortgage_input)
-            # Add the correct one
             if value.lower() == "rent":
                 layout.add_widget(self.rent_input)
             elif value.lower() == "own":
@@ -1705,11 +1726,10 @@ class Calculator(Screen):
         # Find BRMA button
         find_brma_btn = RoundedButton(
             text="Find BRMA",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+            **button_style,
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
             halign="center", valign="middle",
             text_size=(250, None)
         )
@@ -1717,9 +1737,15 @@ class Calculator(Screen):
     
         def on_find_brma(instance):
             find_brma_btn.text = "Finding BRMA"
-            postcode = self.postcode_input.text.strip().replace(" ", "").upper()
-            # TODO: plug in your CSV lookup logic here
-            # Reset button text after lookup
+            postcode = self.postcode_input.text.strip().upper()
+    
+            # Lookup BRMA from CSV (checks PCD, PCD2, PCDS)
+            brma_name = self.lookup_brma(postcode)
+    
+            # Update spinner with result
+            self.brma_spinner.values = [brma_name]
+            self.brma_spinner.text = brma_name
+    
             find_brma_btn.text = "Find BRMA"
     
         find_brma_btn.bind(on_press=on_find_brma)
@@ -1729,15 +1755,9 @@ class Calculator(Screen):
         self.location_spinner = Spinner(
             text=self.user_data.get("location", "Select Location"),
             values=("England", "Scotland", "Wales"),
-            size_hint=(None, None), size=(250, 50),
-            background_normal="", background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            font_size=20, font_name="roboto",
-            option_cls=CustomSpinnerOption,
-            halign="center", valign="middle",
-            text_size=(250, None),
-            pos_hint={"center_x": 0.5}
+            **spinner_style
         )
+        self.location_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         location_anchor.add_widget(self.location_spinner)
         layout.add_widget(location_anchor)
     
@@ -1745,35 +1765,45 @@ class Calculator(Screen):
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.brma_spinner = Spinner(
             text=self.user_data.get("brma", "Select BRMA"),
-            values=["No BRMAs loaded"],
-            size_hint=(None, None), size=(250, 50),
-            background_normal="", background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            font_size=20, font_name="roboto",
-            option_cls=CustomSpinnerOption,
-            halign="center", valign="middle",
-            text_size=(250, None),
-            pos_hint={"center_x": 0.5}
+            values=["Select BRMA"],  # default placeholder
+            **spinner_style
         )
+        self.brma_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
     
         # Save button
         save_button = RoundedButton(
             text="Save Housing",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+            **button_style,
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center", valign="middle",
+            text_size=(250, None),
             on_press=self.save_housing_details
         )
         layout.add_widget(save_button)
     
         return outer
     
+    def lookup_brma(self, postcode):
+        """Lookup BRMA name for a given postcode from CSV."""
+        import csv, os
+        csv_path = os.path.join(os.path.dirname(__file__), "brma_lookup.csv")
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if postcode in (row["PCD"].strip().upper(),
+                                    row["PCD2"].strip().upper(),
+                                    row["PCDS"].strip().upper()):
+                        return row["brma_name"]
+        except Exception as e:
+            print(f"Error reading BRMA CSV: {e}")
+        return "BRMA not found"
+    
     def save_housing_details(self, instance):
-        """Save housing details into user_data"""
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
         self.user_data["rent"] = self.rent_input.text.strip()
         self.user_data["mortgage"] = self.mortgage_input.text.strip()
@@ -1782,7 +1812,6 @@ class Calculator(Screen):
         self.user_data["brma"] = self.brma_spinner.text.strip()
     
     def on_pre_enter_housing(self, *args):
-        """Repopulate inputs when re-entering the screen"""
         self.housing_type_spinner.text = self.user_data.get("housing_type", "Rent").capitalize()
         self.rent_input.text = self.user_data.get("rent", "")
         self.mortgage_input.text = self.user_data.get("mortgage", "")
@@ -1791,133 +1820,136 @@ class Calculator(Screen):
         self.brma_spinner.text = self.user_data.get("brma", "Select BRMA")
     
         # Ensure correct input is visible based on housing type
+        parent_layout = self.housing_type_spinner.parent.parent
         if self.housing_type_spinner.text.lower() == "rent":
             if not self.rent_input.parent:
-                self.screen_content.add_widget(self.rent_input)
+                parent_layout.add_widget(self.rent_input)
         elif self.housing_type_spinner.text.lower() == "own":
             if not self.mortgage_input.parent:
-                self.screen_content.add_widget(self.mortgage_input)
+                parent_layout.add_widget(self.mortgage_input)
 
-    def create_children_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
-        layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
 
-        # Keep a reference for add_child_input
-        self.children_layout = layout
-    
-        # Instruction label
-        instruction = SafeLabel(
-            text="Enter children details:",
-            font_size=18,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
-        )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(instruction)
-    
-        # Dynamic list of child DOB inputs
-        self.children_dob_inputs = []
-    
-        # Add first child input by default if none saved
-        if not self.user_data.get("children"):
-            self.add_child_input()
-        else:
-            # Repopulate saved children
-            for dob in self.user_data["children"]:
-                self.add_child_input(prefill_text=dob)
-    
-        # Spacer above buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Shared button style for consistency
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
-    
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-            ("Add Another Child", self.add_child_input),
-            ("Save Children Details", self.save_children_details),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
-        layout.add_widget(buttons_box)
-    
-        # Spacer below buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Save button (duplicate of above, optional — you can remove if redundant)
-        save_button = RoundedButton(
-            text="Save Children",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+def create_children_screen(self):
+    # Outer anchor to center content vertically
+    outer = AnchorLayout(anchor_x="center", anchor_y="center")
+    layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+    layout.bind(minimum_height=layout.setter("height"))
+    outer.add_widget(layout)
+
+    # Keep a reference for add_child_input
+    self.children_layout = layout
+
+    # Instruction label
+    instruction = SafeLabel(
+        text="Enter children details:",
+        font_size=18,
+        halign="center",
+        valign="middle",
+        color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+    )
+    instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+    layout.add_widget(instruction)
+
+    # Dynamic list of child DOB inputs
+    self.children_dob_inputs = []
+
+    # Add first child input by default if none saved
+    if not self.user_data.get("children"):
+        self.add_child_input()
+    else:
+        # Repopulate saved children
+        for dob in self.user_data["children"]:
+            self.add_child_input(prefill_text=dob)
+
+    # Spacer above buttons
+    layout.add_widget(Widget(size_hint_y=0.05))
+
+    # Shared button style for consistency
+    button_style = {
+        "size_hint": (None, None),
+        "size": (250, 60),
+        "background_color": (0, 0, 0, 0),
+        "background_normal": "",
+        "pos_hint": {"center_x": 0.5}
+    }
+
+    # Grouped buttons in a vertical box
+    buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+    for text, handler in [
+        ("Add Another Child", self.add_child_input),
+        ("Save Children Details", self.save_children_details),
+    ]:
+        btn = RoundedButton(
+            text=text,
+            **button_style,
             font_size=20,
-            on_press=self.save_children_details
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center", valign="middle",
+            text_size=(250, None),
+            on_press=handler
         )
-        layout.add_widget(save_button)
-    
-        return outer
+        buttons_box.add_widget(btn)
 
-    def add_child_input(self, instance=None, prefill_text=""):
-        """Add a new child DOB input to the layout"""
+    layout.add_widget(buttons_box)
+
+    # Spacer below buttons
+    layout.add_widget(Widget(size_hint_y=0.05))
+
+    # Save button (duplicate of above, now styled consistently)
+    save_button = RoundedButton(
+        text="Save Children",
+        **button_style,
+        font_size=20,
+        font_name="roboto",
+        color=get_color_from_hex("#005EA5"),
+        halign="center", valign="middle",
+        text_size=(250, None),
+        on_press=self.save_children_details
+    )
+    layout.add_widget(save_button)
+
+    return outer
+
+def add_child_input(self, instance=None, prefill_text=""):
+    """Add a new child DOB input to the layout"""
+    child_input = TextInput(
+        hint_text="Child Date of Birth (DD-MM-YYYY)",
+        multiline=False, font_size=18,
+        size_hint=(None, None), size=(250, 50),
+        background_color=get_color_from_hex(WHITE),
+        foreground_color=get_color_from_hex(GOVUK_BLUE),
+        text=prefill_text
+    )
+    self.children_dob_inputs.append(child_input)
+    # Insert above the buttons box (last two widgets are spacer + buttons)
+    if hasattr(self, "children_layout"):
+        self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
+
+def save_children_details(self, instance):
+    """Save children DOBs into user_data"""
+    self.user_data["children"] = [
+        child.text.strip() for child in self.children_dob_inputs if child.text.strip()
+    ]
+
+def on_pre_enter_children(self, *args):
+    """Repopulate child DOB inputs when re-entering the screen"""
+    children = self.user_data.get("children", [])
+    # Ensure enough inputs exist
+    while len(self.children_dob_inputs) < len(children):
+        # Add extra inputs if needed
         child_input = TextInput(
             hint_text="Child Date of Birth (DD-MM-YYYY)",
             multiline=False, font_size=18,
             size_hint=(None, None), size=(250, 50),
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=prefill_text
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         self.children_dob_inputs.append(child_input)
-        # Insert above the buttons box (last two widgets are spacer + buttons)
-        if hasattr(self, "children_layout"):
-            self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
-    
-    def save_children_details(self, instance):
-        """Save children DOBs into user_data"""
-        self.user_data["children"] = [
-            child.text.strip() for child in self.children_dob_inputs if child.text.strip()
-        ]
-    
-    def on_pre_enter_children(self, *args):
-        """Repopulate child DOB inputs when re-entering the screen"""
-        children = self.user_data.get("children", [])
-        # Ensure enough inputs exist
-        while len(self.children_dob_inputs) < len(children):
-            # Add extra inputs if needed
-            child_input = TextInput(
-                hint_text="Child Date of Birth (DD-MM-YYYY)",
-                multiline=False, font_size=18,
-                size_hint=(None, None), size=(250, 50),
-                background_color=get_color_from_hex(WHITE),
-                foreground_color=get_color_from_hex(GOVUK_BLUE)
-            )
-            self.children_dob_inputs.append(child_input)
-    
-        # Repopulate texts
-        for i, child_input in enumerate(self.children_dob_inputs):
-            child_input.text = children[i] if i < len(children) else ""
+
+    # Repopulate texts
+    for i, child_input in enumerate(self.children_dob_inputs):
+        child_input.text = children[i] if i < len(children) else ""
 
     
     def create_additional_elements_screen(self):
@@ -2002,14 +2034,15 @@ class Calculator(Screen):
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Save button (optional duplicate — you can remove if redundant)
+        # Save button (duplicate of above, now styled consistently)
         save_button = RoundedButton(
             text="Save Additional Elements",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+            **button_style,
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center", valign="middle",
+            text_size=(250, None),
             on_press=self.save_additional_elements
         )
         layout.add_widget(save_button)
@@ -2024,11 +2057,13 @@ class Calculator(Screen):
     
     def on_pre_enter_additional(self, *args):
         """Repopulate inputs when re-entering the screen"""
-        self.is_carer_input.text = "yes" if self.user_data.get("carer") else "no"
-        self.disability_input.text = "yes" if self.user_data.get("disability") else "no"
+        # Only repopulate with "yes" if true, otherwise leave blank so hint text shows
+        self.is_carer_input.text = "yes" if self.user_data.get("carer") else ""
+        self.disability_input.text = "yes" if self.user_data.get("disability") else ""
         self.childcare_input.text = self.user_data.get("childcare", "")
 
 
+    
     def create_sanction_screen(self):
         # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
@@ -2101,14 +2136,15 @@ class Calculator(Screen):
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Save button (optional duplicate — you can remove if redundant)
+        # Save button (duplicate of above, now styled consistently)
         save_button = RoundedButton(
             text="Save Sanctions",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
+            **button_style,
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center", valign="middle",
+            text_size=(250, None),
             on_press=self.save_sanction_details
         )
         layout.add_widget(save_button)
@@ -2124,6 +2160,7 @@ class Calculator(Screen):
         """Repopulate inputs when re-entering the screen"""
         self.sanction_type_input.text = self.user_data.get("sanction_type", "")
         self.sanction_duration_input.text = self.user_data.get("sanction_duration", "")
+
 
 
     def create_advance_payments_screen(self):
@@ -2343,6 +2380,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
