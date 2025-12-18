@@ -1829,127 +1829,127 @@ class Calculator(Screen):
                 parent_layout.add_widget(self.mortgage_input)
 
 
-def create_children_screen(self):
-    # Outer anchor to center content vertically
-    outer = AnchorLayout(anchor_x="center", anchor_y="center")
-    layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
-    layout.bind(minimum_height=layout.setter("height"))
-    outer.add_widget(layout)
-
-    # Keep a reference for add_child_input
-    self.children_layout = layout
-
-    # Instruction label
-    instruction = SafeLabel(
-        text="Enter children details:",
-        font_size=18,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
-    )
-    instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-    layout.add_widget(instruction)
-
-    # Dynamic list of child DOB inputs
-    self.children_dob_inputs = []
-
-    # Add first child input by default if none saved
-    if not self.user_data.get("children"):
-        self.add_child_input()
-    else:
-        # Repopulate saved children
-        for dob in self.user_data["children"]:
-            self.add_child_input(prefill_text=dob)
-
-    # Spacer above buttons
-    layout.add_widget(Widget(size_hint_y=0.05))
-
-    # Shared button style for consistency
-    button_style = {
-        "size_hint": (None, None),
-        "size": (250, 60),
-        "background_color": (0, 0, 0, 0),
-        "background_normal": "",
-        "pos_hint": {"center_x": 0.5}
-    }
-
-    # Grouped buttons in a vertical box
-    buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-    for text, handler in [
-        ("Add Another Child", self.add_child_input),
-        ("Save Children Details", self.save_children_details),
-    ]:
-        btn = RoundedButton(
-            text=text,
+    def create_children_screen(self):
+        # Outer anchor to center content vertically
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
+    
+        # Keep a reference for add_child_input
+        self.children_layout = layout
+    
+        # Instruction label
+        instruction = SafeLabel(
+            text="Enter children details:",
+            font_size=18,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+        )
+        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(instruction)
+    
+        # Dynamic list of child DOB inputs
+        self.children_dob_inputs = []
+    
+        # Add first child input by default if none saved
+        if not self.user_data.get("children"):
+            self.add_child_input()
+        else:
+            # Repopulate saved children
+            for dob in self.user_data["children"]:
+                self.add_child_input(prefill_text=dob)
+    
+        # Spacer above buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
+    
+        # Shared button style for consistency
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
+    
+        # Grouped buttons in a vertical box
+        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+        for text, handler in [
+            ("Add Another Child", self.add_child_input),
+            ("Save Children Details", self.save_children_details),
+        ]:
+            btn = RoundedButton(
+                text=text,
+                **button_style,
+                font_size=20,
+                font_name="roboto",
+                color=get_color_from_hex("#005EA5"),
+                halign="center", valign="middle",
+                text_size=(250, None),
+                on_press=handler
+            )
+            buttons_box.add_widget(btn)
+    
+        layout.add_widget(buttons_box)
+    
+        # Spacer below buttons
+        layout.add_widget(Widget(size_hint_y=0.05))
+    
+        # Save button (duplicate of above, now styled consistently)
+        save_button = RoundedButton(
+            text="Save Children",
             **button_style,
             font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             halign="center", valign="middle",
             text_size=(250, None),
-            on_press=handler
+            on_press=self.save_children_details
         )
-        buttons_box.add_widget(btn)
-
-    layout.add_widget(buttons_box)
-
-    # Spacer below buttons
-    layout.add_widget(Widget(size_hint_y=0.05))
-
-    # Save button (duplicate of above, now styled consistently)
-    save_button = RoundedButton(
-        text="Save Children",
-        **button_style,
-        font_size=20,
-        font_name="roboto",
-        color=get_color_from_hex("#005EA5"),
-        halign="center", valign="middle",
-        text_size=(250, None),
-        on_press=self.save_children_details
-    )
-    layout.add_widget(save_button)
-
-    return outer
-
-def add_child_input(self, instance=None, prefill_text=""):
-    """Add a new child DOB input to the layout"""
-    child_input = TextInput(
-        hint_text="Child Date of Birth (DD-MM-YYYY)",
-        multiline=False, font_size=18,
-        size_hint=(None, None), size=(250, 50),
-        background_color=get_color_from_hex(WHITE),
-        foreground_color=get_color_from_hex(GOVUK_BLUE),
-        text=prefill_text
-    )
-    self.children_dob_inputs.append(child_input)
-    # Insert above the buttons box (last two widgets are spacer + buttons)
-    if hasattr(self, "children_layout"):
-        self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
-
-def save_children_details(self, instance):
-    """Save children DOBs into user_data"""
-    self.user_data["children"] = [
-        child.text.strip() for child in self.children_dob_inputs if child.text.strip()
-    ]
-
-def on_pre_enter_children(self, *args):
-    """Repopulate child DOB inputs when re-entering the screen"""
-    children = self.user_data.get("children", [])
-    # Ensure enough inputs exist
-    while len(self.children_dob_inputs) < len(children):
-        # Add extra inputs if needed
+        layout.add_widget(save_button)
+    
+        return outer
+    
+    def add_child_input(self, instance=None, prefill_text=""):
+        """Add a new child DOB input to the layout"""
         child_input = TextInput(
             hint_text="Child Date of Birth (DD-MM-YYYY)",
             multiline=False, font_size=18,
             size_hint=(None, None), size=(250, 50),
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            foreground_color=get_color_from_hex(GOVUK_BLUE),
+            text=prefill_text
         )
         self.children_dob_inputs.append(child_input)
-
-    # Repopulate texts
-    for i, child_input in enumerate(self.children_dob_inputs):
-        child_input.text = children[i] if i < len(children) else ""
+        # Insert above the buttons box (last two widgets are spacer + buttons)
+        if hasattr(self, "children_layout"):
+            self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
+    
+    def save_children_details(self, instance):
+        """Save children DOBs into user_data"""
+        self.user_data["children"] = [
+            child.text.strip() for child in self.children_dob_inputs if child.text.strip()
+        ]
+    
+    def on_pre_enter_children(self, *args):
+        """Repopulate child DOB inputs when re-entering the screen"""
+        children = self.user_data.get("children", [])
+        # Ensure enough inputs exist
+        while len(self.children_dob_inputs) < len(children):
+            # Add extra inputs if needed
+            child_input = TextInput(
+                hint_text="Child Date of Birth (DD-MM-YYYY)",
+                multiline=False, font_size=18,
+                size_hint=(None, None), size=(250, 50),
+                background_color=get_color_from_hex(WHITE),
+                foreground_color=get_color_from_hex(GOVUK_BLUE)
+            )
+            self.children_dob_inputs.append(child_input)
+    
+        # Repopulate texts
+        for i, child_input in enumerate(self.children_dob_inputs):
+            child_input.text = children[i] if i < len(children) else ""
 
     
     def create_additional_elements_screen(self):
@@ -2380,6 +2380,7 @@ def on_pre_enter_children(self, *args):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
