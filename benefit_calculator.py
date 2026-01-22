@@ -1410,7 +1410,7 @@ class Calculator(Screen):
             font_size=20,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")
+            color=get_color_from_hex(WHITE)
         )
         header_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         header_anchor.add_widget(header_label)
@@ -1435,7 +1435,7 @@ class Calculator(Screen):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")
+            color=get_color_from_hex(WHITE)
         )
         single_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
@@ -1444,7 +1444,7 @@ class Calculator(Screen):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")
+            color=get_color_from_hex(WHITE)
         )
         couple_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
@@ -1465,7 +1465,7 @@ class Calculator(Screen):
             font_size=20,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")
+            color=get_color_from_hex(WHITE)
         )
         claimant_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         claimant_anchor.add_widget(claimant_label)
@@ -1501,7 +1501,7 @@ class Calculator(Screen):
             font_size=20,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")
+            color=get_color_from_hex(WHITE)
         )
         partner_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         partner_anchor.add_widget(partner_label)
@@ -2425,6 +2425,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
