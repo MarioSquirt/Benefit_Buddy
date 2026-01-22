@@ -88,7 +88,7 @@ def wrapped_SafeLabel(text, font_size, height):
         halign="center",
         valign="middle",
         color=get_color_from_hex(WHITE),
-        size_hint_y=None,
+        _y=None,
         height=height
     )
     # Bind the label's width to the window width minus padding
@@ -99,7 +99,7 @@ def wrapped_SafeLabel(text, font_size, height):
     return label
 
 def build_header(layout, title_text):
-    top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
+    top_layout = BoxLayout(orientation="horizontal", _y=None, height=60)
     title = SafeLabel(
         text=title_text,
         font_size=50,
@@ -114,7 +114,7 @@ def build_header(layout, title_text):
     layout.add_widget(top_layout)
 
 def build_footer(layout):
-    bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25)
+    bottom_layout = BoxLayout(orientation="horizontal", _y=None, height=25)
     footer_label = SafeLabel(
         text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved",
         font_size=12,
@@ -1405,9 +1405,18 @@ class Calculator(Screen):
         layout.add_widget(header_anchor)
     
         # Horizontal layout for checkboxes and labels
-        claimant_type_layout = BoxLayout(orientation="horizontal", spacing=20, size_hint_y=None, height=50)
+        claimant_type_layout = BoxLayout(
+            orientation="horizontal",
+            spacing=20,
+            size_hint_y=None
+        )
+        claimant_type_layout.bind(
+            minimum_height=claimant_type_layout.setter("height")
+        )
+
         self.single_claimant_checkbox = CheckBox(group="claimant_type")
         self.couple_claim_checkbox = CheckBox(group="claimant_type")
+
     
         claimant_type_layout.add_widget(SafeLabel(
             text="Single", font_size=18, halign="center", color=get_color_from_hex("#005EA5")
@@ -1573,7 +1582,7 @@ class Calculator(Screen):
         self.income_input = TextInput(
             hint_text="Monthly income (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50),
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1583,7 +1592,7 @@ class Calculator(Screen):
         self.savings_input = TextInput(
             hint_text="Total savings (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1593,7 +1602,7 @@ class Calculator(Screen):
         self.debts_input = TextInput(
             hint_text="Outstanding debts (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1688,14 +1697,14 @@ class Calculator(Screen):
         self.rent_input = TextInput(
             hint_text="Enter monthly rent amount (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         self.mortgage_input = TextInput(
             hint_text="Enter monthly mortgage amount (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1717,7 +1726,7 @@ class Calculator(Screen):
         self.postcode_input = TextInput(
             hint_text="Enter postcode (e.g. SW1A 1AA)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1790,7 +1799,7 @@ class Calculator(Screen):
     def lookup_brma(self, postcode):
         """Lookup BRMA name for a given postcode from CSV."""
         import csv, os
-        csv_path = os.path.join(os.path.dirname(__file__), "brma_lookup.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "pcode_brma_lookup.csv")
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -1916,7 +1925,7 @@ class Calculator(Screen):
         child_input = TextInput(
             hint_text="Child Date of Birth (DD-MM-YYYY)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
             text=prefill_text
@@ -1941,7 +1950,7 @@ class Calculator(Screen):
             child_input = TextInput(
                 hint_text="Child Date of Birth (DD-MM-YYYY)",
                 multiline=False, font_size=18,
-                size_hint=(None, None), size=(250, 50),
+                size_hint=(1, None), height=50,
                 background_color=get_color_from_hex(WHITE),
                 foreground_color=get_color_from_hex(GOVUK_BLUE)
             )
@@ -1974,7 +1983,7 @@ class Calculator(Screen):
         self.is_carer_input = TextInput(
             hint_text="Are you a carer? (yes/no)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1984,7 +1993,7 @@ class Calculator(Screen):
         self.disability_input = TextInput(
             hint_text="Do you have a disability? (yes/no)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -1994,7 +2003,7 @@ class Calculator(Screen):
         self.childcare_input = TextInput(
             hint_text="Monthly childcare costs (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -2086,7 +2095,7 @@ class Calculator(Screen):
         self.sanction_type_input = TextInput(
             hint_text="Sanction type (e.g. low/medium/high)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -2096,7 +2105,7 @@ class Calculator(Screen):
         self.sanction_duration_input = TextInput(
             hint_text="Sanction duration (weeks)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -2185,7 +2194,7 @@ class Calculator(Screen):
         self.advance_amount_input = TextInput(
             hint_text="Advance payment amount (£)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
             text=self.user_data.get("advance_amount", "")
@@ -2196,7 +2205,7 @@ class Calculator(Screen):
         self.repayment_period_input = TextInput(
             hint_text="Repayment period (months)",
             multiline=False, font_size=18,
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
             text=self.user_data.get("repayment_period", "")
@@ -2236,18 +2245,6 @@ class Calculator(Screen):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Save button (optional duplicate — you can remove if redundant)
-        save_button = RoundedButton(
-            text="Save Advance Payment",
-            size_hint=(None, None), size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            font_size=20,
-            on_press=self.save_advance_payment
-        )
-        layout.add_widget(save_button)
     
         return outer
     
@@ -2380,6 +2377,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
