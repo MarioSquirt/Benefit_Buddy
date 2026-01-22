@@ -29,9 +29,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .git/lfs/objects
-          key: ${{ runner.os }}-git-lfs-${{ hashFiles('.gitattributes') }}
+          key: ${{ runner.os }}-git-lfs-${{ hashFiles('data/pcode_brma_lookup.csv') }}
           restore-keys: |
             ${{ runner.os }}-git-lfs-
+
 
       # 1️⃣d️⃣ Validate CSV (ensures real file is present)
       - name: Validate BRMA CSV
