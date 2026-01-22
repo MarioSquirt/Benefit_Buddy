@@ -1844,14 +1844,17 @@ class Calculator(Screen):
             
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
+                reader = csv.DictReader(f, delimiter=",")
+                print("CSV columns:", reader.fieldnames)
+                
                 for row in reader:
-                    if postcode in (
-                        row["PCD"].strip().upper(),
-                        row["PCD2"].strip().upper(),
-                        row["PCDS"].strip().upper()
-                    ):
-                        return row["brma_name"]
+                    pcd = row.get("PCD", "").strip().upper()
+                    pcd2 = row.get("PCD2", "").strip().upper()
+                    pcds = row.get("PCDS", "").strip().upper()
+
+                    if postcode in (pcd, pcd2, pcds):
+                        return row.get("brma_name", "BRMA found")
+                        
         except Exception as e:
             print(f"Error reading BRMA CSV: {e}")
             
@@ -2422,6 +2425,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
