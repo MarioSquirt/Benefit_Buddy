@@ -1798,18 +1798,25 @@ class Calculator(Screen):
     
     def lookup_brma(self, postcode):
         """Lookup BRMA name for a given postcode from CSV."""
-        import csv, os
-        csv_path = os.path.join(os.path.dirname(__file__), "pcode_brma_lookup.csv")
+        
+        csv_path = resource_find("pcode_brma_lookup.csv")
+        if not csv_path:
+            print("BRMA CSV not found in packaged resources")
+            return "BRMA not found"
+            
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if postcode in (row["PCD"].strip().upper(),
-                                    row["PCD2"].strip().upper(),
-                                    row["PCDS"].strip().upper()):
+                    if postcode in (
+                        row["PCD"].strip().upper(),
+                        row["PCD2"].strip().upper(),
+                        row["PCDS"].strip().upper()
+                    ):
                         return row["brma_name"]
         except Exception as e:
             print(f"Error reading BRMA CSV: {e}")
+            
         return "BRMA not found"
     
     def save_housing_details(self, instance):
@@ -2377,6 +2384,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
