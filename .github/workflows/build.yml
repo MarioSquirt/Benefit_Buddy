@@ -15,6 +15,22 @@ jobs:
       # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+      
+      # 1️⃣b️⃣ Pull LFS files
+      - name: Pull LFS files
+        run: git lfs pull
+      
+      # 1️⃣c️⃣ Cache Git LFS files
+      - name: Cache Git LFS files
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-git-lfs-${{ hashFiles('**/*.csv') }}
+          restore-keys: |
+            ${{ runner.os }}-git-lfs-
+
 
       # 2️⃣ Cache Python packages
       - name: Cache pip
