@@ -666,8 +666,8 @@ class MainScreenFullAccess(Screen):
         self.add_widget(layout)
 
         # Initialize attributes to avoid AttributeError
-        self.dob_input = TextInput(hint_text="DD-MM-YYYY")
-        self.partner_dob_input = TextInput(hint_text="DD-MM-YYYY")
+        self.dob_input = TextInput(hint_text="DD/MM/YYYY")
+        self.partner_dob_input = TextInput(hint_text="DD/MM/YYYY")
         self.relationship_input = TextInput(hint_text="single/couple")
         self.children_dob_inputs = []
         self.is_carer = False
@@ -777,7 +777,7 @@ class MainScreenFullAccess(Screen):
             dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
             partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
         except ValueError:
-            self.create_popup("Invalid Date", "Please enter DOBs in DD-MM-YYYY format").open()
+            self.create_popup("Invalid Date", "Please enter DOBs in DD/MM/YYYY format").open()
             return
 
         current_date = datetime.now()
@@ -801,7 +801,7 @@ class MainScreenFullAccess(Screen):
                 dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
                 children_dobs.append(dob)
             except ValueError:
-                self.create_popup("Invalid Date", "Children DOBs must be DD-MM-YYYY").open()
+                self.create_popup("Invalid Date", "Children DOBs must be DD/MM/YYYY").open()
                 return
 
         for i, dob in enumerate(children_dobs):
@@ -1967,8 +1967,8 @@ def create_claimant_details_screen(self):
     
     def add_child_input(self, instance=None, prefill_text=""):
         """Add a new child DOB input to the layout"""
-        child_input = TextInput(
-            hint_text="Child Date of Birth (DD-MM-YYYY)",
+        child_input = DOBInput(
+            hint_text="Child Date of Birth (DD/MM/YYYY)",
             multiline=False, font_size=18,
             size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
@@ -1992,8 +1992,8 @@ def create_claimant_details_screen(self):
         # Ensure enough inputs exist
         while len(self.children_dob_inputs) < len(children):
             # Add extra inputs if needed
-            child_input = TextInput(
-                hint_text="Child Date of Birth (DD-MM-YYYY)",
+            child_input = DOBInput(
+                hint_text="Child Date of Birth (DD/MM/YYYY)",
                 multiline=False, font_size=18,
                 size_hint=(1, None), height=50,
                 background_color=get_color_from_hex(WHITE),
@@ -2422,6 +2422,7 @@ def create_claimant_details_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
