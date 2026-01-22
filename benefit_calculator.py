@@ -1582,7 +1582,7 @@ class Calculator(Screen):
         self.income_input = TextInput(
             hint_text="Monthly income (£)",
             multiline=False, font_size=18,
-            size_hint=(1, None), height=50),
+            size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
@@ -2377,6 +2377,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
