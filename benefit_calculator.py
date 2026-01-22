@@ -1383,178 +1383,178 @@ class Calculator(Screen):
                     child.text = "Continue to Claimant Details"
 
         
-def on_couple_claim_checkbox_active(self, checkbox, value):
-    # Enable/disable partner fields based on checkbox
-    self.partner_name_input.disabled = not value
-    self.partner_dob_input.disabled = not value
+    def on_couple_claim_checkbox_active(self, checkbox, value):
+        # Enable/disable partner fields based on checkbox
+        self.partner_name_input.disabled = not value
+        self.partner_dob_input.disabled = not value
 
 
-def create_claimant_details_screen(self):
-    # Match other screens: wrap everything in an AnchorLayout
-    outer = AnchorLayout(anchor_x="center", anchor_y="center")
+    def create_claimant_details_screen(self):
+        # Match other screens: wrap everything in an AnchorLayout
+        outer = AnchorLayout(anchor_x="center", anchor_y="center")
 
-    # Main vertical layout
-    layout = BoxLayout(
-        orientation="vertical",
-        spacing=20,
-        padding=20,
-        size_hint=(1, None)
-    )
-    layout.bind(minimum_height=layout.setter("height"))
-    outer.add_widget(layout)
+        # Main vertical layout
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=20,
+            size_hint=(1, None)
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+        outer.add_widget(layout)
 
-    # Section header
-    header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=60)
-    header_label = SafeLabel(
-        text="Select Claimant Type",
-        font_size=20,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")
-    )
-    header_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-    header_anchor.add_widget(header_label)
-    layout.add_widget(header_anchor)
+        # Section header
+        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=60)
+        header_label = SafeLabel(
+            text="Select Claimant Type",
+            font_size=20,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        header_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        header_anchor.add_widget(header_label)
+        layout.add_widget(header_anchor)
 
-    # Horizontal layout for checkboxes and labels
-    claimant_type_layout = BoxLayout(
-        orientation="horizontal",
-        spacing=20,
-        size_hint_y=None
-    )
-    claimant_type_layout.bind(
-        minimum_height=claimant_type_layout.setter("height")
-    )
+        # Horizontal layout for checkboxes and labels
+        claimant_type_layout = BoxLayout(
+            orientation="horizontal",
+            spacing=20,
+            size_hint_y=None
+        )
+        claimant_type_layout.bind(
+            minimum_height=claimant_type_layout.setter("height")
+        )
 
-    self.single_claimant_checkbox = CheckBox(group="claimant_type")
-    self.couple_claim_checkbox = CheckBox(group="claimant_type")
+        self.single_claimant_checkbox = CheckBox(group="claimant_type")
+        self.couple_claim_checkbox = CheckBox(group="claimant_type")
 
-    # Labels for checkboxes
-    single_label = SafeLabel(
-        text="Single",
-        font_size=18,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")
-    )
-    single_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        # Labels for checkboxes
+        single_label = SafeLabel(
+            text="Single",
+            font_size=18,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        single_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
-    couple_label = SafeLabel(
-        text="Couple",
-        font_size=18,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")
-    )
-    couple_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        couple_label = SafeLabel(
+            text="Couple",
+            font_size=18,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        couple_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
-    claimant_type_layout.add_widget(single_label)
-    claimant_type_layout.add_widget(self.single_claimant_checkbox)
-    claimant_type_layout.add_widget(couple_label)
-    claimant_type_layout.add_widget(self.couple_claim_checkbox)
+        claimant_type_layout.add_widget(single_label)
+        claimant_type_layout.add_widget(self.single_claimant_checkbox)
+        claimant_type_layout.add_widget(couple_label)
+        claimant_type_layout.add_widget(self.couple_claim_checkbox)
 
-    layout.add_widget(claimant_type_layout)
+        layout.add_widget(claimant_type_layout)
 
-    # Bind couple checkbox to enable partner fields
-    self.couple_claim_checkbox.bind(active=self.on_couple_claim_checkbox_active)
+        # Bind couple checkbox to enable partner fields
+        self.couple_claim_checkbox.bind(active=self.on_couple_claim_checkbox_active)
 
-    # Claimant details section
-    claimant_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
-    claimant_label = SafeLabel(
-        text="Enter Claimant Details",
-        font_size=20,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")
-    )
-    claimant_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-    claimant_anchor.add_widget(claimant_label)
-    layout.add_widget(claimant_anchor)
+        # Claimant details section
+        claimant_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
+        claimant_label = SafeLabel(
+            text="Enter Claimant Details",
+            font_size=20,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        claimant_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        claimant_anchor.add_widget(claimant_label)
+        layout.add_widget(claimant_anchor)
 
-    # Full-width inputs (matching other screens)
-    self.name_input = CustomTextInput(
-        hint_text="Name",
-        multiline=False,
-        font_size=18,
-        size_hint=(1, None),
-        height=50,
-        background_color=get_color_from_hex(WHITE),
-        foreground_color=get_color_from_hex(GOVUK_BLUE)
-    )
-    layout.add_widget(self.name_input)
+        # Full-width inputs (matching other screens)
+        self.name_input = CustomTextInput(
+            hint_text="Name",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.name_input)
 
-    self.dob_input = DOBInput(
-        hint_text="DD/MM/YYYY",
-        multiline=False,
-        font_size=18,
-        size_hint=(1, None),
-        height=50,
-        background_color=get_color_from_hex(WHITE),
-        foreground_color=get_color_from_hex(GOVUK_BLUE)
-    )
-    layout.add_widget(self.dob_input)
+        self.dob_input = DOBInput(
+            hint_text="DD/MM/YYYY",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.dob_input)
 
-    # Partner details section
-    partner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
-    partner_label = SafeLabel(
-        text="Enter Partner Details",
-        font_size=20,
-        halign="center",
-        valign="middle",
-        color=get_color_from_hex("#005EA5")
-    )
-    partner_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-    partner_anchor.add_widget(partner_label)
-    layout.add_widget(partner_anchor)
+        # Partner details section
+        partner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
+        partner_label = SafeLabel(
+            text="Enter Partner Details",
+            font_size=20,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        partner_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        partner_anchor.add_widget(partner_label)
+        layout.add_widget(partner_anchor)
 
-    self.partner_name_input = CustomTextInput(
-        hint_text="Partner Name",
-        multiline=False,
-        font_size=18,
-        size_hint=(1, None),
-        height=50,
-        disabled=True,
-        background_color=get_color_from_hex(WHITE),
-        foreground_color=get_color_from_hex(GOVUK_BLUE)
-    )
-    layout.add_widget(self.partner_name_input)
+        self.partner_name_input = CustomTextInput(
+            hint_text="Partner Name",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            disabled=True,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.partner_name_input)
 
-    self.partner_dob_input = DOBInput(
-        hint_text="DD/MM/YYYY",
-        multiline=False,
-        font_size=18,
-        size_hint=(1, None),
-        height=50,
-        disabled=True,
-        background_color=get_color_from_hex(WHITE),
-        foreground_color=get_color_from_hex(GOVUK_BLUE)
-    )
-    layout.add_widget(self.partner_dob_input)
+        self.partner_dob_input = DOBInput(
+            hint_text="DD/MM/YYYY",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            disabled=True,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.partner_dob_input)
 
-    # Shared button style for consistency
-    button_style = {
-        "size_hint": (None, None),
-        "size": (250, 60),
-        "background_color": (0, 0, 0, 0),
-        "background_normal": "",
-        "pos_hint": {"center_x": 0.5}
-    }
+        # Shared button style for consistency
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5}
+        }
 
-    # Save button
-    save_button = RoundedButton(
-        text="Save Claimant Details",
-        **button_style,
-        font_size=20,
-        font_name="roboto",
-        color=get_color_from_hex("#005EA5"),
-        halign="center",
-        valign="middle",
-        text_size=(250, None),
-        on_press=self.save_claimant_details
-    )
-    layout.add_widget(save_button)
+        # Save button
+        save_button = RoundedButton(
+            text="Save Claimant Details",
+            **button_style,
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            on_press=self.save_claimant_details
+        )
+        layout.add_widget(save_button)
 
-    return outer
+        return outer
 
     
     def save_claimant_details(self, instance):
@@ -2422,6 +2422,7 @@ def create_claimant_details_screen(self):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
