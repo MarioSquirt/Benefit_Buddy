@@ -88,7 +88,7 @@ def wrapped_SafeLabel(text, font_size, height):
         halign="center",
         valign="middle",
         color=get_color_from_hex(WHITE),
-        _y=None,
+        size_hint_y=None,
         height=height
     )
     # Bind the label's width to the window width minus padding
@@ -99,7 +99,7 @@ def wrapped_SafeLabel(text, font_size, height):
     return label
 
 def build_header(layout, title_text):
-    top_layout = BoxLayout(orientation="horizontal", _y=None, height=60)
+    top_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=60)
     title = SafeLabel(
         text=title_text,
         font_size=50,
@@ -114,7 +114,7 @@ def build_header(layout, title_text):
     layout.add_widget(top_layout)
 
 def build_footer(layout):
-    bottom_layout = BoxLayout(orientation="horizontal", _y=None, height=25)
+    bottom_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=25)
     footer_label = SafeLabel(
         text="Benefit Buddy © 2025   Version 1.0   All Rights Reserved",
         font_size=12,
@@ -2377,6 +2377,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
