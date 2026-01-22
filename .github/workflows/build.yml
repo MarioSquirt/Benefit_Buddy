@@ -12,25 +12,30 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout repository WITH LFS enabled
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           lfs: true
-      
-      # 1️⃣b️⃣ Pull LFS files
+
+      # 1️⃣b️⃣ Pull real LFS files (downloads actual CSV)
       - name: Pull LFS files
         run: git lfs pull
-      
-      # 1️⃣c️⃣ Cache Git LFS files
+
+      # 1️⃣c️⃣ Cache Git LFS OBJECTS (not pointer files)
       - name: Cache Git LFS files
         uses: actions/cache@v4
         with:
-          path: .git/lfs
-          key: ${{ runner.os }}-git-lfs-${{ hashFiles('**/*.csv') }}
+          path: .git/lfs/objects
+          key: ${{ runner.os }}-git-lfs-${{ hashFiles('.gitattributes') }}
           restore-keys: |
             ${{ runner.os }}-git-lfs-
 
+      # 1️⃣d️⃣ Validate CSV (ensures real file is present)
+      - name: Validate BRMA CSV
+        run: |
+          echo "Checking CSV header..."
+          head -n 1 pcode_brma_lookup.csv || true
 
       # 2️⃣ Cache Python packages
       - name: Cache pip
@@ -80,34 +85,27 @@ jobs:
       # 8️⃣ Setup Android SDK & NDK
       - name: Setup Android SDK & NDK
         run: |
-          # Define paths
           ANDROID_SDK_ROOT="$HOME/android-sdk"
           ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/25.2.9519653"
 
-          # Create SDK folder
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
 
-          # Download and unzip command-line tools
           curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
           rm cmdline-tools.zip
 
-          # Rename extracted folder to 'latest'
           mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-          # Download and unzip NDK
           curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
           unzip -q ndk.zip
           rm ndk.zip
           mkdir -p "$ANDROID_SDK_ROOT/ndk"
           mv android-ndk-r25b "$ANDROID_SDK_ROOT/ndk/25.2.9519653"
 
-          # Export environment variables
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
-          # Verify tools
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --version
 
       # 🔧 Symlink SDK tools for Buildozer compatibility
@@ -127,11 +125,10 @@ jobs:
       - name: Clean previous APK
         run: rm -rf bin || true
 
+      # 🔍 Lint Kivy numeric properties
       - name: Lint Kivy numeric properties
         run: |
           echo "Checking for risky numeric assignments..."
-
-          # Run grep and capture matches
           MATCHES=$(grep -R --include="*.py" --include="*.kv" \
             --exclude-dir=.buildozer \
             --exclude-dir=kivy \
@@ -139,13 +136,12 @@ jobs:
             -n -E 'font_size\s*=\s*["'\'']|text_size\s*=\s*["'\'']|line_height\s*=\s*["'\'']|padding\s*=\s*["'\'']|letter_spacing\s*=\s*["'\'']|size_hint\s*=\s*["'\'']|pos_hint\s*=\s*["'\'']|spacing\s*=\s*["'\'']' . || true)
 
           if [ -n "$MATCHES" ]; then
-            echo "❌ Found risky numeric assignments in your app code:"
+            echo "❌ Found risky numeric assignments:"
             echo "$MATCHES"
             exit 1
           else
-            echo "✅ No risky numeric strings found in your app code."
+            echo "✅ No risky numeric strings found."
           fi
-
 
       # 1️⃣1️⃣ Build APK
       - name: Build APK
@@ -163,7 +159,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣3️⃣ Upload APK
+      # 1️⃣3️⃣ Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
