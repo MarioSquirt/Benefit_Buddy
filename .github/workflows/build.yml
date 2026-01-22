@@ -38,7 +38,7 @@ jobs:
       - name: Validate BRMA CSV
         run: |
           echo "Checking CSV header..."
-          head -n 1 pcode_brma_lookup.csv || true
+          head -n 1 data/pcode_brma_lookup.csv || true
 
       # 2️⃣ Cache Python packages
       - name: Cache pip
