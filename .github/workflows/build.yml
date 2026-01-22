@@ -18,7 +18,7 @@ jobs:
         with:
           lfs: true
           fetch-depth: 0
-          sparse-checkout: ""
+          sparse-checkout: []
           sparse-checkout-cone-mode: false
 
       # 1️⃣b️⃣ Pull real LFS files (downloads actual CSV)
