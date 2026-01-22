@@ -1119,7 +1119,7 @@ class Calculator(Screen):
         # Spinner
         spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.screen_spinner = Spinner(
-            text="Introduction ▼",
+            text="Introduction",
             values=[name for name, _ in self.screens],
             size_hint=(None, None), size=(250, 50),
             background_normal="",
@@ -2425,6 +2425,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
