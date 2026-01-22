@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       # 1️⃣b️⃣ Pull real LFS files (downloads actual CSV)
       - name: Pull LFS files
