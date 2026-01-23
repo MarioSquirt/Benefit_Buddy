@@ -363,7 +363,6 @@ class GovUkSpinner(Spinner):
             background_normal="",
             background_color=get_color_from_hex("#FFDD00"),
             color=get_color_from_hex("#005EA5"),
-            foreground_color=get_color_from_hex("#005EA5"),
             disabled_color=get_color_from_hex("#005EA5"),
             background_disabled_normal="",
             font_size=20,
@@ -2560,6 +2559,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
