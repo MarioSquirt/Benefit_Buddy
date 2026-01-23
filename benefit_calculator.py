@@ -355,6 +355,34 @@ class CustomSpinnerOption(SpinnerOption):
     def _update_text_size(self, *args):
         self.text_size = (self.width - 20, None)
 
+class GovUkSpinner(Spinner):
+    def __init__(self, **kwargs):
+        super().__init__(
+            size_hint=(None, None),
+            size=(250, 50),
+            background_normal="",
+            background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
+            foreground_color=get_color_from_hex("#005EA5"),
+            disabled_color=get_color_from_hex("#005EA5"),
+            background_disabled_normal="",
+            font_size=20,
+            font_name="roboto",
+            option_cls=CustomSpinnerOption,
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5},
+            **kwargs
+        )
+
+        self.dropdown_cls = lambda **kw: CustomSpinnerOption(
+            background_color=get_color_from_hex("#FFFFFF"),
+            color=get_color_from_hex("#005EA5"),
+            **kw
+        )
+
+
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
     def __init__(self, **kwargs):
@@ -378,6 +406,57 @@ class PNGSequenceAnimationWidget(Image):
             return
         self.source = self.frames[self.current_frame]
         self.current_frame = (self.current_frame + 1) % len(self.frames)
+
+def show_loading(self, message="Loading..."):
+    if hasattr(self, "loading_overlay") and self.loading_overlay.parent:
+        return
+
+    overlay = AnchorLayout(size_hint=(1, 1), opacity=0)
+
+    box = BoxLayout(
+        orientation="vertical",
+        size_hint=(None, None),
+        size=(300, 180),
+        padding=20,
+        spacing=15,
+        pos_hint={"center_x": 0.5, "center_y": 0.5},
+    )
+
+    with box.canvas.before:
+        Color(0, 0, 0, 0.75)
+        self.bg_rect = Rectangle(size=box.size, pos=box.pos)
+    box.bind(size=lambda inst, val: setattr(self.bg_rect, "size", val))
+    box.bind(pos=lambda inst, val: setattr(self.bg_rect, "pos", val))
+
+    loader = PNGSequenceAnimationWidget(size_hint=(None, None), size=(80, 80))
+    box.add_widget(loader)
+
+    label = Label(
+        text=message,
+        font_size=22,
+        font_name="roboto",
+        color=get_color_from_hex("#FFFFFF"),
+        halign="center",
+        valign="middle",
+        text_size=(280, None)
+    )
+    box.add_widget(label)
+
+    overlay.add_widget(box)
+    self.loading_overlay = overlay
+    self.root.add_widget(overlay)
+
+    Animation(opacity=1, duration=0.25).start(overlay)
+
+
+def hide_loading(self):
+    if not hasattr(self, "loading_overlay") or not self.loading_overlay.parent:
+        return
+
+    overlay = self.loading_overlay
+    anim = Animation(opacity=0, duration=0.25)
+    anim.bind(on_complete=lambda *args: self.root.remove_widget(overlay))
+    anim.start(overlay)
 
 
 # Define the Settings Screen
@@ -1105,21 +1184,21 @@ class Calculator(Screen):
 
         # Define screens
         self.screens = [
-            ("Introduction", self.create_intro_screen),
-            ("Claimant Details", self.create_claimant_details_screen),
-            ("Finances", self.create_finances_screen),
-            ("Housing", self.create_housing_screen),
-            ("Children", self.create_children_screen),
-            ("Additional Elements", self.create_additional_elements_screen),
-            ("Sanctions", self.create_sanction_screen),
-            ("Advanced Payment", self.create_advance_payments_screen),
-            ("Summary", self.create_calculate_screen)
+            ("📄 Introduction", self.create_intro_screen),
+            ("👤 Claimant Details", self.create_claimant_details_screen),
+            ("💷 Finances", self.create_finances_screen),
+            ("🏡 Housing", self.create_housing_screen),
+            ("🧒 Children", self.create_children_screen),
+            ("➕ Additional Elements", self.create_additional_elements_screen),
+            ("⚠️ Sanctions", self.create_sanction_screen),
+            ("💰 Advanced Payment", self.create_advance_payments_screen),
+            ("📊 Summary", self.create_calculate_screen)
         ]
 
         # Spinner
         spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.screen_spinner = Spinner(
-            text="Introduction",
+            text="📄 Introduction",
             values=[name for name, _ in self.screens],
             size_hint=(None, None), size=(250, 50),
             background_normal="",
@@ -1146,23 +1225,23 @@ class Calculator(Screen):
                     widget = builder()
                     self.screen_content.add_widget(widget)
                     # Manually trigger the right pre_enter
-                    if name == "Introduction":
+                    if name == "📄 Introduction":
                         self.on_pre_enter_intro()
-                    elif name == "Claimant Details":
+                    elif name == "👤 Claimant Details":
                         self.on_pre_enter_claimant()
-                    elif name == "Finances":
+                    elif name == "💷 Finances":
                         self.on_pre_enter_finances()
-                    elif name == "Housing":
+                    elif name == "🏡 Housing":
                         self.on_pre_enter_housing()
-                    elif name == "Children":
+                    elif name == "🧒 Children":
                         self.on_pre_enter_children()
-                    elif name == "Additional Elements":
+                    elif name == "➕ Additional Elements":
                         self.on_pre_enter_additional()
-                    elif name == "Sanctions":
+                    elif name == "⚠️ Sanctions":
                         self.on_pre_enter_sanctions()
-                    elif name == "Advanced Payment":
+                    elif name == "💰 Advanced Payments":
                         self.on_pre_enter_advance()
-                    elif name == "Summary":
+                    elif name == "📊 Summary":
                         self.on_pre_enter_summary()
                     break
 
@@ -1371,7 +1450,7 @@ class Calculator(Screen):
         """Mark intro as seen and move to claimant details"""
         self.user_data["intro_seen"] = True
         # Switch spinner to Claimant Details
-        self.screen_spinner.text = "Claimant Details ▼"
+        self.screen_spinner.text = "👤 Claimant Details"
     
     def on_pre_enter_intro(self, *args):
         """Repopulate intro state when re-entering"""
@@ -1695,34 +1774,27 @@ class Calculator(Screen):
     
     def create_housing_screen(self):
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=20,
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Shared GOV.UK spinner style
-        spinner_style = {
-            "size_hint": (None, None),
-            "size": (250, 50),
-            "background_normal": "",
-            "background_color": get_color_from_hex("#FFDD00"),
-            "color": get_color_from_hex("#005EA5"),
-            "font_size": 20,
-            "font_name": "roboto",
-            "option_cls": CustomSpinnerOption,
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None),
-            "pos_hint": {"center_x": 0.5}
-        }
-    
-        # -----------------------------
-        # HOUSING TYPE SPINNER
-        # -----------------------------
+        # ---------------------------------------------------------
+        # HOUSING TYPE SPINNER (with emojis)
+        # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.housing_type_spinner = Spinner(
-            text=self.user_data.get("housing_type", "Rent").capitalize(),
-            values=("Rent", "Own", "Shared Accommodation"),
-            **spinner_style
+    
+        self.housing_type_spinner = GovUkSpinner(
+            text="Housing Type",
+            values=(
+                "🏠 Rent",
+                "🔑 Own",
+                "👥 Shared Accommodation"
+            )
         )
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
@@ -1730,17 +1802,22 @@ class Calculator(Screen):
         # Rent/Mortgage inputs
         self.rent_input = TextInput(
             hint_text="Enter monthly rent amount (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
         )
+    
         self.mortgage_input = TextInput(
             hint_text="Enter monthly mortgage amount (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
         )
     
         def update_amount_input(spinner, value):
@@ -1749,53 +1826,55 @@ class Calculator(Screen):
             if self.mortgage_input.parent:
                 layout.remove_widget(self.mortgage_input)
     
-            if value.lower() == "rent":
+            if "Rent" in value:
                 layout.add_widget(self.rent_input)
-            elif value.lower() == "own":
+            elif "Own" in value:
                 layout.add_widget(self.mortgage_input)
     
         self.housing_type_spinner.bind(text=update_amount_input)
         update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # POSTCODE INPUT
-        # -----------------------------
+        # ---------------------------------------------------------
         self.postcode_input = TextInput(
             hint_text="Enter postcode (e.g. SW1A 1AA)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
         )
         layout.add_widget(self.postcode_input)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # LOCATION SPINNER
-        # -----------------------------
+        # ---------------------------------------------------------
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.location_spinner = Spinner(
-            text=self.user_data.get("location", "Select Location"),
-            values=("England", "Scotland", "Wales"),
-            **spinner_style
+    
+        self.location_spinner = GovUkSpinner(
+            text="Select Location",
+            values=("England", "Scotland", "Wales")
         )
         location_anchor.add_widget(self.location_spinner)
         layout.add_widget(location_anchor)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # BRMA SPINNER
-        # -----------------------------
+        # ---------------------------------------------------------
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.brma_spinner = Spinner(
-            text=self.user_data.get("brma", "Select BRMA"),
-            values=["Select BRMA"],
-            **spinner_style
+    
+        self.brma_spinner = GovUkSpinner(
+            text="Select BRMA",
+            values=["Select BRMA"]
         )
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
-        # -----------------------------
+        # ---------------------------------------------------------
         def populate_brmas_for_country(spinner, country):
             csv_path = resource_find("pcode_brma_lookup.csv")
             if not csv_path:
@@ -1830,9 +1909,9 @@ class Calculator(Screen):
     
         self.location_spinner.bind(text=populate_brmas_for_country)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # FIND BRMA BUTTON
-        # -----------------------------
+        # ---------------------------------------------------------
         find_brma_btn = RoundedButton(
             text="Find BRMA",
             size_hint=(None, None),
@@ -1850,22 +1929,26 @@ class Calculator(Screen):
         layout.add_widget(find_brma_btn)
     
         def on_find_brma(instance):
-            find_brma_btn.text = "Finding BRMA"
             postcode = self.postcode_input.text.strip().upper()
     
-            brma_name = self.lookup_brma(postcode)
+            self.show_loading("Finding BRMA...")
     
-            self.brma_spinner.values = [brma_name]
-            self.brma_spinner.text = brma_name
-            self.brma_spinner._update_dropdown()
+            def do_lookup(dt):
+                brma_name = self.lookup_brma(postcode)
     
-            find_brma_btn.text = "Find BRMA"
+                self.brma_spinner.values = [brma_name]
+                self.brma_spinner.text = brma_name
+                self.brma_spinner._update_dropdown()
+    
+                self.hide_loading()
+    
+            Clock.schedule_once(do_lookup, 0.1)
     
         find_brma_btn.bind(on_press=on_find_brma)
     
-        # -----------------------------
+        # ---------------------------------------------------------
         # SAVE BUTTON
-        # -----------------------------
+        # ---------------------------------------------------------
         save_button = RoundedButton(
             text="Save Housing",
             size_hint=(None, None),
@@ -1884,7 +1967,6 @@ class Calculator(Screen):
         layout.add_widget(save_button)
     
         return outer
-
     
     
     def lookup_brma(self, postcode):
@@ -2478,6 +2560,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
