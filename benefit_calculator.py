@@ -1712,7 +1712,7 @@ class Calculator(Screen):
             "size_hint": (None, None),
             "size": (250, 50),
             "background_normal": "",
-            "background_color": (0, 0, 0, 0),
+            "background_color": get_color_from_hex("#F3F2F1"),  # visible background
             "color": get_color_from_hex("#005EA5"),
             "font_size": 20,
             "font_name": "roboto",
@@ -1720,7 +1720,9 @@ class Calculator(Screen):
             "pos_hint": {"center_x": 0.5}
         }
     
-        # Housing type spinner
+        # -----------------------------
+        # HOUSING TYPE SPINNER
+        # -----------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         self.housing_type_spinner = Spinner(
             text=self.user_data.get("housing_type", "Rent").capitalize(),
@@ -1752,6 +1754,7 @@ class Calculator(Screen):
                 layout.remove_widget(self.rent_input)
             if self.mortgage_input.parent:
                 layout.remove_widget(self.mortgage_input)
+    
             if value.lower() == "rent":
                 layout.add_widget(self.rent_input)
             elif value.lower() == "own":
@@ -1760,7 +1763,9 @@ class Calculator(Screen):
         self.housing_type_spinner.bind(text=update_amount_input)
         update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
     
-        # Postcode input
+        # -----------------------------
+        # POSTCODE INPUT
+        # -----------------------------
         self.postcode_input = TextInput(
             hint_text="Enter postcode (e.g. SW1A 1AA)",
             multiline=False, font_size=18,
@@ -1770,7 +1775,74 @@ class Calculator(Screen):
         )
         layout.add_widget(self.postcode_input)
     
-        # Find BRMA button
+        # -----------------------------
+        # LOCATION SPINNER
+        # -----------------------------
+        location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.location_spinner = Spinner(
+            text=self.user_data.get("location", "Select Location"),
+            values=("England", "Scotland", "Wales"),
+            **spinner_style
+        )
+        self.location_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        location_anchor.add_widget(self.location_spinner)
+        layout.add_widget(location_anchor)
+    
+        # -----------------------------
+        # BRMA SPINNER
+        # -----------------------------
+        brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.brma_spinner = Spinner(
+            text=self.user_data.get("brma", "Select BRMA"),
+            values=["Select BRMA"],
+            **spinner_style
+        )
+        self.brma_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        brma_anchor.add_widget(self.brma_spinner)
+        layout.add_widget(brma_anchor)
+    
+        # -----------------------------
+        # AUTO-POPULATE BRMA BASED ON LOCATION
+        # -----------------------------
+        def populate_brmas_for_country(spinner, country):
+            csv_path = resource_find("pcode_brma_lookup.csv")
+            if not csv_path:
+                print("BRMA CSV not found")
+                return
+    
+            brmas = set()
+    
+            try:
+                with open(csv_path, newline="", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        brma = row.get("brma_name", "").strip()
+                        if not brma:
+                            continue
+    
+                        # Country filtering
+                        if country == "England" and row.get("country") == "E":
+                            brmas.add(brma)
+                        elif country == "Scotland" and row.get("country") == "S":
+                            brmas.add(brma)
+                        elif country == "Wales" and row.get("country") == "W":
+                            brmas.add(brma)
+    
+            except Exception as e:
+                print("Error populating BRMAs:", e)
+    
+            # Update spinner
+            if brmas:
+                sorted_brmas = sorted(brmas)
+                self.brma_spinner.values = sorted_brmas
+                self.brma_spinner.text = sorted_brmas[0]
+                self.brma_spinner._update_dropdown()
+    
+        self.location_spinner.bind(text=populate_brmas_for_country)
+    
+        # -----------------------------
+        # FIND BRMA BUTTON
+        # -----------------------------
         find_brma_btn = RoundedButton(
             text="Find BRMA",
             **button_style,
@@ -1786,40 +1858,20 @@ class Calculator(Screen):
             find_brma_btn.text = "Finding BRMA"
             postcode = self.postcode_input.text.strip().upper()
     
-            # Lookup BRMA from CSV (checks PCD, PCD2, PCDS)
             brma_name = self.lookup_brma(postcode)
     
-            # Update spinner with result
+            # Update BRMA spinner with exact match
             self.brma_spinner.values = [brma_name]
             self.brma_spinner.text = brma_name
+            self.brma_spinner._update_dropdown()
     
             find_brma_btn.text = "Find BRMA"
     
         find_brma_btn.bind(on_press=on_find_brma)
     
-        # Location spinner
-        location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.location_spinner = Spinner(
-            text=self.user_data.get("location", "Select Location"),
-            values=("England", "Scotland", "Wales"),
-            **spinner_style
-        )
-        self.location_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        location_anchor.add_widget(self.location_spinner)
-        layout.add_widget(location_anchor)
-    
-        # BRMA spinner
-        brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.brma_spinner = Spinner(
-            text=self.user_data.get("brma", "Select BRMA"),
-            values=["Select BRMA"],  # default placeholder
-            **spinner_style
-        )
-        self.brma_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        brma_anchor.add_widget(self.brma_spinner)
-        layout.add_widget(brma_anchor)
-    
-        # Save button
+        # -----------------------------
+        # SAVE BUTTON
+        # -----------------------------
         save_button = RoundedButton(
             text="Save Housing",
             **button_style,
@@ -1834,31 +1886,32 @@ class Calculator(Screen):
     
         return outer
     
+    
     def lookup_brma(self, postcode):
         """Lookup BRMA name for a given postcode from CSV."""
-        
         csv_path = resource_find("pcode_brma_lookup.csv")
         if not csv_path:
             print("BRMA CSV not found in packaged resources")
             return "BRMA not found"
-            
+    
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f, delimiter=",")
+                reader = csv.DictReader(f)
                 print("CSV columns:", reader.fieldnames)
-                
+    
                 for row in reader:
                     pcd = row.get("PCD", "").strip().upper()
                     pcd2 = row.get("PCD2", "").strip().upper()
                     pcds = row.get("PCDS", "").strip().upper()
-
+    
                     if postcode in (pcd, pcd2, pcds):
                         return row.get("brma_name", "BRMA found")
-                        
+    
         except Exception as e:
             print(f"Error reading BRMA CSV: {e}")
-            
+    
         return "BRMA not found"
+
     
     def save_housing_details(self, instance):
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
@@ -2425,6 +2478,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
