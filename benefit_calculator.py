@@ -1694,29 +1694,24 @@ class Calculator(Screen):
 
     
     def create_housing_screen(self):
-        # Outer anchor to center content vertically
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
         layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Shared style dicts
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_normal": "",
-            "background_color": (0, 0, 0, 0),
-            "pos_hint": {"center_x": 0.5}
-        }
+        # Shared GOV.UK spinner style
         spinner_style = {
             "size_hint": (None, None),
             "size": (250, 50),
             "background_normal": "",
-            "background_color": get_color_from_hex("#F3F2F1"),  # visible background
+            "background_color": get_color_from_hex("#FFDD00"),
             "color": get_color_from_hex("#005EA5"),
             "font_size": 20,
             "font_name": "roboto",
             "option_cls": CustomSpinnerOption,
+            "halign": "center",
+            "valign": "middle",
+            "text_size": (250, None),
             "pos_hint": {"center_x": 0.5}
         }
     
@@ -1729,7 +1724,6 @@ class Calculator(Screen):
             values=("Rent", "Own", "Shared Accommodation"),
             **spinner_style
         )
-        self.housing_type_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
     
@@ -1784,7 +1778,6 @@ class Calculator(Screen):
             values=("England", "Scotland", "Wales"),
             **spinner_style
         )
-        self.location_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         location_anchor.add_widget(self.location_spinner)
         layout.add_widget(location_anchor)
     
@@ -1797,7 +1790,6 @@ class Calculator(Screen):
             values=["Select BRMA"],
             **spinner_style
         )
-        self.brma_spinner.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
     
@@ -1820,7 +1812,6 @@ class Calculator(Screen):
                         if not brma:
                             continue
     
-                        # Country filtering
                         if country == "England" and row.get("country") == "E":
                             brmas.add(brma)
                         elif country == "Scotland" and row.get("country") == "S":
@@ -1831,7 +1822,6 @@ class Calculator(Screen):
             except Exception as e:
                 print("Error populating BRMAs:", e)
     
-            # Update spinner
             if brmas:
                 sorted_brmas = sorted(brmas)
                 self.brma_spinner.values = sorted_brmas
@@ -1845,12 +1835,17 @@ class Calculator(Screen):
         # -----------------------------
         find_brma_btn = RoundedButton(
             text="Find BRMA",
-            **button_style,
+            size_hint=(None, None),
+            size=(250, 60),
+            background_normal="",
+            background_color=(0, 0, 0, 0),
             font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            halign="center", valign="middle",
-            text_size=(250, None)
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5}
         )
         layout.add_widget(find_brma_btn)
     
@@ -1860,7 +1855,6 @@ class Calculator(Screen):
     
             brma_name = self.lookup_brma(postcode)
     
-            # Update BRMA spinner with exact match
             self.brma_spinner.values = [brma_name]
             self.brma_spinner.text = brma_name
             self.brma_spinner._update_dropdown()
@@ -1874,17 +1868,23 @@ class Calculator(Screen):
         # -----------------------------
         save_button = RoundedButton(
             text="Save Housing",
-            **button_style,
+            size_hint=(None, None),
+            size=(250, 60),
+            background_normal="",
+            background_color=(0, 0, 0, 0),
             font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
-            halign="center", valign="middle",
+            halign="center",
+            valign="middle",
             text_size=(250, None),
+            pos_hint={"center_x": 0.5},
             on_press=self.save_housing_details
         )
         layout.add_widget(save_button)
     
         return outer
+
     
     
     def lookup_brma(self, postcode):
@@ -2478,6 +2478,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
