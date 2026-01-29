@@ -48,6 +48,19 @@ from datetime import datetime
 
 
 
+ICON_PATHS = {
+    "Introduction": "images/icons/Introduction-icon/Introduction-32px.png",
+    "Claimant Details": "images/icons/ClaimantDetails-icon/ClaimantDetails-32px.png",
+    "Finances": "images/icons/Finances-icon/Finances-32px.png",
+    "Housing": "images/icons/Housing-icon/Housing-32px.png",
+    "Children": "images/icons/Children-icon/Children-32px.png",
+    "Additional Elements": "images/icons/AdditionalElements-icon/AdditionalElements-32px.png",
+    "Sanctions": "images/icons/Sanctions-icon/Sanctions-32px.png",
+    "Advanced Payments": "images/icons/Advanced-Payment-icon/Advanced-Payment-32px.png",
+    "Summary": "images/icons/Summary-icon/Summary-32px.png",
+}
+
+
 # --- Register base paths for resources ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -355,6 +368,39 @@ class CustomSpinnerOption(SpinnerOption):
     def _update_text_size(self, *args):
         self.text_size = (self.width - 20, None)
 
+class IconSpinnerOption(BoxLayout, SpinnerOption):
+    def __init__(self, icon_source=None, text="", **kwargs):
+        BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
+        SpinnerOption.__init__(self, text=text, **kwargs)
+
+        # Icon
+        if icon_source:
+            self.icon = Image(
+                source=icon_source,
+                size_hint=(None, None),
+                size=(32, 32),
+                allow_stretch=True,
+                keep_ratio=True
+            )
+            self.add_widget(self.icon)
+
+        # Text label
+        self.label = Label(
+            text=text,
+            color=get_color_from_hex("#005EA5"),
+            font_size=self.font_size,
+            halign="left",
+            valign="middle",
+            text_size=(self.width - 50, None)
+        )
+        self.add_widget(self.label)
+
+        self.bind(size=self._update_text_size)
+
+    def _update_text_size(self, *args):
+        self.label.text_size = (self.width - 50, None)
+
+
 class GovUkSpinner(Spinner):
     def __init__(self, **kwargs):
         super().__init__(
@@ -380,6 +426,18 @@ class GovUkSpinner(Spinner):
             color=get_color_from_hex("#005EA5"),
             **kw
         )
+
+class GovUkIconSpinner(GovUkSpinner):
+    def __init__(self, icon_map=None, **kwargs):
+        super().__init__(**kwargs)
+        self.icon_map = icon_map or {}
+
+        # Override dropdown class to use icons
+        self.dropdown_cls = lambda **kw: IconSpinnerOption(
+            text=kw.get("text"),
+            icon_source=self.icon_map.get(kw.get("text"))
+        )
+
 
 
 # Create a loading animation using a sequence of PNG images
@@ -1183,34 +1241,33 @@ class Calculator(Screen):
 
         # Define screens
         self.screens = [
-            ("📄 Introduction", self.create_intro_screen),
-            ("👤 Claimant Details", self.create_claimant_details_screen),
-            ("💷 Finances", self.create_finances_screen),
-            ("🏡 Housing", self.create_housing_screen),
-            ("🧒 Children", self.create_children_screen),
-            ("➕ Additional Elements", self.create_additional_elements_screen),
-            ("⚠️ Sanctions", self.create_sanction_screen),
-            ("💰 Advanced Payment", self.create_advance_payments_screen),
-            ("📊 Summary", self.create_calculate_screen)
+            ("Introduction", self.create_intro_screen),
+            ("Claimant Details", self.create_claimant_details_screen),
+            ("Finances", self.create_finances_screen),
+            ("Housing", self.create_housing_screen),
+            ("Children", self.create_children_screen),
+            ("Additional Elements", self.create_additional_elements_screen),
+            ("Sanctions", self.create_sanction_screen),
+            ("Advanced Payments", self.create_advance_payments_screen),
+            ("Summary", self.create_calculate_screen)
         ]
+
 
         # Spinner
         spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        self.screen_spinner = Spinner(
-            text="📄 Introduction",
+        
+        self.screen_spinner = GovUkIconSpinner(
+            text="Introduction",
+            icon_map=ICON_PATHS,
             values=[name for name, _ in self.screens],
-            size_hint=(None, None), size=(250, 50),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            font_size=20, font_name="roboto",
-            option_cls=CustomSpinnerOption,
-            halign="center", valign="middle",
-            text_size=(250, None),
+            size_hint=(None, None),
+            size=(250, 50),
             pos_hint={"center_x": 0.5}
         )
+        
         spinner_anchor.add_widget(self.screen_spinner)
         layout.add_widget(spinner_anchor)
+
 
         # Container for screen content
         self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
@@ -1224,23 +1281,23 @@ class Calculator(Screen):
                     widget = builder()
                     self.screen_content.add_widget(widget)
                     # Manually trigger the right pre_enter
-                    if name == "📄 Introduction":
+                    if name == "Introduction":
                         self.on_pre_enter_intro()
-                    elif name == "👤 Claimant Details":
+                    elif name == "Claimant Details":
                         self.on_pre_enter_claimant()
-                    elif name == "💷 Finances":
+                    elif name == "Finances":
                         self.on_pre_enter_finances()
-                    elif name == "🏡 Housing":
+                    elif name == "Housing":
                         self.on_pre_enter_housing()
-                    elif name == "🧒 Children":
+                    elif name == "Children":
                         self.on_pre_enter_children()
-                    elif name == "➕ Additional Elements":
+                    elif name == "Additional Elements":
                         self.on_pre_enter_additional()
-                    elif name == "⚠️ Sanctions":
+                    elif name == "Sanctions":
                         self.on_pre_enter_sanctions()
-                    elif name == "💰 Advanced Payments":
+                    elif name == "Advanced Payments":
                         self.on_pre_enter_advance()
-                    elif name == "📊 Summary":
+                    elif name == "Summary":
                         self.on_pre_enter_summary()
                     break
 
@@ -2559,6 +2616,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
