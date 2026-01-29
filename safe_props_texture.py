@@ -43,6 +43,18 @@ def texture_update(self, *args, **kwargs):
     - Logs only when values are genuinely adjusted
     """
 
+    # --- SKIP SPINNER LABELS COMPLETELY ---
+    # Prevents wiping out spinner text, dropdown text, and icon-row text.
+    skip_classes = (
+        "Spinner", "GovUkSpinner", "GovUkIconSpinner",
+        "SpinnerOption", "IconRow"
+    )
+
+    cname = self.__class__.__name__
+    if any(name.lower() in cname.lower() for name in skip_classes):
+        return _orig_texture_update(self, *args, **kwargs)
+
+
     def _t(val):
         try:
             return type(val).__name__
