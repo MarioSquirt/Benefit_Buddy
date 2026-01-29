@@ -450,7 +450,7 @@ class GovUkIconSpinner(GovUkSpinner):
     
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
-            row = IconRow(text=value, icon_path=icon_path, size_hint_y=None, height=50)
+            row = IconRow(text=value, icon_path=icon_path)
     
             # When row is clicked, tell dropdown what was selected
             row.bind(on_release=lambda row_instance: dropdown.select(row_instance.label.text))
@@ -2636,6 +2636,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
