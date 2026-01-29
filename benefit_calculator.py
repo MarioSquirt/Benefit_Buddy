@@ -1930,9 +1930,10 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
-        self.location_spinner = GovUkSpinner(
+        self.location_spinner = GovUkIconSpinner(
             text="Select Location",
-            values=("England", "Scotland", "Wales")
+            values=["England", "Scotland", "Wales"],
+            icon_map={}
         )
         location_anchor.add_widget(self.location_spinner)
         layout.add_widget(location_anchor)
@@ -2638,6 +2639,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
