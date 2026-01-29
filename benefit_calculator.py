@@ -441,7 +441,7 @@ class GovUkIconSpinner(GovUkSpinner):
     def _build_dropdown(self):
         dropdown = DropDown()
     
-        # Give dropdown a white background
+        # Background (already working)
         with dropdown.canvas.before:
             Color(1, 1, 1, 1)
             dropdown.bg = Rectangle(pos=dropdown.pos, size=dropdown.size)
@@ -449,17 +449,19 @@ class GovUkIconSpinner(GovUkSpinner):
         dropdown.bind(pos=lambda *a: setattr(dropdown.bg, "pos", dropdown.pos))
         dropdown.bind(size=lambda *a: setattr(dropdown.bg, "size", dropdown.size))
     
+        dropdown.bind(on_select=lambda instance, value: setattr(self, "text", value))
+    
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
-            row = IconRow(text=value, icon_path=icon_path)
+            row = IconRow(text=value, icon_path=icon_path, size_hint_y=None, height=50)
     
-            def _on_release(row_instance):
-                dropdown.select(row_instance.label.text)
+            # When row is clicked, tell dropdown what was selected
+            row.bind(on_release=lambda row_instance: dropdown.select(row_instance.label.text))
     
-            row.bind(on_release=_on_release)
             dropdown.add_widget(row)
     
         self._dropdown = dropdown
+
 
 
 
@@ -2637,6 +2639,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
