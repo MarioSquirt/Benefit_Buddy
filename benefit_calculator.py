@@ -1864,7 +1864,7 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
-        self.housing_type_spinner = GovUkSpinner(
+        self.housing_type_spinner = GovUkIconSpinner(
             text="Housing Type",
             values=(
                 "🏠 Rent",
@@ -1941,7 +1941,7 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
-        self.brma_spinner = GovUkSpinner(
+        self.brma_spinner = GovUkIconSpinner(
             text="Select BRMA",
             values=["Select BRMA"]
         )
@@ -2636,6 +2636,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
