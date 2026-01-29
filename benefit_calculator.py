@@ -372,12 +372,16 @@ class CustomSpinnerOption(SpinnerOption):
 
 # ---------------------------------------------------------
 # 1. ICON OPTION (each row in the dropdown)
-#    IMPORTANT: no custom Properties, no icon_source in **kwargs
+#    CRITICAL: pop icon_path out of kwargs before super().__init__
 # ---------------------------------------------------------
 class IconSpinnerOption(SpinnerOption, BoxLayout):
-    def __init__(self, text="", icon_path=None, **kwargs):
-        # Do NOT pass icon_path into SpinnerOption/Label
-        SpinnerOption.__init__(self, text=text, **kwargs)
+    def __init__(self, **kwargs):
+        # Pull out our custom arg so it never reaches Kivy internals
+        icon_path = kwargs.pop("icon_path", None)
+        text = kwargs.get("text", "")
+
+        # Init Kivy side WITHOUT icon_path in kwargs
+        SpinnerOption.__init__(self, **kwargs)
         BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
 
         # Icon
@@ -445,7 +449,6 @@ class GovUkIconSpinner(GovUkSpinner):
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
 
-            # CRITICAL: do NOT pass icon_path as a kwarg name that Kivy might treat as a Property
             option = self.option_cls(
                 text=value,
                 icon_path=icon_path,
@@ -457,6 +460,7 @@ class GovUkIconSpinner(GovUkSpinner):
             dropdown.add_widget(option)
 
         return dropdown
+
 
 
 
@@ -2636,6 +2640,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
