@@ -1260,8 +1260,6 @@ class Calculator(Screen):
             text="Introduction",
             icon_map=ICON_PATHS,
             values=[name for name, _ in self.screens],
-            size_hint=(None, None),
-            size=(250, 50),
             pos_hint={"center_x": 0.5}
         )
         
@@ -2616,6 +2614,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
