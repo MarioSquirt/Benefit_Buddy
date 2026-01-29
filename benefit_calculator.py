@@ -166,8 +166,7 @@ class BenefitBuddy(App):
         required_assets = [
             "images/logo.png",
             "data/pcode_brma_lookup.csv",
-            "kv/main.kv",
-            "fonts/roboto.ttf"
+            "font/roboto.ttf"
         ]
         for asset in required_assets:
             path = resource_find(asset)
@@ -2638,6 +2637,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
