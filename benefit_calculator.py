@@ -413,7 +413,6 @@ class GovUkSpinner(Spinner):
             background_disabled_normal="",
             font_size=20,
             font_name="roboto",
-            option_cls=CustomSpinnerOption,
             halign="center",
             valign="middle",
             text_size=(250, None),
@@ -2613,6 +2612,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
