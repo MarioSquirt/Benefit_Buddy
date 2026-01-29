@@ -1260,7 +1260,6 @@ class Calculator(Screen):
             text="Introduction",
             icon_map=ICON_PATHS,
             values=[name for name, _ in self.screens],
-            pos_hint={"center_x": 0.5}
         )
         
         spinner_anchor.add_widget(self.screen_spinner)
@@ -2614,6 +2613,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
