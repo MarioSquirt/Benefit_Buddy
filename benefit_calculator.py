@@ -446,9 +446,6 @@ class GovUkIconSpinner(GovUkSpinner):
             Color(1, 1, 1, 1)
             dropdown.bg = Rectangle(pos=dropdown.pos, size=dropdown.size)
     
-        dropdown.bind(pos=lambda *a: setattr(dropdown.bg, "pos", dropdown.pos))
-        dropdown.bind(size=lambda *a: setattr(dropdown.bg, "size", dropdown.size))
-    
         dropdown.bind(on_select=lambda instance, value: setattr(self, "text", value))
     
         for value in self.values:
@@ -2639,6 +2636,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
