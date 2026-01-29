@@ -369,24 +369,26 @@ class CustomSpinnerOption(SpinnerOption):
         self.text_size = (self.width - 20, None)
 
 
-# ---------------------------------------------------------
-# 1. ICON OPTION (used for each item inside the dropdown)
-# ---------------------------------------------------------
-class IconSpinnerOption(BoxLayout, SpinnerOption):
-    icon_source = StringProperty("")
 
-    def __init__(self, text="", icon_source="", **kwargs):
-        super().__init__(orientation="horizontal", spacing=10, padding=(10, 10), **kwargs)
+# ---------------------------------------------------------
+# 1. ICON OPTION (each row in the dropdown)
+# ---------------------------------------------------------
+class IconSpinnerOption(SpinnerOption, BoxLayout):
+    def __init__(self, text="", icon_source=None, **kwargs):
+        # IMPORTANT: do NOT pass icon_source into SpinnerOption/Label
+        SpinnerOption.__init__(self, text=text, **kwargs)
+        BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
 
         # Icon
         if icon_source:
-            self.add_widget(Image(
+            self.icon = Image(
                 source=icon_source,
                 size_hint=(None, None),
                 size=(32, 32),
                 allow_stretch=True,
                 keep_ratio=True
-            ))
+            )
+            self.add_widget(self.icon)
 
         # Text label
         self.label = Label(
@@ -428,19 +430,19 @@ class GovUkSpinner(Spinner):
 
 
 # ---------------------------------------------------------
-# 3. ICON SPINNER (builds dropdown manually)
+# 3. ICON GOV.UK SPINNER (uses IconSpinnerOption)
 # ---------------------------------------------------------
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
-        self.option_cls = IconSpinnerOption  # correct place to override
+        self.option_cls = IconSpinnerOption  # correct: option, not dropdown
 
     def _build_dropdown(self):
         dropdown = DropDown()
 
         for value in self.values:
-            icon_path = self.icon_map.get(value, "")
+            icon_path = self.icon_map.get(value, None)
 
             option = self.option_cls(
                 text=value,
@@ -449,12 +451,13 @@ class GovUkIconSpinner(GovUkSpinner):
                 height=50
             )
 
-            # When clicked, select the option
+            # When clicked, select the option text
             option.bind(on_release=lambda opt: dropdown.select(opt.text))
 
             dropdown.add_widget(option)
 
         return dropdown
+
 
 
 
@@ -2632,6 +2635,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
