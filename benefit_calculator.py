@@ -1866,11 +1866,12 @@ class Calculator(Screen):
     
         self.housing_type_spinner = GovUkIconSpinner(
             text="Housing Type",
-            values=(
+            values=[
                 "🏠 Rent",
                 "🔑 Own",
                 "👥 Shared Accommodation"
-            )
+            ],
+            icon_map={}
         )
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
@@ -1943,7 +1944,8 @@ class Calculator(Screen):
     
         self.brma_spinner = GovUkIconSpinner(
             text="Select BRMA",
-            values=["Select BRMA"]
+            values=["Select BRMA"],
+            icon_map={}
         )
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
@@ -2636,6 +2638,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
