@@ -30,6 +30,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.popup import Popup  # type: ignore
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem, TabbedPanelHeader
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.behaviors import ButtonBehavior
 
 # --- Kivy graphics/animation ---
 from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle
@@ -2608,6 +2609,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
