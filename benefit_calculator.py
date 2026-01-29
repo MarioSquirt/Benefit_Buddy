@@ -420,12 +420,6 @@ class GovUkSpinner(Spinner):
             **kwargs
         )
 
-        self.dropdown_cls = lambda **kw: CustomSpinnerOption(
-            background_color=get_color_from_hex("#FFFFFF"),
-            color=get_color_from_hex("#005EA5"),
-            **kw
-        )
-
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
         super().__init__(**kwargs)
@@ -2612,6 +2606,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
