@@ -373,13 +373,28 @@ class CustomSpinnerOption(SpinnerOption):
 
 class IconRow(ButtonBehavior, BoxLayout):
     def __init__(self, text, icon_path=None, **kwargs):
-        super().__init__(orientation="horizontal", spacing=10, padding=(10, 10), **kwargs)
+        super().__init__(
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
+            size_hint_y=None,
+            height=50,
+            **kwargs
+        )
+
+        # GOV.UK white background
+        self.canvas.before.clear()
+        with self.canvas.before:
+            Color(1, 1, 1, 1)  # white
+            self.bg = Rectangle(pos=self.pos, size=self.size)
+
+        self.bind(pos=self._update_bg, size=self._update_bg)
 
         if icon_path:
             self.add_widget(Image(
                 source=icon_path,
                 size_hint=(None, None),
-                size=(32, 32),
+                size=(28, 28),
                 allow_stretch=True,
                 keep_ratio=True
             ))
@@ -387,11 +402,16 @@ class IconRow(ButtonBehavior, BoxLayout):
         self.label = Label(
             text=text,
             color=get_color_from_hex("#005EA5"),
-            font_size=20,
+            font_size=18,
             halign="left",
             valign="middle"
         )
         self.add_widget(self.label)
+
+    def _update_bg(self, *args):
+        self.bg.pos = self.pos
+        self.bg.size = self.size
+
 
 
 class GovUkSpinner(Spinner):
@@ -421,18 +441,27 @@ class GovUkIconSpinner(GovUkSpinner):
 
     def _build_dropdown(self):
         dropdown = DropDown()
-
+    
+        # Give dropdown a white background
+        with dropdown.canvas.before:
+            Color(1, 1, 1, 1)
+            dropdown.bg = Rectangle(pos=dropdown.pos, size=dropdown.size)
+    
+        dropdown.bind(pos=lambda *a: setattr(dropdown.bg, "pos", dropdown.pos))
+        dropdown.bind(size=lambda *a: setattr(dropdown.bg, "size", dropdown.size))
+    
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
-            row = IconRow(text=value, icon_path=icon_path, size_hint_y=None, height=50)
-
+            row = IconRow(text=value, icon_path=icon_path)
+    
             def _on_release(row_instance):
                 dropdown.select(row_instance.label.text)
-
+    
             row.bind(on_release=_on_release)
             dropdown.add_widget(row)
-
+    
         self._dropdown = dropdown
+
 
 
 
@@ -2609,6 +2638,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
