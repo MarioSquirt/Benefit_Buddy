@@ -57,7 +57,7 @@ ICON_PATHS = {
     "Children": "images/icons/Children-icon/Children-32px.png",
     "Additional Elements": "images/icons/AdditionalElements-icon/AdditionalElements-32px.png",
     "Sanctions": "images/icons/Sanctions-icon/Sanctions-32px.png",
-    "Advanced Payments": "images/icons/Advanced-Payment-icon/Advanced-Payment-32px.png",
+    "Advanced Payments": "images/icons/Advanced-Payment-icon/AdvancedPayment-32px.png",
     "Summary": "images/icons/Summary-icon/Summary-32px.png",
 }
 
@@ -2638,6 +2638,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
