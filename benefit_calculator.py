@@ -1877,6 +1877,7 @@ class Calculator(Screen):
     
     def create_housing_screen(self):
         outer = AnchorLayout(anchor_x="center", anchor_y="center")
+    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -1887,7 +1888,7 @@ class Calculator(Screen):
         outer.add_widget(layout)
     
         # ---------------------------------------------------------
-        # HOUSING TYPE SPINNER (with emojis)
+        # HOUSING TYPE SPINNER
         # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
@@ -1898,7 +1899,7 @@ class Calculator(Screen):
                 "Own",
                 "Shared Accommodation"
             ],
-            icon_map={}
+            icon_map={}  # no icons needed here
         )
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
@@ -2666,6 +2667,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
