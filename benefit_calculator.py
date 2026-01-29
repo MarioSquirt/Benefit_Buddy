@@ -425,11 +425,14 @@ class GovUkIconSpinner(GovUkSpinner):
         super().__init__(**kwargs)
         self.icon_map = icon_map or {}
 
-        # Override dropdown class to use icons
-        self.dropdown_cls = lambda **kw: IconSpinnerOption(
-            text=kw.get("text"),
-            icon_source=self.icon_map.get(kw.get("text"))
-        )
+        def make_option(**kw):
+            label = kw.get("text") or kw.get("value") or kw.get("item") or ""
+            return IconSpinnerOption(
+                text=label,
+                icon_source=self.icon_map.get(label)
+            )
+
+        self.dropdown_cls = make_option
 
 
 
@@ -2606,6 +2609,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
