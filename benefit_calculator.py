@@ -12,7 +12,7 @@ from kivy.core.image import Image as CoreImage
 from kivy.metrics import sp
 from kivy.utils import get_color_from_hex
 from kivy.resources import resource_add_path, resource_find
-from kivy.properties import ObservableList
+from kivy.properties import ObservableList, StringProperty
 
 # --- Kivy UI widgets/layouts ---
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -368,30 +368,33 @@ class CustomSpinnerOption(SpinnerOption):
     def _update_text_size(self, *args):
         self.text_size = (self.width - 20, None)
 
+
+# ---------------------------------------------------------
+# 1. ICON OPTION (used for each item inside the dropdown)
+# ---------------------------------------------------------
 class IconSpinnerOption(BoxLayout, SpinnerOption):
-    def __init__(self, icon_source=None, text="", **kwargs):
-        BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
-        SpinnerOption.__init__(self, text=text, **kwargs)
+    icon_source = StringProperty("")
+
+    def __init__(self, text="", icon_source="", **kwargs):
+        super().__init__(orientation="horizontal", spacing=10, padding=(10, 10), **kwargs)
 
         # Icon
         if icon_source:
-            self.icon = Image(
+            self.add_widget(Image(
                 source=icon_source,
                 size_hint=(None, None),
                 size=(32, 32),
                 allow_stretch=True,
                 keep_ratio=True
-            )
-            self.add_widget(self.icon)
+            ))
 
         # Text label
         self.label = Label(
             text=text,
             color=get_color_from_hex("#005EA5"),
-            font_size=self.font_size,
+            font_size=20,
             halign="left",
-            valign="middle",
-            text_size=(self.width - 50, None)
+            valign="middle"
         )
         self.add_widget(self.label)
 
@@ -401,6 +404,9 @@ class IconSpinnerOption(BoxLayout, SpinnerOption):
         self.label.text_size = (self.width - 50, None)
 
 
+# ---------------------------------------------------------
+# 2. BASE GOV.UK SPINNER (styling only)
+# ---------------------------------------------------------
 class GovUkSpinner(Spinner):
     def __init__(self, **kwargs):
         super().__init__(
@@ -420,19 +426,36 @@ class GovUkSpinner(Spinner):
             **kwargs
         )
 
+
+# ---------------------------------------------------------
+# 3. ICON SPINNER (builds dropdown manually)
+# ---------------------------------------------------------
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
-        super().__init__(**kwargs)
         self.icon_map = icon_map or {}
+        super().__init__(**kwargs)
+        self.option_cls = IconSpinnerOption  # correct place to override
 
-        def make_option(**kw):
-            label = kw.get("text") or kw.get("value") or kw.get("item") or ""
-            return IconSpinnerOption(
-                text=label,
-                icon_source=self.icon_map.get(label)
+    def _build_dropdown(self):
+        dropdown = DropDown()
+
+        for value in self.values:
+            icon_path = self.icon_map.get(value, "")
+
+            option = self.option_cls(
+                text=value,
+                icon_source=icon_path,
+                size_hint_y=None,
+                height=50
             )
 
-        self.dropdown_cls = make_option
+            # When clicked, select the option
+            option.bind(on_release=lambda opt: dropdown.select(opt.text))
+
+            dropdown.add_widget(option)
+
+        return dropdown
+
 
 
 
@@ -2609,6 +2632,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
