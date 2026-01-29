@@ -1867,9 +1867,9 @@ class Calculator(Screen):
         self.housing_type_spinner = GovUkIconSpinner(
             text="Housing Type",
             values=[
-                "🏠 Rent",
-                "🔑 Own",
-                "👥 Shared Accommodation"
+                "Rent",
+                "Own",
+                "Shared Accommodation"
             ],
             icon_map={}
         )
@@ -2638,6 +2638,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
