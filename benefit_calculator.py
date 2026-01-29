@@ -432,7 +432,7 @@ class GovUkIconSpinner(GovUkSpinner):
             row.bind(on_release=_on_release)
             dropdown.add_widget(row)
 
-        return dropdown
+        self._dropdown = dropdown
 
 
 
@@ -2609,6 +2609,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
