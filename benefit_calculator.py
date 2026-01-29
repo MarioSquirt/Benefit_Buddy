@@ -372,17 +372,18 @@ class CustomSpinnerOption(SpinnerOption):
 
 # ---------------------------------------------------------
 # 1. ICON OPTION (each row in the dropdown)
+#    IMPORTANT: no custom Properties, no icon_source in **kwargs
 # ---------------------------------------------------------
 class IconSpinnerOption(SpinnerOption, BoxLayout):
-    def __init__(self, text="", icon_source=None, **kwargs):
-        # IMPORTANT: do NOT pass icon_source into SpinnerOption/Label
+    def __init__(self, text="", icon_path=None, **kwargs):
+        # Do NOT pass icon_path into SpinnerOption/Label
         SpinnerOption.__init__(self, text=text, **kwargs)
         BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
 
         # Icon
-        if icon_source:
+        if icon_path:
             self.icon = Image(
-                source=icon_source,
+                source=icon_path,
                 size_hint=(None, None),
                 size=(32, 32),
                 allow_stretch=True,
@@ -444,19 +445,19 @@ class GovUkIconSpinner(GovUkSpinner):
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
 
+            # CRITICAL: do NOT pass icon_path as a kwarg name that Kivy might treat as a Property
             option = self.option_cls(
                 text=value,
-                icon_source=icon_path,
+                icon_path=icon_path,
                 size_hint_y=None,
                 height=50
             )
 
-            # When clicked, select the option text
             option.bind(on_release=lambda opt: dropdown.select(opt.text))
-
             dropdown.add_widget(option)
 
         return dropdown
+
 
 
 
@@ -2635,6 +2636,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
