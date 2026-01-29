@@ -370,32 +370,19 @@ class CustomSpinnerOption(SpinnerOption):
 
 
 
-# ---------------------------------------------------------
-# 1. ICON OPTION (each row in the dropdown)
-#    CRITICAL: pop icon_path out of kwargs before super().__init__
-# ---------------------------------------------------------
-class IconSpinnerOption(SpinnerOption, BoxLayout):
-    def __init__(self, **kwargs):
-        # Pull out our custom arg so it never reaches Kivy internals
-        icon_path = kwargs.pop("icon_path", None)
-        text = kwargs.get("text", "")
+class IconRow(ButtonBehavior, BoxLayout):
+    def __init__(self, text, icon_path=None, **kwargs):
+        super().__init__(orientation="horizontal", spacing=10, padding=(10, 10), **kwargs)
 
-        # Init Kivy side WITHOUT icon_path in kwargs
-        SpinnerOption.__init__(self, **kwargs)
-        BoxLayout.__init__(self, orientation="horizontal", spacing=10, padding=(10, 10))
-
-        # Icon
         if icon_path:
-            self.icon = Image(
+            self.add_widget(Image(
                 source=icon_path,
                 size_hint=(None, None),
                 size=(32, 32),
                 allow_stretch=True,
                 keep_ratio=True
-            )
-            self.add_widget(self.icon)
+            ))
 
-        # Text label
         self.label = Label(
             text=text,
             color=get_color_from_hex("#005EA5"),
@@ -405,15 +392,7 @@ class IconSpinnerOption(SpinnerOption, BoxLayout):
         )
         self.add_widget(self.label)
 
-        self.bind(size=self._update_text_size)
 
-    def _update_text_size(self, *args):
-        self.label.text_size = (self.width - 50, None)
-
-
-# ---------------------------------------------------------
-# 2. BASE GOV.UK SPINNER (styling only)
-# ---------------------------------------------------------
 class GovUkSpinner(Spinner):
     def __init__(self, **kwargs):
         super().__init__(
@@ -434,36 +413,25 @@ class GovUkSpinner(Spinner):
         )
 
 
-# ---------------------------------------------------------
-# 3. ICON GOV.UK SPINNER (uses IconSpinnerOption)
-# ---------------------------------------------------------
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
-        self.option_cls = IconSpinnerOption  # correct: option, not dropdown
 
     def _build_dropdown(self):
         dropdown = DropDown()
 
         for value in self.values:
             icon_path = self.icon_map.get(value, None)
+            row = IconRow(text=value, icon_path=icon_path, size_hint_y=None, height=50)
 
-            option = self.option_cls(
-                text=value,
-                icon_path=icon_path,
-                size_hint_y=None,
-                height=50
-            )
+            def _on_release(row_instance):
+                dropdown.select(row_instance.label.text)
 
-            option.bind(on_release=lambda opt: dropdown.select(opt.text))
-            dropdown.add_widget(option)
+            row.bind(on_release=_on_release)
+            dropdown.add_widget(row)
 
         return dropdown
-
-
-
-
 
 
 
@@ -2640,6 +2608,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
