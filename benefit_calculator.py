@@ -369,7 +369,9 @@ class CustomSpinnerOption(SpinnerOption):
         self.text_size = (self.width - 20, None)
 
 
-
+# ---------------------------------------------------------
+# ROW USED INSIDE DROPDOWN
+# ---------------------------------------------------------
 class IconRow(ButtonBehavior, BoxLayout):
     def __init__(self, text, icon_path=None, **kwargs):
         super().__init__(
@@ -381,14 +383,14 @@ class IconRow(ButtonBehavior, BoxLayout):
             **kwargs
         )
 
-        # GOV.UK white background
-        self.canvas.before.clear()
+        # Background
         with self.canvas.before:
-            Color(1, 1, 1, 1)  # white
+            Color(1, 1, 1, 1)
             self.bg = Rectangle(pos=self.pos, size=self.size)
 
         self.bind(pos=self._update_bg, size=self._update_bg)
 
+        # Icon (optional)
         if icon_path:
             self.add_widget(Image(
                 source=icon_path,
@@ -398,6 +400,7 @@ class IconRow(ButtonBehavior, BoxLayout):
                 keep_ratio=True
             ))
 
+        # Text label
         self.label = Label(
             text=text,
             color=get_color_from_hex("#005EA5"),
@@ -410,9 +413,10 @@ class IconRow(ButtonBehavior, BoxLayout):
     def _update_bg(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
-
-
-
+        
+# ---------------------------------------------------------
+# BASE GOV.UK SPINNER (styling only)
+# ---------------------------------------------------------
 class GovUkSpinner(Spinner):
     def __init__(self, **kwargs):
         super().__init__(
@@ -432,35 +436,58 @@ class GovUkSpinner(Spinner):
             **kwargs
         )
 
-
+# ---------------------------------------------------------
+# FINAL GOV.UK ICON SPINNER (FULLY FIXED)
+# ---------------------------------------------------------
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
 
+        # Force spinner button text to exist
+        if not self.text:
+            self.text = "Select"
+
+        # Force a visible label on the spinner button
+        if not hasattr(self, "label"):
+            self.label = Label(
+                text=self.text,
+                color=get_color_from_hex("#005EA5"),
+                font_size=20,
+                halign="center",
+                valign="middle"
+            )
+            self.add_widget(self.label)
+
+        # Keep label synced with spinner text
+        self.bind(text=lambda instance, value: setattr(self.label, "text", value))
+
+    # -----------------------------------------------------
+    # Build dropdown manually (safe on Android)
+    # -----------------------------------------------------
     def _build_dropdown(self):
         dropdown = DropDown()
-    
-        # Background (already working)
+
+        # Dropdown background
         with dropdown.canvas.before:
             Color(1, 1, 1, 1)
             dropdown.bg = Rectangle(pos=dropdown.pos, size=dropdown.size)
-    
+
+        dropdown.bind(pos=lambda *_: setattr(dropdown.bg, "pos", dropdown.pos))
+        dropdown.bind(size=lambda *_: setattr(dropdown.bg, "size", dropdown.size))
+
+        # When dropdown selects a value → update spinner text
         dropdown.bind(on_select=lambda instance, value: setattr(self, "text", value))
-    
+
+        # Add rows
         for value in self.values:
-            icon_path = self.icon_map.get(value, None)
+            icon_path = self.icon_map.get(value)
             row = IconRow(text=value, icon_path=icon_path)
-    
-            # When row is clicked, tell dropdown what was selected
+
             row.bind(on_release=lambda row_instance: dropdown.select(row_instance.label.text))
-    
             dropdown.add_widget(row)
-    
+
         self._dropdown = dropdown
-
-
-
 
 
 # Create a loading animation using a sequence of PNG images
@@ -2639,6 +2666,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
