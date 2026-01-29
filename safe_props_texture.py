@@ -36,25 +36,26 @@ _orig_texture_update = Label.texture_update
 def texture_update(self, *args, **kwargs):
     """
     Wrapper around Label.texture_update that:
-    - Unwraps any Kivy reactive list types into tuples
-    - Ensures text_size and padding are safe tuples
-    - Parses font_size strings (e.g., '20sp') and line_height reliably
-    - Dynamically binds text_size[0] to widget width for wrapping
-    - Logs only when values are genuinely adjusted
+    - Normalizes padding/text_size
+    - Fixes font_size parsing
+    - Avoids Samsung texture crashes
     """
 
-    # --- SKIP SPINNER LABELS COMPLETELY ---
-    # Prevents wiping out spinner text, dropdown text, and icon-row text.
+    # ---------------------------------------------------------
+    # 🚫 SKIP SPINNER LABELS COMPLETELY
+    # ---------------------------------------------------------
     skip_classes = (
         "Spinner", "GovUkSpinner", "GovUkIconSpinner",
         "SpinnerOption", "IconRow"
     )
 
-    cname = self.__class__.__name__
-    if any(name.lower() in cname.lower() for name in skip_classes):
+    cname = self.__class__.__name__.lower()
+    if any(name.lower() in cname for name in skip_classes):
         return _orig_texture_update(self, *args, **kwargs)
 
-
+    # ---------------------------------------------------------
+    # NORMAL PROCESSING FOR ALL OTHER LABELS
+    # ---------------------------------------------------------
     def _t(val):
         try:
             return type(val).__name__
@@ -92,7 +93,7 @@ def texture_update(self, *args, **kwargs):
         if ts is None or len(ts) != 2:
             _log_adjust("text_size", raw_ts)
             safe_w = _to_int_safe(getattr(self, "width", None), default=400)
-            self.text_size = (safe_w, None)  # allow None for auto height
+            self.text_size = (safe_w, None)
         else:
             w, h = ts
             safe_w = _to_int_safe(w, default=_to_int_safe(getattr(self, "width", None), default=400))
