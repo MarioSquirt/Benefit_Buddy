@@ -25,7 +25,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.widget import Widget
 from kivy.uix.checkbox import CheckBox
-from kivy.uix.spinner import Spinner, SpinnerOption
+from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 from kivy.uix.popup import Popup  # type: ignore
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem, TabbedPanelHeader
@@ -84,13 +84,14 @@ color = get_color_from_hex("#005EA5")  # GOVUK_BLUE
 Window.clearcolor = get_color_from_hex("#005EA5")  # GOVUK_BLUE
 
 layout = BoxLayout(orientation="vertical", spacing=10, padding=20, size_hint=(1,1))
-Window.maximize()
+if hasattr(Window, "maximize"):
+    Window.maximize()
 
 # Bind the window size to adjust the layout dynamically
 def adjust_layout(instance, value):
     for widget in instance.children:
-        if isinstance(widget, BoxLayout):
-            widget.size = (Window.width, Window.height) # Set the size to match the window size
+        if isinstance(widget, BoxLayout) and widget.size_hint == (1, 1):
+            widget.size = (Window.width, Window.height)
 
 Window.bind(size=adjust_layout)
 
@@ -156,53 +157,188 @@ class BenefitBuddy(App):
         # Add more screens as needed
         return sm
 
-    def on_start(self):
-        self.run_startup_diagnostics()
+def on_start(self):
+    self.run_startup_diagnostics()
 
-    def run_startup_diagnostics(self):
-        print("=== Startup Diagnostics ===")
+def run_startup_diagnostics(self):
+    print("\n=== Benefit Buddy Startup Diagnostics ===")
 
-        # --- Asset check ---
-        required_assets = [
-            "images/logo.png",
-            "data/pcode_brma_lookup.csv",
-            "font/roboto.ttf"
+    # ---------------------------------------------------------
+    # 1. ASSET CHECK
+    # ---------------------------------------------------------
+    print("\n[1] Asset Verification")
+
+    required_assets = {
+        "Logo": "images/logo.png",
+        "BRMA CSV": "data/pcode_brma_lookup.csv",
+        "Roboto Font": "font/roboto.ttf",
+        "Chevron Down Icon": "images/icons/ChevronDown-icon/ChevronDown-32px.png",
+        "Chevron Up Icon": "images/icons/ChevronUp-icon/ChevronUp-32px.png",
+    }
+
+    for label, asset in required_assets.items():
+        path = resource_find(asset)
+        if path and os.path.exists(path):
+            print(f"  ✔ {label}: FOUND ({asset})")
+        else:
+            print(f"  ✖ {label}: MISSING ({asset})")
+
+    # ---------------------------------------------------------
+    # 2. SCREEN & WIDGET CHECK
+    # ---------------------------------------------------------
+    print("\n[2] Screen & Widget Integrity")
+
+    try:
+        calc = self.root.get_screen("calculator")
+    except Exception:
+        print("  ✖ Calculator screen not found — cannot run widget diagnostics.")
+        calc = None
+
+    if calc:
+        widget_checks = [
+            ("Claimant Name Input", "name_input"),
+            ("Claimant DOB Input", "dob_input"),
+            ("Partner Name Input", "partner_name_input"),
+            ("Partner DOB Input", "partner_dob_input"),
+            ("Income Input", "income_input"),
+            ("Capital Input", "capital_input"),
+            ("Housing Type Spinner", "housing_type_spinner"),
+            ("Location Spinner", "location_spinner"),
+            ("BRMA Spinner", "brma_spinner"),
+            ("Sanction Level Spinner", "sanction_level_spinner"),
+            ("Advance Payments Input", "advance_payments_input"),
         ]
-        for asset in required_assets:
-            path = resource_find(asset)
-            if path and os.path.exists(path):
-                print(f"[OK] Asset: {asset}")
-            else:
-                print(f"[MISSING] Asset: {asset}")
 
-        # --- Widget check ---
-        critical_widgets = [
-            ("Claimant Name Input", getattr(self, "name_input", None)),
-            ("Claimant DOB Input", getattr(self, "dob_input", None)),
-            ("Partner Name Input", getattr(self, "partner_name_input", None)),
-            ("Partner DOB Input", getattr(self, "partner_dob_input", None)),
-            ("Income Input", getattr(self, "income_input", None)),
-            ("Capital Input", getattr(self, "capital_input", None)),
-            ("Housing Type Spinner", getattr(self, "housing_type_spinner", None)),
-            ("Location Spinner", getattr(self, "location_spinner", None)),
-            ("BRMA Spinner", getattr(self, "brma_spinner", None)),
-            ("Sanction Level Spinner", getattr(self, "sanction_level_spinner", None)),
-            ("Advance Payments Input", getattr(self, "advance_payments_input", None)),
-        ]
-
-        for label, widget in critical_widgets:
+        for label, attr in widget_checks:
+            widget = getattr(calc, attr, None)
             if widget is None:
-                print(f"[MISSING] Widget: {label}")
+                print(f"  ✖ {label}: NOT FOUND")
             else:
                 try:
-                    # Simple sanity check: can we access text/value?
                     if hasattr(widget, "text"):
                         _ = widget.text
-                    print(f"[OK] Widget: {label}")
+                    print(f"  ✔ {label}: OK")
                 except Exception as e:
-                    print(f"[ERROR] Widget: {label} failed with {e}")
+                    print(f"  ✖ {label}: ERROR — {e}")
 
-        print("===========================")
+    # ---------------------------------------------------------
+    # 3. SPINNER HEALTH CHECK
+    # ---------------------------------------------------------
+    print("\n[3] Spinner Health Check")
+
+    def check_spinner(spinner, name):
+        if spinner is None:
+            print(f"  ✖ {name}: Missing")
+            return
+
+        # Check text
+        if not spinner.text:
+            print(f"  ✖ {name}: EMPTY TEXT (spinner button will appear blank)")
+        else:
+            print(f"  ✔ {name}: Text OK ({spinner.text})")
+
+        # Check values
+        if not spinner.values:
+            print(f"  ✖ {name}: No dropdown values")
+        else:
+            print(f"  ✔ {name}: {len(spinner.values)} values loaded")
+
+        # Check dropdown build
+        try:
+            spinner._build_dropdown()
+            if spinner._dropdown:
+                print(f"  ✔ {name}: Dropdown builds successfully")
+            else:
+                print(f"  ✖ {name}: Dropdown did not build")
+        except Exception as e:
+            print(f"  ✖ {name}: Dropdown build ERROR — {e}")
+
+        # Check chevron
+        try:
+            if hasattr(spinner, "chevron"):
+                print(f"  ✔ {name}: Chevron present")
+            else:
+                print(f"  ✖ {name}: Chevron missing")
+        except:
+            print(f"  ✖ {name}: Chevron check failed")
+
+    if calc:
+        check_spinner(calc.housing_type_spinner, "Housing Type Spinner")
+        check_spinner(calc.location_spinner, "Location Spinner")
+        check_spinner(calc.brma_spinner, "BRMA Spinner")
+
+    # ---------------------------------------------------------
+    # 4. SAFE_PROPS INTERFERENCE CHECK
+    # ---------------------------------------------------------
+    print("\n[4] Safe Props Texture Patch Check")
+
+    from kivy.uix.label import Label
+    patched = Label.texture_update.__name__ != "_texture_update"
+    if patched:
+        print("  ✔ safe_props_texture.py is ACTIVE")
+    else:
+        print("  ✖ safe_props_texture.py NOT ACTIVE — Samsung text issues may occur")
+
+    # ---------------------------------------------------------
+    # 5. BRMA CSV VALIDATION
+    # ---------------------------------------------------------
+    print("\n[5] BRMA CSV Validation")
+
+    csv_path = resource_find("data/pcode_brma_lookup.csv")
+    if not csv_path:
+        print("  ✖ BRMA CSV not found")
+    else:
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                import csv
+                reader = csv.DictReader(f)
+                rows = list(reader)
+
+                if not rows:
+                    print("  ✖ BRMA CSV is EMPTY")
+                else:
+                    print(f"  ✔ BRMA CSV loaded ({len(rows)} rows)")
+
+                required_cols = {"postcode", "brma_name", "country"}
+                missing = required_cols - set(reader.fieldnames)
+
+                if missing:
+                    print(f"  ✖ Missing columns: {missing}")
+                else:
+                    print("  ✔ All required columns present")
+
+        except Exception as e:
+            print(f"  ✖ BRMA CSV ERROR — {e}")
+
+    # ---------------------------------------------------------
+    # 6. LAYOUT HEALTH CHECK
+    # ---------------------------------------------------------
+    print("\n[6] Layout Health Check")
+
+    try:
+        w, h = Window.width, Window.height
+        if w < 600:
+            print("  ✖ Window width is very small — layout may break on small screens")
+        else:
+            print(f"  ✔ Window size OK ({w}x{h})")
+    except Exception as e:
+        print(f"  ✖ Layout check failed — {e}")
+
+    # ---------------------------------------------------------
+    # 7. MEMORY & PERFORMANCE CHECK
+    # ---------------------------------------------------------
+    print("\n[7] Memory & Performance Check")
+
+    try:
+        import tracemalloc
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
+    except Exception as e:
+        print(f"  ✖ Memory check failed — {e}")
+
+    print("\n=== Diagnostics Complete ===\n")
+
+
 
 
 
@@ -312,61 +448,6 @@ class RoundedButton(Button):
         # Always keep text_size tied to current width
         self.text_size = (self.width - 20, None)
 
-# Customizing Spinner to change dropdown background color
-class CustomSpinnerOption(SpinnerOption):
-    def __init__(self, **kwargs):
-        # --- FONT SIZE ---
-        fs = kwargs.get("font_size", 16)
-        if isinstance(fs, str):
-            try:
-                fs = fs.strip().replace("sp", "")
-                kwargs["font_size"] = sp(int(fs))
-            except Exception:
-                kwargs["font_size"] = sp(16)
-        elif isinstance(fs, (int, float)):
-            kwargs["font_size"] = sp(fs)
-        else:
-            kwargs["font_size"] = sp(16)
-
-        # --- TEXT SIZE ---
-        ts = kwargs.get("text_size", None)
-        if isinstance(ts, (ObservableList, list, tuple)):
-            ts = tuple(ts)
-        else:
-            ts = (Window.width - 60, 0)
-
-        if len(ts) != 2:
-            ts = (Window.width - 60, 0)
-
-        w, h = ts
-        w = int(w) if w not in (None, 0) else int(Window.width - 60)
-        h = int(h) if h is not None else 0
-        kwargs["text_size"] = (w, h)
-
-        # --- PADDING ---
-        pad = kwargs.get("padding", None)
-        if isinstance(pad, (ObservableList, list, tuple)):
-            pad = tuple(int(v) if v is not None else 0 for v in pad)
-            if all(v == 0 for v in pad):
-                kwargs["padding"] = (10, 10)
-            else:
-                kwargs["padding"] = pad
-        else:
-            kwargs["padding"] = (10, 10)
-
-        super().__init__(**kwargs)
-
-        # --- Styling (your original code) ---
-        self.background_color = get_color_from_hex("#FFFFFF")  # White background
-        self.color = get_color_from_hex("#005EA5")             # GOVUK_BLUE text color
-        self.background_normal = ""                            # Remove default background image
-
-        # 🔑 Bind text_size dynamically to width and window resize
-        self.bind(width=self._update_text_size)
-        Window.bind(size=lambda *_: self._update_text_size())
-
-    def _update_text_size(self, *args):
-        self.text_size = (self.width - 20, None)
 
 
 # ---------------------------------------------------------
@@ -390,7 +471,7 @@ class IconRow(ButtonBehavior, BoxLayout):
 
         self.bind(pos=self._update_bg, size=self._update_bg)
 
-        # Icon (optional)
+        # Optional icon
         if icon_path:
             self.add_widget(Image(
                 source=icon_path,
@@ -413,7 +494,8 @@ class IconRow(ButtonBehavior, BoxLayout):
     def _update_bg(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
-        
+
+
 # ---------------------------------------------------------
 # BASE GOV.UK SPINNER (styling only)
 # ---------------------------------------------------------
@@ -436,35 +518,75 @@ class GovUkSpinner(Spinner):
             **kwargs
         )
 
+
 # ---------------------------------------------------------
-# FINAL GOV.UK ICON SPINNER (FULLY FIXED)
+# FINAL GOV.UK ICON SPINNER (FULLY SAFE & FEATURED)
 # ---------------------------------------------------------
 class GovUkIconSpinner(GovUkSpinner):
     def __init__(self, icon_map=None, **kwargs):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
 
-        # Force spinner button text to exist
-        if not self.text:
-            self.text = "Select"
+        # -----------------------------------------------------
+        # Clear default spinner children (just visual content)
+        # -----------------------------------------------------
+        self.clear_widgets()
 
-        # Force a visible label on the spinner button
-        if not hasattr(self, "label"):
-            self.label = Label(
-                text=self.text,
-                color=get_color_from_hex("#005EA5"),
-                font_size=20,
-                halign="center",
-                valign="middle"
-            )
-            self.add_widget(self.label)
+        # -----------------------------------------------------
+        # Build custom button layout
+        # -----------------------------------------------------
+        self.button_box = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
+            size_hint=(1, 1)
+        )
+
+        # Spinner label
+        self.label = Label(
+            text=self.text or "Select",
+            color=get_color_from_hex("#005EA5"),
+            font_size=20,
+            halign="left",
+            valign="middle"
+        )
+
+        # Chevron icon (down arrow by default)
+        self.chevron = Image(
+            source="images/icons/chevron-down.png",
+            size_hint=(None, None),
+            size=(24, 24),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.button_box.add_widget(self.label)
+        self.button_box.add_widget(self.chevron)
+        self.add_widget(self.button_box)
 
         # Keep label synced with spinner text
         self.bind(text=lambda instance, value: setattr(self.label, "text", value))
 
-    # -----------------------------------------------------
-    # Build dropdown manually (safe on Android)
-    # -----------------------------------------------------
+        # -----------------------------------------------------
+        # Simple active state (pressed)
+        # -----------------------------------------------------
+        self.normal_bg = get_color_from_hex("#FFDD00")
+        self.active_bg = get_color_from_hex("#CCB000")
+
+        def on_press(*_):
+            self.background_color = self.active_bg
+
+        def on_release(*_):
+            self.background_color = self.normal_bg
+
+        self.bind(on_press=on_press, on_release=on_release)
+
+        # Ensure we start with normal background
+        self.background_color = self.normal_bg
+
+    # ---------------------------------------------------------
+    # Build dropdown manually (Android-safe)
+    # ---------------------------------------------------------
     def _build_dropdown(self):
         dropdown = DropDown()
 
@@ -476,18 +598,43 @@ class GovUkIconSpinner(GovUkSpinner):
         dropdown.bind(pos=lambda *_: setattr(dropdown.bg, "pos", dropdown.pos))
         dropdown.bind(size=lambda *_: setattr(dropdown.bg, "size", dropdown.size))
 
-        # When dropdown selects a value → update spinner text
+        # Update spinner text when selecting
         dropdown.bind(on_select=lambda instance, value: setattr(self, "text", value))
 
         # Add rows
         for value in self.values:
             icon_path = self.icon_map.get(value)
             row = IconRow(text=value, icon_path=icon_path)
-
             row.bind(on_release=lambda row_instance: dropdown.select(row_instance.label.text))
             dropdown.add_widget(row)
 
+        # When dropdown is dismissed, reset chevron + background
+        dropdown.bind(on_dismiss=lambda *_: self._on_dropdown_dismiss())
+
         self._dropdown = dropdown
+
+    # ---------------------------------------------------------
+    # Open dropdown safely and swap chevron icon
+    # ---------------------------------------------------------
+    def open_dropdown(self, *args):
+        # Ensure dropdown exists
+        if not getattr(self, "_dropdown", None):
+            self._build_dropdown()
+
+        # Swap chevron to "up"
+        if self.chevron:
+            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-32pm.png"
+
+        return super().open_dropdown(*args)
+
+    # ---------------------------------------------------------
+    # Handle dropdown dismiss: reset chevron + background
+    # ---------------------------------------------------------
+    def _on_dropdown_dismiss(self, *args):
+        if self.chevron:
+            self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-32px.png"
+        self.background_color = self.normal_bg
+
 
 
 # Create a loading animation using a sequence of PNG images
@@ -1901,6 +2048,10 @@ class Calculator(Screen):
             ],
             icon_map={}  # no icons needed here
         )
+
+        # Force text AFTER safe_props has finished touching it
+        self.housing_type_spinner.text = "Housing Type"
+        
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
     
@@ -1963,6 +2114,10 @@ class Calculator(Screen):
             values=["England", "Scotland", "Wales"],
             icon_map={}
         )
+        
+        # Force text AFTER safe_props has finished touching it
+        self.location_spinner.text = "Select Location"
+        
         location_anchor.add_widget(self.location_spinner)
         layout.add_widget(location_anchor)
     
@@ -2667,6 +2822,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
