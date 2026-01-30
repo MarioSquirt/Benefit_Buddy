@@ -1432,7 +1432,7 @@ class Calculator(Screen):
 
         def on_screen_select(_, text):
             clean_text = text.replace(" ▼", "")
-            self.screen_content.clear_widgets()1431
+            self.screen_content.clear_widgets()
             for name, builder in self.screens:
                 if name == clean_text:
                     widget = builder()
@@ -2771,6 +2771,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
