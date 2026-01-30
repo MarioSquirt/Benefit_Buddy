@@ -145,7 +145,7 @@ tracemalloc.start()  # Start tracing memory allocations
 class BenefitBuddy(App):
     def build(self):
         sm = ScreenManager()
-        sm.add_widget(SplashScreen(name="splash"))
+        
         sm.add_widget(DisclaimerScreen(name="disclaimer"))
         sm.add_widget(SettingsScreen(name="settings"))
         sm.add_widget(MainScreen(name="main"))
@@ -155,6 +155,9 @@ class BenefitBuddy(App):
         sm.add_widget(MainScreenFullAccess(name="main_full_access"))
         sm.add_widget(Calculator(name="calculator")) 
         # Add more screens as needed
+
+        sm.current = "disclaimer" # Explicit starting screen
+        
         return sm
 
 def on_start(self):
@@ -778,53 +781,6 @@ class SettingsScreen(Screen):
 
     def go_to_main(self, instance):
         self.manager.current = "main"
-
-
-# Define the Splash Screen
-class SplashScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=30, padding=30)
-
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
-
-        # Logo centered and resized
-        logo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=0.4)
-        logo = Image(
-            source="images/logo.png",          # ensure correct path
-            size_hint=(0.5, 0.5),  # half the width/height of its anchor
-            allow_stretch=True,
-            keep_ratio=True
-        )
-        logo_anchor.add_widget(logo)
-        layout.add_widget(logo_anchor)
-
-        # Loading animation centered below logo
-        loading_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=120)
-        loading_animation = PNGSequenceAnimationWidget(
-            size_hint=(None, None), size=(100, 100),
-            pos_hint={"center_x": 0.5}
-        )
-        loading_anchor.add_widget(loading_animation)
-        layout.add_widget(loading_anchor)
-
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
-
-    def on_enter(self):
-        Clock.schedule_once(self.switch_to_disclaimer, 5)
-
-    def switch_to_disclaimer(self, dt):
-        self.manager.current = "disclaimer"
 
 
 # Disclaimer Screen
@@ -2841,6 +2797,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
