@@ -1432,7 +1432,7 @@ class Calculator(Screen):
 
         def on_screen_select(_, text):
             clean_text = text.replace(" ▼", "")
-            self.screen_content.clear_widgets()
+            self.screen_content.clear_widgets()1431
             for name, builder in self.screens:
                 if name == clean_text:
                     widget = builder()
@@ -1637,6 +1637,9 @@ class Calculator(Screen):
         layout.add_widget(wrapped_SafeLabel("- Your housing situation (rent or own)", 14, 24))
         layout.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
         layout.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
+
+        scroll.add_widget(layout)
+        return scroll
     
 
         
@@ -2768,6 +2771,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
