@@ -167,7 +167,7 @@ class BenefitBuddy(App):
     def go_to_disclaimer(self, dt):
         self.root.current = "disclaimer"
     
-    def run_startup_diagnostics(self):
+    def run_startup_diagnostics(self, dt):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
     
         # ---------------------------------------------------------
@@ -2771,6 +2771,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
