@@ -160,190 +160,190 @@ class BenefitBuddy(App):
         return sm
 
 
-def on_start(self):
-    Clock.schedule_once(self.go_to_disclaimer, 0)
-    Clock.schedule_once(self.run_startup_diagnostics, 0.1)
-
-def go_to_disclaimer(self, dt):
-    self.root.current = "disclaimer"
-
-def run_startup_diagnostics(self):
-    print("\n=== Benefit Buddy Startup Diagnostics ===")
-
-    # ---------------------------------------------------------
-    # 1. ASSET CHECK
-    # ---------------------------------------------------------
-    print("\n[1] Asset Verification")
-
-    required_assets = {
-        "Logo": "images/logo.png",
-        "BRMA CSV": "data/pcode_brma_lookup.csv",
-        "Roboto Font": "font/roboto.ttf",
-        "Chevron Down Icon": "images/icons/ChevronDown-icon/ChevronDown-32px.png",
-        "Chevron Up Icon": "images/icons/ChevronUp-icon/ChevronUp-32px.png",
-    }
-
-    for label, asset in required_assets.items():
-        path = resource_find(asset)
-        if path and os.path.exists(path):
-            print(f"  ✔ {label}: FOUND ({asset})")
-        else:
-            print(f"  ✖ {label}: MISSING ({asset})")
-
-    # ---------------------------------------------------------
-    # 2. SCREEN & WIDGET CHECK
-    # ---------------------------------------------------------
-    print("\n[2] Screen & Widget Integrity")
-
-    try:
-        calc = self.root.get_screen("calculator")
-    except Exception:
-        print("  ✖ Calculator screen not found — cannot run widget diagnostics.")
-        calc = None
-
-    if calc:
-        widget_checks = [
-            ("Claimant Name Input", "name_input"),
-            ("Claimant DOB Input", "dob_input"),
-            ("Partner Name Input", "partner_name_input"),
-            ("Partner DOB Input", "partner_dob_input"),
-            ("Income Input", "income_input"),
-            ("Capital Input", "capital_input"),
-            ("Housing Type Spinner", "housing_type_spinner"),
-            ("Location Spinner", "location_spinner"),
-            ("BRMA Spinner", "brma_spinner"),
-            ("Sanction Level Spinner", "sanction_level_spinner"),
-            ("Advance Payments Input", "advance_payments_input"),
-        ]
-
-        for label, attr in widget_checks:
-            widget = getattr(calc, attr, None)
-            if widget is None:
-                print(f"  ✖ {label}: NOT FOUND")
+    def on_start(self):
+        Clock.schedule_once(self.go_to_disclaimer, 0)
+        Clock.schedule_once(self.run_startup_diagnostics, 0.1)
+    
+    def go_to_disclaimer(self, dt):
+        self.root.current = "disclaimer"
+    
+    def run_startup_diagnostics(self):
+        print("\n=== Benefit Buddy Startup Diagnostics ===")
+    
+        # ---------------------------------------------------------
+        # 1. ASSET CHECK
+        # ---------------------------------------------------------
+        print("\n[1] Asset Verification")
+    
+        required_assets = {
+            "Logo": "images/logo.png",
+            "BRMA CSV": "data/pcode_brma_lookup.csv",
+            "Roboto Font": "font/roboto.ttf",
+            "Chevron Down Icon": "images/icons/ChevronDown-icon/ChevronDown-32px.png",
+            "Chevron Up Icon": "images/icons/ChevronUp-icon/ChevronUp-32px.png",
+        }
+    
+        for label, asset in required_assets.items():
+            path = resource_find(asset)
+            if path and os.path.exists(path):
+                print(f"  ✔ {label}: FOUND ({asset})")
             else:
-                try:
-                    if hasattr(widget, "text"):
-                        _ = widget.text
-                    print(f"  ✔ {label}: OK")
-                except Exception as e:
-                    print(f"  ✖ {label}: ERROR — {e}")
-
-    # ---------------------------------------------------------
-    # 3. SPINNER HEALTH CHECK
-    # ---------------------------------------------------------
-    print("\n[3] Spinner Health Check")
-
-    def check_spinner(spinner, name):
-        if spinner is None:
-            print(f"  ✖ {name}: Missing")
-            return
-
-        # Check text
-        if not spinner.text:
-            print(f"  ✖ {name}: EMPTY TEXT (spinner button will appear blank)")
-        else:
-            print(f"  ✔ {name}: Text OK ({spinner.text})")
-
-        # Check values
-        if not spinner.values:
-            print(f"  ✖ {name}: No dropdown values")
-        else:
-            print(f"  ✔ {name}: {len(spinner.values)} values loaded")
-
-        # Check dropdown build
+                print(f"  ✖ {label}: MISSING ({asset})")
+    
+        # ---------------------------------------------------------
+        # 2. SCREEN & WIDGET CHECK
+        # ---------------------------------------------------------
+        print("\n[2] Screen & Widget Integrity")
+    
         try:
-            spinner._build_dropdown()
-            if spinner._dropdown:
-                print(f"  ✔ {name}: Dropdown builds successfully")
-            else:
-                print(f"  ✖ {name}: Dropdown did not build")
-        except Exception as e:
-            print(f"  ✖ {name}: Dropdown build ERROR — {e}")
-
-        # Check chevron
-        try:
-            if hasattr(spinner, "chevron"):
-                print(f"  ✔ {name}: Chevron present")
-            else:
-                print(f"  ✖ {name}: Chevron missing")
-        except:
-            print(f"  ✖ {name}: Chevron check failed")
-
-    if calc:
-        check_spinner(calc.housing_type_spinner, "Housing Type Spinner")
-        check_spinner(calc.location_spinner, "Location Spinner")
-        check_spinner(calc.brma_spinner, "BRMA Spinner")
-
-    # ---------------------------------------------------------
-    # 4. SAFE_PROPS INTERFERENCE CHECK
-    # ---------------------------------------------------------
-    print("\n[4] Safe Props Texture Patch Check")
-
-    from kivy.uix.label import Label
-    patched = Label.texture_update.__name__ != "_texture_update"
-    if patched:
-        print("  ✔ safe_props_texture.py is ACTIVE")
-    else:
-        print("  ✖ safe_props_texture.py NOT ACTIVE — Samsung text issues may occur")
-
-    # ---------------------------------------------------------
-    # 5. BRMA CSV VALIDATION
-    # ---------------------------------------------------------
-    print("\n[5] BRMA CSV Validation")
-
-    csv_path = resource_find("data/pcode_brma_lookup.csv")
-    if not csv_path:
-        print("  ✖ BRMA CSV not found")
-    else:
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                import csv
-                reader = csv.DictReader(f)
-                rows = list(reader)
-
-                if not rows:
-                    print("  ✖ BRMA CSV is EMPTY")
+            calc = self.root.get_screen("calculator")
+        except Exception:
+            print("  ✖ Calculator screen not found — cannot run widget diagnostics.")
+            calc = None
+    
+        if calc:
+            widget_checks = [
+                ("Claimant Name Input", "name_input"),
+                ("Claimant DOB Input", "dob_input"),
+                ("Partner Name Input", "partner_name_input"),
+                ("Partner DOB Input", "partner_dob_input"),
+                ("Income Input", "income_input"),
+                ("Capital Input", "capital_input"),
+                ("Housing Type Spinner", "housing_type_spinner"),
+                ("Location Spinner", "location_spinner"),
+                ("BRMA Spinner", "brma_spinner"),
+                ("Sanction Level Spinner", "sanction_level_spinner"),
+                ("Advance Payments Input", "advance_payments_input"),
+            ]
+    
+            for label, attr in widget_checks:
+                widget = getattr(calc, attr, None)
+                if widget is None:
+                    print(f"  ✖ {label}: NOT FOUND")
                 else:
-                    print(f"  ✔ BRMA CSV loaded ({len(rows)} rows)")
-
-                required_cols = {"postcode", "brma_name", "country"}
-                missing = required_cols - set(reader.fieldnames)
-
-                if missing:
-                    print(f"  ✖ Missing columns: {missing}")
+                    try:
+                        if hasattr(widget, "text"):
+                            _ = widget.text
+                        print(f"  ✔ {label}: OK")
+                    except Exception as e:
+                        print(f"  ✖ {label}: ERROR — {e}")
+    
+        # ---------------------------------------------------------
+        # 3. SPINNER HEALTH CHECK
+        # ---------------------------------------------------------
+        print("\n[3] Spinner Health Check")
+    
+        def check_spinner(spinner, name):
+            if spinner is None:
+                print(f"  ✖ {name}: Missing")
+                return
+    
+            # Check text
+            if not spinner.text:
+                print(f"  ✖ {name}: EMPTY TEXT (spinner button will appear blank)")
+            else:
+                print(f"  ✔ {name}: Text OK ({spinner.text})")
+    
+            # Check values
+            if not spinner.values:
+                print(f"  ✖ {name}: No dropdown values")
+            else:
+                print(f"  ✔ {name}: {len(spinner.values)} values loaded")
+    
+            # Check dropdown build
+            try:
+                spinner._build_dropdown()
+                if spinner._dropdown:
+                    print(f"  ✔ {name}: Dropdown builds successfully")
                 else:
-                    print("  ✔ All required columns present")
-
-        except Exception as e:
-            print(f"  ✖ BRMA CSV ERROR — {e}")
-
-    # ---------------------------------------------------------
-    # 6. LAYOUT HEALTH CHECK
-    # ---------------------------------------------------------
-    print("\n[6] Layout Health Check")
-
-    try:
-        w, h = Window.width, Window.height
-        if w < 600:
-            print("  ✖ Window width is very small — layout may break on small screens")
+                    print(f"  ✖ {name}: Dropdown did not build")
+            except Exception as e:
+                print(f"  ✖ {name}: Dropdown build ERROR — {e}")
+    
+            # Check chevron
+            try:
+                if hasattr(spinner, "chevron"):
+                    print(f"  ✔ {name}: Chevron present")
+                else:
+                    print(f"  ✖ {name}: Chevron missing")
+            except:
+                print(f"  ✖ {name}: Chevron check failed")
+    
+        if calc:
+            check_spinner(calc.housing_type_spinner, "Housing Type Spinner")
+            check_spinner(calc.location_spinner, "Location Spinner")
+            check_spinner(calc.brma_spinner, "BRMA Spinner")
+    
+        # ---------------------------------------------------------
+        # 4. SAFE_PROPS INTERFERENCE CHECK
+        # ---------------------------------------------------------
+        print("\n[4] Safe Props Texture Patch Check")
+    
+        from kivy.uix.label import Label
+        patched = Label.texture_update.__name__ != "_texture_update"
+        if patched:
+            print("  ✔ safe_props_texture.py is ACTIVE")
         else:
-            print(f"  ✔ Window size OK ({w}x{h})")
-    except Exception as e:
-        print(f"  ✖ Layout check failed — {e}")
-
-    # ---------------------------------------------------------
-    # 7. MEMORY & PERFORMANCE CHECK
-    # ---------------------------------------------------------
-    print("\n[7] Memory & Performance Check")
-
-    try:
-        import tracemalloc
-        current, peak = tracemalloc.get_traced_memory()
-        print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
-    except Exception as e:
-        print(f"  ✖ Memory check failed — {e}")
-
-    print("\n=== Diagnostics Complete ===\n")
+            print("  ✖ safe_props_texture.py NOT ACTIVE — Samsung text issues may occur")
+    
+        # ---------------------------------------------------------
+        # 5. BRMA CSV VALIDATION
+        # ---------------------------------------------------------
+        print("\n[5] BRMA CSV Validation")
+    
+        csv_path = resource_find("data/pcode_brma_lookup.csv")
+        if not csv_path:
+            print("  ✖ BRMA CSV not found")
+        else:
+            try:
+                with open(csv_path, newline="", encoding="utf-8") as f:
+                    import csv
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+    
+                    if not rows:
+                        print("  ✖ BRMA CSV is EMPTY")
+                    else:
+                        print(f"  ✔ BRMA CSV loaded ({len(rows)} rows)")
+    
+                    required_cols = {"postcode", "brma_name", "country"}
+                    missing = required_cols - set(reader.fieldnames)
+    
+                    if missing:
+                        print(f"  ✖ Missing columns: {missing}")
+                    else:
+                        print("  ✔ All required columns present")
+    
+            except Exception as e:
+                print(f"  ✖ BRMA CSV ERROR — {e}")
+    
+        # ---------------------------------------------------------
+        # 6. LAYOUT HEALTH CHECK
+        # ---------------------------------------------------------
+        print("\n[6] Layout Health Check")
+    
+        try:
+            w, h = Window.width, Window.height
+            if w < 600:
+                print("  ✖ Window width is very small — layout may break on small screens")
+            else:
+                print(f"  ✔ Window size OK ({w}x{h})")
+        except Exception as e:
+            print(f"  ✖ Layout check failed — {e}")
+    
+        # ---------------------------------------------------------
+        # 7. MEMORY & PERFORMANCE CHECK
+        # ---------------------------------------------------------
+        print("\n[7] Memory & Performance Check")
+    
+        try:
+            import tracemalloc
+            current, peak = tracemalloc.get_traced_memory()
+            print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
+        except Exception as e:
+            print(f"  ✖ Memory check failed — {e}")
+    
+        print("\n=== Diagnostics Complete ===\n")
 
 
 
@@ -2771,6 +2771,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
