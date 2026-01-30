@@ -11,7 +11,12 @@ orientation = portrait
 fullscreen = 0
 
 # Icons & Presplash
-presplash.filename = %(source.dir)s/images/splash.png
+presplash.filename = images/splash.png
+presplash.color = #005EA5
+android.presplash_color = #005EA5
+android.presplash_icon = images/splash.png
+android.enable_androidx = True
+
 icon.filename = %(source.dir)s/images/icon.png
 
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
