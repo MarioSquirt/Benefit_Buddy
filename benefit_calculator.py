@@ -553,7 +553,7 @@ class GovUkIconSpinner(GovUkSpinner):
 
         # Chevron icon (down arrow by default)
         self.chevron = Image(
-            source="images/icons/chevron-down.png",
+            source="images/icons/ChevronDown-icon/ChevronDown-32px.png",
             size_hint=(None, None),
             size=(24, 24),
             allow_stretch=True,
@@ -1700,7 +1700,8 @@ class Calculator(Screen):
         """Mark intro as seen and move to claimant details"""
         self.user_data["intro_seen"] = True
         # Switch spinner to Claimant Details
-        self.screen_spinner.text = "👤 Claimant Details"
+        self.screen_spinner.text = "Claimant Details"
+        self.go_to_claimant_details
     
     def on_pre_enter_intro(self, *args):
         """Repopulate intro state when re-entering"""
@@ -2048,12 +2049,12 @@ class Calculator(Screen):
             ],
             icon_map={}  # no icons needed here
         )
-
-        # Force text AFTER safe_props has finished touching it
-        self.housing_type_spinner.text = "Housing Type"
         
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
+
+        # Force text AFTER safe_props has finished touching it
+        self.housing_type_spinner.text = "Housing Type"
     
         # Rent/Mortgage inputs
         self.rent_input = TextInput(
@@ -2075,17 +2076,32 @@ class Calculator(Screen):
             background_color=get_color_from_hex("#FFFFFF"),
             foreground_color=get_color_from_hex("#005EA5")
         )
+
+        self.shared_input = TextInput(
+            hint_text="Enter shared accommodation contribution (£)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
+        )
+
     
         def update_amount_input(spinner, value):
             if self.rent_input.parent:
                 layout.remove_widget(self.rent_input)
             if self.mortgage_input.parent:
                 layout.remove_widget(self.mortgage_input)
+            if self.shared_input.parent:
+                layout.remove_widget(self.shared_input)
     
             if "Rent" in value:
                 layout.add_widget(self.rent_input)
             elif "Own" in value:
                 layout.add_widget(self.mortgage_input)
+            elif "Shared Accomodation" in value:
+                layout.add_widget(self.shared_input)
     
         self.housing_type_spinner.bind(text=update_amount_input)
         update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
@@ -2115,12 +2131,12 @@ class Calculator(Screen):
             icon_map={}
         )
         
+        location_anchor.add_widget(self.location_spinner)
+        layout.add_widget(location_anchor)
+
         # Force text AFTER safe_props has finished touching it
         self.location_spinner.text = "Select Location"
         
-        location_anchor.add_widget(self.location_spinner)
-        layout.add_widget(location_anchor)
-    
         # ---------------------------------------------------------
         # BRMA SPINNER
         # ---------------------------------------------------------
@@ -2133,6 +2149,9 @@ class Calculator(Screen):
         )
         brma_anchor.add_widget(self.brma_spinner)
         layout.add_widget(brma_anchor)
+
+        # Force text AFTER safe_props has finished touching it
+        self.brma_spinner.text = "Select BRMA"
     
         # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
@@ -2822,6 +2841,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
