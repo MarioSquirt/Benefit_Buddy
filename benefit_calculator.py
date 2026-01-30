@@ -1631,42 +1631,6 @@ class Calculator(Screen):
         layout.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
         layout.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
     
-        # Proceed button centered with proper text alignment
-        proceed_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=80)
-        proceed_button = RoundedButton(
-            text="Proceed to Claimant Details",
-            size_hint=(None, None),
-            size=(250, 60),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),  # GOV.UK yellow
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
-            halign="center", valign="middle",
-            text_size=(250, None),
-            on_press=self.save_intro_and_proceed
-        )
-        proceed_anchor.add_widget(proceed_button)
-        layout.add_widget(proceed_anchor)
-    
-        scroll.add_widget(layout)
-        return scroll
-    
-    def save_intro_and_proceed(self, instance):
-        """Mark intro as seen and move to claimant details"""
-        self.user_data["intro_seen"] = True
-        # Switch spinner to Claimant Details
-        self.screen_spinner.text = "Claimant Details"
-        self.go_to_claimant_details
-    
-    def on_pre_enter_intro(self, *args):
-        """Repopulate intro state when re-entering"""
-        if self.user_data.get("intro_seen"):
-            # Optionally disable the proceed button or change its text
-            # Example: show 'Continue' instead of 'Proceed'
-            for child in self.screen_content.children:
-                if isinstance(child, RoundedButton) and child.text.startswith("Proceed"):
-                    child.text = "Continue to Claimant Details"
 
         
     def on_couple_claim_checkbox_active(self, checkbox, value):
@@ -2797,6 +2761,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
