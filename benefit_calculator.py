@@ -145,7 +145,8 @@ tracemalloc.start()  # Start tracing memory allocations
 class BenefitBuddy(App):
     def build(self):
         sm = ScreenManager()
-        
+
+        sm.add_widget(InstantScreen(name="instant"))
         sm.add_widget(DisclaimerScreen(name="disclaimer"))
         sm.add_widget(SettingsScreen(name="settings"))
         sm.add_widget(MainScreen(name="main"))
@@ -153,15 +154,18 @@ class BenefitBuddy(App):
         sm.add_widget(LoginPage(name="log_in"))
         sm.add_widget(MainScreenGuestAccess(name="main_guest_access"))
         sm.add_widget(MainScreenFullAccess(name="main_full_access"))
-        sm.add_widget(Calculator(name="calculator")) 
-        # Add more screens as needed
+        sm.add_widget(Calculator(name="calculator"))
 
-        sm.current = "disclaimer" # Explicit starting screen
-        
+        sm.current = "instant"
         return sm
 
+
 def on_start(self):
-    self.run_startup_diagnostics()
+    Clock.schedule_once(self.go_to_disclaimer, 0)
+    Clock.schedule_once(self.run_startup_diagnostics, 0.1)
+
+def go_to_disclaimer(self, dt):
+    self.root.current = "disclaimer"
 
 def run_startup_diagnostics(self):
     print("\n=== Benefit Buddy Startup Diagnostics ===")
@@ -715,7 +719,10 @@ def hide_loading(self):
     anim.bind(on_complete=lambda *args: self.root.remove_widget(overlay))
     anim.start(overlay)
 
+class InstantScreen(Screen):
+    pass
 
+        
 # Define the Settings Screen
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -2761,6 +2768,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
