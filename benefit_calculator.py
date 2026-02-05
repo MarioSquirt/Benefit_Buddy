@@ -525,7 +525,7 @@ class GovUkIconSpinner(GovUkSpinner):
 
         # Swap chevron to "up"
         if self.chevron:
-            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-32pm.png"
+            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-32px.png"
 
         return super().open_dropdown(*args)
 
@@ -1932,7 +1932,7 @@ class Calculator(Screen):
         layout.add_widget(housing_anchor)
 
         # Force text AFTER safe_props has finished touching it
-        self.housing_type_spinner.text = "Housing Type"
+        Clock.schedule_once(lambda dt: setattr(self.housing_type_spinner, "text", "Housing Type"), 0)
     
         # Rent/Mortgage inputs
         self.rent_input = TextInput(
@@ -2029,7 +2029,7 @@ class Calculator(Screen):
         layout.add_widget(brma_anchor)
 
         # Force text AFTER safe_props has finished touching it
-        self.brma_spinner.text = "Select BRMA"
+        Clock.schedule_once(lambda dt: setattr(self.brma_spinner, "text", "Select BRMA"), 0)
     
         # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
@@ -2656,6 +2656,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
