@@ -49,6 +49,38 @@ from datetime import datetime
 
 
 
+def with_diagnostics(widget_names=None):
+    """
+    Decorator that injects automatic diagnostics into any Screen.
+    widget_names: list of attribute names to check when the screen is opened.
+    """
+    widget_names = widget_names or []
+
+    def decorator(cls):
+        original_on_pre_enter = getattr(cls, "on_pre_enter", None)
+
+        def new_on_pre_enter(self, *args, **kwargs):
+            # Run original on_pre_enter if it exists
+            if original_on_pre_enter:
+                original_on_pre_enter(self, *args, **kwargs)
+
+            print(f"\n=== Diagnostics for {cls.__name__} ===")
+
+            for name in widget_names:
+                widget = getattr(self, name, None)
+                if widget is None:
+                    print(f"  ✖ {name}: NOT FOUND")
+                else:
+                    print(f"  ✔ {name}: OK")
+
+            print(f"=== End Diagnostics for {cls.__name__} ===\n")
+
+        setattr(cls, "on_pre_enter", new_on_pre_enter)
+        return cls
+
+    return decorator
+
+
 ICON_PATHS = {
     "Introduction": "images/icons/Introduction-icon/Introduction-32px.png",
     "Claimant Details": "images/icons/ClaimantDetails-icon/ClaimantDetails-32px.png",
@@ -164,39 +196,25 @@ class BenefitBuddy(App):
         # Switch away from InstantScreen
         Clock.schedule_once(self.go_to_disclaimer, 0)
     
-        # Pre-build the Calculator UI so diagnostics can inspect it
-        Clock.schedule_once(self.prebuild_calculator, 0.05)
-    
         # Run diagnostics after everything exists
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
 
     
     def go_to_disclaimer(self, dt):
         self.root.current = "disclaimer"
-
-    def prebuild_calculator(self, dt):
-        calc = self.root.get_screen("calculator")
-
-        # Force-build all calculator sub-screens
-        calc.create_intro_screen()
-        calc.create_claimant_details_screen()
-        calc.create_finances_screen()
-        calc.create_housing_screen()
-        calc.create_children_screen()
-        calc.create_additional_elements_screen()
-        calc.create_sanction_screen()
-        calc.create_advance_payments_screen()
-        calc.create_calculate_screen()
-
     
     def run_startup_diagnostics(self, dt):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
     
-        # ---------------------------------------------------------
-        # 1. ASSET CHECK
-        # ---------------------------------------------------------
-        print("\n[1] Asset Verification")
+        self.check_assets()
+        self.check_safe_props()
+        self.check_window_size()
+        self.check_memory()
     
+        print("\n=== Startup Diagnostics Complete ===\n")
+
+    def check_assets(self):
+        print("\n[1] Asset Verification")
         required_assets = {
             "Logo": "images/logo.png",
             "BRMA CSV": "data/pcode_brma_lookup.csv",
@@ -204,170 +222,25 @@ class BenefitBuddy(App):
             "Chevron Down Icon": "images/icons/ChevronDown-icon/ChevronDown-32px.png",
             "Chevron Up Icon": "images/icons/ChevronUp-icon/ChevronUp-32px.png",
         }
-    
         for label, asset in required_assets.items():
             path = resource_find(asset)
-            if path and os.path.exists(path):
-                print(f"  ✔ {label}: FOUND ({asset})")
-            else:
-                print(f"  ✖ {label}: MISSING ({asset})")
-    
-        # ---------------------------------------------------------
-        # 2. SCREEN & WIDGET CHECK
-        # ---------------------------------------------------------
-        print("\n[2] Screen & Widget Integrity")
-    
-        try:
-            calc = self.root.get_screen("calculator")
-        except Exception:
-            print("  ✖ Calculator screen not found — cannot run widget diagnostics.")
-            calc = None
-    
-        if calc:
-            widget_checks = [
-                ("Claimant Name Input", "name_input"),
-                ("Claimant DOB Input", "dob_input"),
-                ("Partner Name Input", "partner_name_input"),
-                ("Partner DOB Input", "partner_dob_input"),
-                ("Income Input", "income_input"),
-                ("Capital Input", "capital_input"),
-                ("Housing Type Spinner", "housing_type_spinner"),
-                ("Location Spinner", "location_spinner"),
-                ("BRMA Spinner", "brma_spinner"),
-                ("Sanction Level Spinner", "sanction_level_spinner"),
-                ("Advance Payments Input", "advance_payments_input"),
-            ]
-    
-            for label, attr in widget_checks:
-                widget = getattr(calc, attr, None)
-                if widget is None:
-                    print(f"  ✖ {label}: NOT FOUND")
-                else:
-                    try:
-                        if hasattr(widget, "text"):
-                            _ = widget.text
-                        print(f"  ✔ {label}: OK")
-                    except Exception as e:
-                        print(f"  ✖ {label}: ERROR — {e}")
-    
-        # ---------------------------------------------------------
-        # 3. SPINNER HEALTH CHECK
-        # ---------------------------------------------------------
-        print("\n[3] Spinner Health Check")
-    
-        def check_spinner(spinner, name):
-            if spinner is None:
-                print(f"  ✖ {name}: Missing")
-                return
-    
-            # Check text
-            if not spinner.text:
-                print(f"  ✖ {name}: EMPTY TEXT (spinner button will appear blank)")
-            else:
-                print(f"  ✔ {name}: Text OK ({spinner.text})")
-    
-            # Check values
-            if not spinner.values:
-                print(f"  ✖ {name}: No dropdown values")
-            else:
-                print(f"  ✔ {name}: {len(spinner.values)} values loaded")
-    
-            # Check dropdown build
-            try:
-                spinner._build_dropdown()
-                if spinner._dropdown:
-                    print(f"  ✔ {name}: Dropdown builds successfully")
-                else:
-                    print(f"  ✖ {name}: Dropdown did not build")
-            except Exception as e:
-                print(f"  ✖ {name}: Dropdown build ERROR — {e}")
-    
-            # Check chevron
-            try:
-                if hasattr(spinner, "chevron"):
-                    print(f"  ✔ {name}: Chevron present")
-                else:
-                    print(f"  ✖ {name}: Chevron missing")
-            except:
-                print(f"  ✖ {name}: Chevron check failed")
-    
-        if calc:
-            check_spinner(calc.housing_type_spinner, "Housing Type Spinner")
-            check_spinner(calc.location_spinner, "Location Spinner")
-            check_spinner(calc.brma_spinner, "BRMA Spinner")
-    
-        # ---------------------------------------------------------
-        # 4. SAFE_PROPS INTERFERENCE CHECK
-        # ---------------------------------------------------------
-        print("\n[4] Safe Props Texture Patch Check")
-    
+            print(f"  {'✔' if path else '✖'} {label}: {asset}")
+
+    def check_safe_props(self):
+        print("\n[2] Safe Props Texture Patch Check")
         from kivy.uix.label import Label
         patched = Label.texture_update.__name__ != "_texture_update"
-        if patched:
-            print("  ✔ safe_props_texture.py is ACTIVE")
-        else:
-            print("  ✖ safe_props_texture.py NOT ACTIVE — Samsung text issues may occur")
+        print("  ✔ safe_props_texture.py ACTIVE" if patched else "  ✖ NOT ACTIVE")
     
-        # ---------------------------------------------------------
-        # 5. BRMA CSV VALIDATION
-        # ---------------------------------------------------------
-        print("\n[5] BRMA CSV Validation")
+    def check_window_size(self):
+        print("\n[3] Window Size Check")
+        w, h = Window.width, Window.height
+        print(f"  ✔ Window size OK ({w}x{h})" if w >= 600 else "  ✖ Window too small")
     
-        csv_path = resource_find("data/pcode_brma_lookup.csv")
-        if not csv_path:
-            print("  ✖ BRMA CSV not found")
-        else:
-            try:
-                with open(csv_path, newline="", encoding="utf-8") as f:
-                    import csv
-                    reader = csv.DictReader(f)
-                    rows = list(reader)
-    
-                    if not rows:
-                        print("  ✖ BRMA CSV is EMPTY")
-                    else:
-                        print(f"  ✔ BRMA CSV loaded ({len(rows)} rows)")
-    
-                    required_cols = {"postcode", "brma_name", "country"}
-                    missing = required_cols - set(reader.fieldnames)
-    
-                    if missing:
-                        print(f"  ✖ Missing columns: {missing}")
-                    else:
-                        print("  ✔ All required columns present")
-    
-            except Exception as e:
-                print(f"  ✖ BRMA CSV ERROR — {e}")
-    
-        # ---------------------------------------------------------
-        # 6. LAYOUT HEALTH CHECK
-        # ---------------------------------------------------------
-        print("\n[6] Layout Health Check")
-    
-        try:
-            w, h = Window.width, Window.height
-            if w < 600:
-                print("  ✖ Window width is very small — layout may break on small screens")
-            else:
-                print(f"  ✔ Window size OK ({w}x{h})")
-        except Exception as e:
-            print(f"  ✖ Layout check failed — {e}")
-    
-        # ---------------------------------------------------------
-        # 7. MEMORY & PERFORMANCE CHECK
-        # ---------------------------------------------------------
-        print("\n[7] Memory & Performance Check")
-    
-        try:
-            import tracemalloc
-            current, peak = tracemalloc.get_traced_memory()
-            print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
-        except Exception as e:
-            print(f"  ✖ Memory check failed — {e}")
-    
-        print("\n=== Diagnostics Complete ===\n")
-
-
+    def check_memory(self):
+        print("\n[4] Memory Check")
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
 
 
 
@@ -741,11 +614,15 @@ def hide_loading(self):
     anim.bind(on_complete=lambda *args: self.root.remove_widget(overlay))
     anim.start(overlay)
 
+@with_diagnostics([])
 class InstantScreen(Screen):
+    pass
+
     pass
 
         
 # Define the Settings Screen
+@with_diagnostics([])
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -813,6 +690,7 @@ class SettingsScreen(Screen):
 
 
 # Disclaimer Screen
+@with_diagnostics([])
 class DisclaimerScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -840,6 +718,7 @@ class DisclaimerScreen(Screen):
         self.manager.current = "main"
 
 # Define the main screen for the app
+@with_diagnostics([])
 class MainScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -926,6 +805,7 @@ class MainScreen(Screen):
         App.get_running_app().stop()
 
 # Define the Main Screen for Full Access
+@with_diagnostics([])
 class MainScreenFullAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1154,6 +1034,7 @@ class MainScreenFullAccess(Screen):
 
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
+@with_diagnostics([])
 class MainScreenGuestAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1226,6 +1107,7 @@ class MainScreenGuestAccess(Screen):
 
 
 # Define the Create Account Screen
+@with_diagnostics([])
 class CreateAccountPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1295,6 +1177,7 @@ class CreateAccountPage(Screen):
 
 
 # Define the Login Screen
+@with_diagnostics([])
 class LoginPage(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1362,6 +1245,49 @@ class LoginPage(Screen):
         self.manager.current = "main"
 
 # Define the Calculator Screen
+@with_diagnostics([
+    # Claimant
+    "name_input",
+    "dob_input",
+    "partner_name_input",
+    "partner_dob_input",
+    "single_claimant_checkbox",
+    "couple_claim_checkbox",
+
+    # Finances
+    "income_input",
+    "savings_input",
+    "debts_input",
+
+    # Housing
+    "housing_type_spinner",
+    "rent_input",
+    "mortgage_input",
+    "shared_input",
+    "postcode_input",
+    "location_spinner",
+    "brma_spinner",
+
+    # Children
+    "children_dob_inputs",
+    "children_layout",
+
+    # Additional Elements
+    "is_carer_input",
+    "disability_input",
+    "childcare_input",
+
+    # Sanctions
+    "sanction_type_input",
+    "sanction_duration_input",
+
+    # Advance Payments
+    "advance_amount_input",
+    "repayment_period_input",
+
+    # Summary
+    "summary_label"
+])
 class Calculator(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -2793,106 +2719,5 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
