@@ -617,9 +617,6 @@ def hide_loading(self):
 @with_diagnostics([])
 class InstantScreen(Screen):
     pass
-
-    pass
-
         
 # Define the Settings Screen
 @with_diagnostics([])
@@ -2719,5 +2716,6 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
