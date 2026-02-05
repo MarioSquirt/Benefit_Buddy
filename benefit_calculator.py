@@ -161,11 +161,33 @@ class BenefitBuddy(App):
 
 
     def on_start(self):
+        # Switch away from InstantScreen
         Clock.schedule_once(self.go_to_disclaimer, 0)
+    
+        # Pre-build the Calculator UI so diagnostics can inspect it
+        Clock.schedule_once(self.prebuild_calculator, 0.05)
+    
+        # Run diagnostics after everything exists
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
+
     
     def go_to_disclaimer(self, dt):
         self.root.current = "disclaimer"
+
+    def prebuild_calculator(self, dt):
+    calc = self.root.get_screen("calculator")
+
+    # Force-build all calculator sub-screens
+    calc.create_intro_screen()
+    calc.create_claimant_details_screen()
+    calc.create_finances_screen()
+    calc.create_housing_screen()
+    calc.create_children_screen()
+    calc.create_additional_elements_screen()
+    calc.create_sanction_screen()
+    calc.create_advance_payments_screen()
+    calc.create_calculate_screen()
+
     
     def run_startup_diagnostics(self, dt):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
@@ -2771,6 +2793,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
