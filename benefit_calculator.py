@@ -1274,7 +1274,7 @@ class Calculator(Screen):
     
         overlay.add_widget(box)
         self.loading_overlay = overlay
-        App.get_running_app().root.add_widget(overlay)
+        self.add_widget(overlay)
     
         Animation(opacity=1, duration=0.25).start(overlay)
     
@@ -1285,7 +1285,7 @@ class Calculator(Screen):
     
         overlay = self.loading_overlay
         anim = Animation(opacity=0, duration=0.25)
-        anim.bind(on_complete=lambda *args: App.get_running_app().root.remove_widget(overlay))
+        anim.bind(on_complete=lambda *args:self.remove_widget(overlay))
         anim.start(overlay)
 
     def autosave_current_screen(self):
@@ -1784,7 +1784,7 @@ class Calculator(Screen):
         return outer
 
     
-    def save_claimant_details(self, instance):
+    def save_claimant_details(self):
         """Save claimant details into user_data"""
         # Relationship based on checkbox state
         if self.single_claimant_checkbox.active:
@@ -1890,7 +1890,7 @@ class Calculator(Screen):
     
         return outer
     
-    def save_finances(self, instance):
+    def save_finances(self):
         self.user_data["income"] = self.income_input.text.strip()
         self.user_data["savings"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
@@ -2134,7 +2134,7 @@ class Calculator(Screen):
         return "BRMA not found"
 
     
-    def save_housing_details(self, instance):
+    def save_housing_details(self):
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
         self.user_data["rent"] = self.rent_input.text.strip()
         self.user_data["mortgage"] = self.mortgage_input.text.strip()
@@ -2243,7 +2243,7 @@ class Calculator(Screen):
         if hasattr(self, "children_layout"):
             self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
     
-    def save_children_details(self, instance):
+    def save_children_details(self):
         """Save children DOBs into user_data"""
         self.user_data["children"] = [
             child.text.strip() for child in self.children_dob_inputs if child.text.strip()
@@ -2352,7 +2352,7 @@ class Calculator(Screen):
     
         return outer
     
-    def save_additional_elements(self, instance):
+    def save_additional_elements(self):
         """Save additional elements into user_data"""
         self.user_data["carer"] = self.is_carer_input.text.strip().lower() == "yes"
         self.user_data["disability"] = self.disability_input.text.strip().lower() == "yes"
@@ -2440,7 +2440,7 @@ class Calculator(Screen):
     
         return outer
     
-    def save_sanction_details(self, instance):
+    def save_sanction_details(self):
         """Save sanction details into user_data"""
         self.user_data["sanction_type"] = self.sanction_type_input.text.strip().lower()
         self.user_data["sanction_duration"] = self.sanction_duration_input.text.strip()
@@ -2527,7 +2527,7 @@ class Calculator(Screen):
     
         return outer
     
-    def save_advance_payment(self, instance):
+    def save_advance_payment(self):
         """Save advance payment details into user_data"""
         self.user_data["advance_amount"] = self.advance_amount_input.text.strip()
         self.user_data["repayment_period"] = self.repayment_period_input.text.strip()
@@ -2656,6 +2656,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
