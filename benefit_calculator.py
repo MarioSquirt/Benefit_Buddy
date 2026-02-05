@@ -175,18 +175,18 @@ class BenefitBuddy(App):
         self.root.current = "disclaimer"
 
     def prebuild_calculator(self, dt):
-    calc = self.root.get_screen("calculator")
+        calc = self.root.get_screen("calculator")
 
-    # Force-build all calculator sub-screens
-    calc.create_intro_screen()
-    calc.create_claimant_details_screen()
-    calc.create_finances_screen()
-    calc.create_housing_screen()
-    calc.create_children_screen()
-    calc.create_additional_elements_screen()
-    calc.create_sanction_screen()
-    calc.create_advance_payments_screen()
-    calc.create_calculate_screen()
+        # Force-build all calculator sub-screens
+        calc.create_intro_screen()
+        calc.create_claimant_details_screen()
+        calc.create_finances_screen()
+        calc.create_housing_screen()
+        calc.create_children_screen()
+        calc.create_additional_elements_screen()
+        calc.create_sanction_screen()
+        calc.create_advance_payments_screen()
+        calc.create_calculate_screen()
 
     
     def run_startup_diagnostics(self, dt):
@@ -2793,6 +2793,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
