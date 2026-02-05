@@ -2030,7 +2030,7 @@ class Calculator(Screen):
                 layout.add_widget(self.rent_input)
             elif "Own" in value:
                 layout.add_widget(self.mortgage_input)
-            elif "Shared Accomodation" in value:
+            elif "Shared Accommodation" in value:
                 layout.add_widget(self.shared_input)
     
         self.housing_type_spinner.bind(text=update_amount_input)
@@ -2087,7 +2087,7 @@ class Calculator(Screen):
         # AUTO-POPULATE BRMA BASED ON LOCATION
         # ---------------------------------------------------------
         def populate_brmas_for_country(spinner, country):
-            csv_path = resource_find("pcode_brma_lookup.csv")
+            csv_path = resource_find("data/pcode_brma_lookup.csv")
             if not csv_path:
                 print("BRMA CSV not found")
                 return
@@ -2182,7 +2182,7 @@ class Calculator(Screen):
     
     def lookup_brma(self, postcode):
         """Lookup BRMA name for a given postcode from CSV."""
-        csv_path = resource_find("pcode_brma_lookup.csv")
+        csv_path = resource_find("data/pcode_brma_lookup.csv")
         if not csv_path:
             print("BRMA CSV not found in packaged resources")
             return "BRMA not found"
@@ -2771,6 +2771,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
