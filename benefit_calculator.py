@@ -563,56 +563,6 @@ class PNGSequenceAnimationWidget(Image):
         self.source = self.frames[self.current_frame]
         self.current_frame = (self.current_frame + 1) % len(self.frames)
 
-def show_loading(self, message="Loading..."):
-    if hasattr(self, "loading_overlay") and self.loading_overlay.parent:
-        return
-
-    overlay = AnchorLayout(size_hint=(1, 1), opacity=0)
-
-    box = BoxLayout(
-        orientation="vertical",
-        size_hint=(None, None),
-        size=(300, 180),
-        padding=20,
-        spacing=15,
-        pos_hint={"center_x": 0.5, "center_y": 0.5},
-    )
-
-    with box.canvas.before:
-        Color(0, 0, 0, 0.75)
-        self.bg_rect = Rectangle(size=box.size, pos=box.pos)
-    box.bind(size=lambda inst, val: setattr(self.bg_rect, "size", val))
-    box.bind(pos=lambda inst, val: setattr(self.bg_rect, "pos", val))
-
-    loader = PNGSequenceAnimationWidget(size_hint=(None, None), size=(80, 80))
-    box.add_widget(loader)
-
-    label = Label(
-        text=message,
-        font_size=22,
-        font_name="roboto",
-        color=get_color_from_hex("#FFFFFF"),
-        halign="center",
-        valign="middle",
-        text_size=(280, None)
-    )
-    box.add_widget(label)
-
-    overlay.add_widget(box)
-    self.loading_overlay = overlay
-    self.root.add_widget(overlay)
-
-    Animation(opacity=1, duration=0.25).start(overlay)
-
-
-def hide_loading(self):
-    if not hasattr(self, "loading_overlay") or not self.loading_overlay.parent:
-        return
-
-    overlay = self.loading_overlay
-    anim = Animation(opacity=0, duration=0.25)
-    anim.bind(on_complete=lambda *args: self.root.remove_widget(overlay))
-    anim.start(overlay)
 
 @with_diagnostics([])
 class InstantScreen(Screen):
@@ -1286,6 +1236,79 @@ class LoginPage(Screen):
     "summary_label"
 ])
 class Calculator(Screen):
+
+    def show_loading(self, message="Loading..."):
+        if hasattr(self, "loading_overlay") and self.loading_overlay.parent:
+            return
+    
+        overlay = AnchorLayout(size_hint=(1, 1), opacity=0)
+    
+        box = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),
+            size=(300, 180),
+            padding=20,
+            spacing=15,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+    
+        with box.canvas.before:
+            Color(0, 0, 0, 0.75)
+            self.bg_rect = Rectangle(size=box.size, pos=box.pos)
+        box.bind(size=lambda inst, val: setattr(self.bg_rect, "size", val))
+        box.bind(pos=lambda inst, val: setattr(self.bg_rect, "pos", val))
+    
+        loader = PNGSequenceAnimationWidget(size_hint=(None, None), size=(80, 80))
+        box.add_widget(loader)
+    
+        label = Label(
+            text=message,
+            font_size=22,
+            font_name="roboto",
+            color=get_color_from_hex("#FFFFFF"),
+            halign="center",
+            valign="middle",
+            text_size=(280, None)
+        )
+        box.add_widget(label)
+    
+        overlay.add_widget(box)
+        self.loading_overlay = overlay
+        App.get_running_app().root.add_widget(overlay)
+    
+        Animation(opacity=1, duration=0.25).start(overlay)
+    
+    
+    def hide_loading(self):
+        if not hasattr(self, "loading_overlay") or not self.loading_overlay.parent:
+            return
+    
+        overlay = self.loading_overlay
+        anim = Animation(opacity=0, duration=0.25)
+        anim.bind(on_complete=lambda *args: App.get_running_app().root.remove_widget(overlay))
+        anim.start(overlay)
+
+    def autosave_current_screen(self):
+        """Automatically save data for whichever screen the user is leaving."""
+        screen = self.current_subscreen
+    
+        if screen == "Claimant Details":
+            self.save_claimant_details()
+        elif screen == "Finances":
+            self.save_finances()
+        elif screen == "Housing":
+            self.save_housing_details()
+        elif screen == "Children":
+            self.save_children_details()
+        elif screen == "Additional Elements":
+            self.save_additional_elements()
+        elif screen == "Sanctions":
+            self.save_sanction_details()
+        elif screen == "Advanced Payments":
+            self.save_advance_payment()
+        # Introduction and Summary screens don’t need saving
+
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Central state dictionary
@@ -1310,6 +1333,8 @@ class Calculator(Screen):
             "advance_amount": "",
             "repayment_period": ""
         }
+
+        self.current_subscreen = "Introduction"
         
         layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
 
@@ -1377,7 +1402,16 @@ class Calculator(Screen):
 
         def on_screen_select(_, text):
             clean_text = text.replace(" ▼", "")
+        
+            # ⭐ Auto-save the screen we are leaving
+            self.autosave_current_screen()
+        
+            # Update tracker
+            self.current_subscreen = clean_text
+        
+            # Continue as before
             self.screen_content.clear_widgets()
+
             for name, builder in self.screens:
                 if name == clean_text:
                     widget = builder()
@@ -1585,7 +1619,9 @@ class Calculator(Screen):
 
         scroll.add_widget(layout)
         return scroll
-    
+
+    def on_pre_enter_intro(self, *args):
+        pass
 
         
     def on_couple_claim_checkbox_active(self, checkbox, value):
@@ -1745,20 +1781,6 @@ class Calculator(Screen):
             "pos_hint": {"center_x": 0.5}
         }
 
-        # Save button
-        save_button = RoundedButton(
-            text="Save Claimant Details",
-            **button_style,
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            halign="center",
-            valign="middle",
-            text_size=(250, None),
-            on_press=self.save_claimant_details
-        )
-        layout.add_widget(save_button)
-
         return outer
 
     
@@ -1862,25 +1884,6 @@ class Calculator(Screen):
             "background_normal": "",
             "pos_hint": {"center_x": 0.5}
         }
-    
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-            ("Save Finances", self.save_finances),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
-        layout.add_widget(buttons_box)
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -2102,26 +2105,6 @@ class Calculator(Screen):
     
         find_brma_btn.bind(on_press=on_find_brma)
     
-        # ---------------------------------------------------------
-        # SAVE BUTTON
-        # ---------------------------------------------------------
-        save_button = RoundedButton(
-            text="Save Housing",
-            size_hint=(None, None),
-            size=(250, 60),
-            background_normal="",
-            background_color=(0, 0, 0, 0),
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            halign="center",
-            valign="middle",
-            text_size=(250, None),
-            pos_hint={"center_x": 0.5},
-            on_press=self.save_housing_details
-        )
-        layout.add_widget(save_button)
-    
         return outer
     
     
@@ -2225,7 +2208,6 @@ class Calculator(Screen):
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
             ("Add Another Child", self.add_child_input),
-            ("Save Children Details", self.save_children_details),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2243,19 +2225,6 @@ class Calculator(Screen):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Save button (duplicate of above, now styled consistently)
-        save_button = RoundedButton(
-            text="Save Children",
-            **button_style,
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            halign="center", valign="middle",
-            text_size=(250, None),
-            on_press=self.save_children_details
-        )
-        layout.add_widget(save_button)
     
         return outer
     
@@ -2363,7 +2332,6 @@ class Calculator(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
-            ("Save Additional Elements", self.save_additional_elements),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2381,19 +2349,6 @@ class Calculator(Screen):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Save button (duplicate of above, now styled consistently)
-        save_button = RoundedButton(
-            text="Save Additional Elements",
-            **button_style,
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            halign="center", valign="middle",
-            text_size=(250, None),
-            on_press=self.save_additional_elements
-        )
-        layout.add_widget(save_button)
     
         return outer
     
@@ -2465,7 +2420,6 @@ class Calculator(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
-            ("Save Sanction Details", self.save_sanction_details),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2483,19 +2437,6 @@ class Calculator(Screen):
     
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
-    
-        # Save button (duplicate of above, now styled consistently)
-        save_button = RoundedButton(
-            text="Save Sanctions",
-            **button_style,
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            halign="center", valign="middle",
-            text_size=(250, None),
-            on_press=self.save_sanction_details
-        )
-        layout.add_widget(save_button)
     
         return outer
     
@@ -2566,7 +2507,6 @@ class Calculator(Screen):
         # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
         for text, handler in [
-            ("Save Advance Payment", self.save_advance_payment),
         ]:
             btn = RoundedButton(
                 text=text,
@@ -2716,6 +2656,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
