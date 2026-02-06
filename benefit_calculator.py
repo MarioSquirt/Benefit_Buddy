@@ -2634,7 +2634,6 @@ class Calculator(Screen):
         summary.append(f"Advance Payment: £{self.user_data.get('advance_amount', '')}")
     
         self.summary_label.text = "\n".join(summary)
-    )
 
 
 # TO DO:
@@ -2671,6 +2670,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
