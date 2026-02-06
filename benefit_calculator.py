@@ -2671,19 +2671,32 @@ class Calculator(Screen):
 
             
     def create_calculate_screen(self):
-        # Scrollable container (same as intro screen)
-        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+        # OUTER LAYOUT: vertical split (scrollable top + fixed bottom)
+        outer = BoxLayout(
+            orientation="vertical",
+            spacing=0,
+            padding=0
+        )
     
-        layout = BoxLayout(
+        # ============================
+        # TOP: SCROLLABLE SUMMARY AREA
+        # ============================
+        self.calculate_scroll = ScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True
+        )
+    
+        summary_layout = BoxLayout(
             orientation="vertical",
             spacing=30,
             padding=20,
             size_hint=(1, None)
         )
-        layout.bind(minimum_height=layout.setter("height"))
+        summary_layout.bind(minimum_height=summary_layout.setter("height"))
     
         # Title
-        layout.add_widget(
+        summary_layout.add_widget(
             wrapped_SafeLabel(
                 "Summary of your Universal Credit calculation:",
                 18,
@@ -2691,22 +2704,38 @@ class Calculator(Screen):
             )
         )
     
-        # Summary text placeholder (white, wrapped, centred)
-        self.summary_label = wrapped_SafeLabel(
-            "No calculation yet.",
-            16,
-            26
+        # Summary text placeholder
+        self.summary_label = SafeLabel(
+            text="No calculation yet.",
+            font_size=16,
+            halign="left",
+            valign="top",
+            color=get_color_from_hex("#FFFFFF"),
+            size_hint_y=None
         )
-        layout.add_widget(self.summary_label)
+        self.summary_label.bind(
+            width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+            texture_size=lambda inst, val: setattr(inst, "height", val[1])
+        )
+        summary_layout.add_widget(self.summary_label)
     
-        # Spacer
-        layout.add_widget(Widget(size_hint_y=None, height=20))
+        self.calculate_scroll.add_widget(summary_layout)
     
-        # Run Calculation button
-        btn = RoundedButton(
+        # Add scrollable region to outer layout
+        outer.add_widget(self.calculate_scroll)
+    
+        # ============================
+        # BOTTOM: FIXED BUTTON BAR
+        # ============================
+        button_bar = BoxLayout(
+            size_hint=(1, None),
+            height=100,
+            padding=20
+        )
+    
+        run_btn = RoundedButton(
             text="Run Calculation",
-            size_hint=(None, None),
-            size=(250, 60),
+            size_hint=(1, 1),
             background_color=(0, 0, 0, 0),
             background_normal="",
             font_size=20,
@@ -2715,28 +2744,33 @@ class Calculator(Screen):
             halign="center",
             valign="middle",
             text_size=(250, None),
-            pos_hint={"center_x": 0.5},
             on_press=self.run_calculation
         )
-        layout.add_widget(btn)
     
-        scroll.add_widget(layout)
-        return scroll
+        button_bar.add_widget(run_btn)
+        outer.add_widget(button_bar)
     
+        return outer
+    
+        
     def run_calculation(self, *args):
-        """Perform calculation and update summary label + user_data."""
+        """Perform calculation and update user_data, then refresh summary."""
         try:
             result = self.calculate_entitlement()
             result_text = f"Calculated Entitlement: £{result:.2f}"
     
-            # Append result to summary
-            self.summary_label.text += f"\n\n{result_text}"
-    
-            # Store in user_data
+            # Store result once
             self.user_data["calculation_result"] = result_text
     
+            # Refresh summary
+            self.on_pre_enter_summary()
+    
+            # Reset scroll to top
+            if hasattr(self, "calculate_scroll"):
+                Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
+    
         except Exception as e:
-            self.summary_label.text += f"\n\nError during calculation: {str(e)}"
+            self.summary_label.text = f"Error during calculation: {str(e)}"
 
     
     def on_pre_enter_summary(self, *args):
@@ -2814,6 +2848,11 @@ class Calculator(Screen):
         # Apply to label
         self.summary_label.text = "\n".join(summary_lines)
 
+        # Reset scroll to top
+        if hasattr(self, "calculate_scroll"):
+            Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
+
+
 # TO DO:
 
 # check advance payments logic/summary
@@ -2848,6 +2887,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
