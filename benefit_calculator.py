@@ -1274,7 +1274,7 @@ class Calculator(Screen):
     
         overlay.add_widget(box)
         self.loading_overlay = overlay
-        self.add_widget(overlay)
+        self.parent.add_widget(overlay)
     
         Animation(opacity=1, duration=0.25).start(overlay)
     
@@ -1285,7 +1285,7 @@ class Calculator(Screen):
     
         overlay = self.loading_overlay
         anim = Animation(opacity=0, duration=0.25)
-        anim.bind(on_complete=lambda *args:self.remove_widget(overlay))
+        anim.bind(on_complete=lambda *args:self.parent.remove_widget(overlay))
         anim.start(overlay)
 
     def autosave_current_screen(self):
@@ -2618,8 +2618,23 @@ class Calculator(Screen):
         self.user_data["calculation_result"] = result_text
     
     def on_pre_enter_summary(self, *args):
-        """Repopulate summary when re-entering the screen"""
-        self.summary_label.text = self.user_data.get("calculation_result", "No calculation yet.")
+        summary = []
+    
+        summary.append(f"Claimant DOB: {self.user_data.get('claimant_dob', '')}")
+        summary.append(f"Partner DOB: {self.user_data.get('partner_dob', '')}")
+        summary.append(f"Income: £{self.user_data.get('income', '')}")
+        summary.append(f"Savings: £{self.user_data.get('savings', '')}")
+        summary.append(f"Housing Type: {self.user_data.get('housing_type', '')}")
+        summary.append(f"BRMA: {self.user_data.get('brma', '')}")
+        summary.append(f"Children: {len(self.user_data.get('children', []))}")
+        summary.append(f"Carer: {self.user_data.get('carer', False)}")
+        summary.append(f"Disability: {self.user_data.get('disability', False)}")
+        summary.append(f"Childcare: £{self.user_data.get('childcare', '')}")
+        summary.append(f"Sanction: {self.user_data.get('sanction_type', '')}")
+        summary.append(f"Advance Payment: £{self.user_data.get('advance_amount', '')}")
+    
+        self.summary_label.text = "\n".join(summary)
+    )
 
 
 # TO DO:
@@ -2656,6 +2671,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
