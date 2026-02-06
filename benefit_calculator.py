@@ -1406,7 +1406,7 @@ class Calculator(Screen):
     
         overlay.add_widget(box)
         self.loading_overlay = overlay
-        self.parent.add_widget(overlay)
+        self.add_widget(overlay)
     
         Animation(opacity=1, duration=0.25).start(overlay)
     
@@ -1417,7 +1417,7 @@ class Calculator(Screen):
     
         overlay = self.loading_overlay
         anim = Animation(opacity=0, duration=0.25)
-        anim.bind(on_complete=lambda *args:self.parent.remove_widget(overlay))
+        anim.bind(on_complete=lambda *args:self.remove_widget(overlay))
         anim.start(overlay)
 
     def autosave_current_screen(self):
@@ -2812,6 +2812,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
