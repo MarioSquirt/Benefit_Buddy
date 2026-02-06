@@ -2671,69 +2671,57 @@ class Calculator(Screen):
 
             
     def create_calculate_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        # Scrollable container (same as intro screen)
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=30,
+            padding=20,
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
     
-        # Instruction label
-        instruction = SafeLabel(
-            text="Summary of your Universal Credit calculation:",
-            font_size=18,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+        # Title
+        layout.add_widget(
+            wrapped_SafeLabel(
+                "Summary of your Universal Credit calculation:",
+                18,
+                30
+            )
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(instruction)
     
-        # Result label placeholder
-        self.summary_label = SafeLabel(
-            text=self.user_data.get("calculation_result", "No calculation yet."),
-            font_size=16,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex("#005EA5")
+        # Summary text placeholder (white, wrapped, centred)
+        self.summary_label = wrapped_SafeLabel(
+            "No calculation yet.",
+            16,
+            26
         )
-        self.summary_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(self.summary_label)
     
-        # Spacer above buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
+        # Spacer
+        layout.add_widget(Widget(size_hint_y=None, height=20))
     
-        # Shared button style for consistency
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
+        # Run Calculation button
+        btn = RoundedButton(
+            text="Run Calculation",
+            size_hint=(None, None),
+            size=(250, 60),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            pos_hint={"center_x": 0.5},
+            on_press=self.run_calculation
+        )
+        layout.add_widget(btn)
     
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-            ("Run Calculation", self.run_calculation),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
-        layout.add_widget(buttons_box)
-    
-        # Spacer below buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-    
-        return outer
+        scroll.add_widget(layout)
+        return scroll
     
     def run_calculation(self, *args):
         """Perform calculation and update summary label + user_data."""
@@ -2754,29 +2742,77 @@ class Calculator(Screen):
     def on_pre_enter_summary(self, *args):
         d = self.user_data
     
-        summary = [
-            f"Claimant DOB: {d.get('claimant_dob')}",
-            f"Partner DOB: {d.get('partner_dob')}",
-            f"Income: £{d.get('income')}",
-            f"Savings: £{d.get('savings')}",
-            f"Housing Type: {d.get('housing_type')}",
-            f"Rent/Mortgage: £{d.get('rent') or d.get('mortgage')}",
-            f"Postcode: {d.get('postcode')}",
-            f"Location: {d.get('location')}",
-            f"BRMA: {d.get('brma')}",
-            f"Children: {len(d.get('children', []))}",
-            f"Carer: {d.get('carer')}",
-            f"Disability: {d.get('disability')}",
-            f"Childcare: £{d.get('childcare')}",
-            f"Sanction: {d.get('sanction_type')} ({d.get('sanction_duration')} days)",
-            f"Advance Payment: £{d.get('advance_amount')} over {d.get('repayment_period')} months",
-        ]
+        summary_lines = []
     
+        # -------------------------
+        # Claimant Details
+        # -------------------------
+        summary_lines.append("Claimant Details")
+        summary_lines.append(f"- Claimant DOB: {d.get('claimant_dob')}")
+        summary_lines.append(f"- Partner DOB: {d.get('partner_dob')}")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Finances
+        # -------------------------
+        summary_lines.append("Finances")
+        summary_lines.append(f"- Income: £{d.get('income')}")
+        summary_lines.append(f"- Savings: £{d.get('savings')}")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Housing
+        # -------------------------
+        summary_lines.append("Housing")
+        summary_lines.append(f"- Housing Type: {d.get('housing_type')}")
+        summary_lines.append(f"- Rent/Mortgage: £{d.get('rent') or d.get('mortgage')}")
+        summary_lines.append(f"- Postcode: {d.get('postcode')}")
+        summary_lines.append(f"- Location: {d.get('location')}")
+        summary_lines.append(f"- BRMA: {d.get('brma')}")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Children
+        # -------------------------
+        summary_lines.append("Children")
+        summary_lines.append(f"- Number of Children: {len(d.get('children', []))}")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Additional Elements
+        # -------------------------
+        summary_lines.append("Additional Elements")
+        summary_lines.append(f"- Carer: {d.get('carer')}")
+        summary_lines.append(f"- Disability: {d.get('disability')}")
+        summary_lines.append(f"- Childcare Costs: £{d.get('childcare')}")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Sanctions
+        # -------------------------
+        summary_lines.append("Sanctions")
+        summary_lines.append(f"- Type: {d.get('sanction_type')}")
+        summary_lines.append(f"- Duration: {d.get('sanction_duration')} days")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Advance Payments
+        # -------------------------
+        summary_lines.append("Advance Payments")
+        summary_lines.append(f"- Amount: £{d.get('advance_amount')}")
+        summary_lines.append(f"- Repayment Period: {d.get('repayment_period')} months")
+        summary_lines.append("")
+    
+        # -------------------------
+        # Calculation Result
+        # -------------------------
         if d.get("calculation_result"):
-            summary.append(d["calculation_result"])
+            summary_lines.append("Calculation Result")
+            summary_lines.append(f"- {d['calculation_result']}")
+            summary_lines.append("")
     
-        self.summary_label.text = "\n".join(summary)
-
+        # Apply to label
+        self.summary_label.text = "\n".join(summary_lines)
 
 # TO DO:
 
@@ -2812,6 +2848,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
