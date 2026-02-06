@@ -1237,6 +1237,138 @@ class LoginPage(Screen):
 ])
 class Calculator(Screen):
 
+    def calculate_entitlement(self):
+        """Calculate UC entitlement using values stored in self.user_data."""
+    
+        data = self.user_data
+    
+        # -----------------------------
+        # 1. Parse claimant + partner age
+        # -----------------------------
+        def parse_age(dob_str):
+            if not dob_str:
+                return None
+            try:
+                dob = datetime.strptime(dob_str, "%d/%m/%Y")
+                return (datetime.now() - dob).days // 365
+            except:
+                return None
+    
+        age = parse_age(data.get("claimant_dob"))
+        partner_age = parse_age(data.get("partner_dob"))
+    
+        is_single = (data.get("relationship") == "single")
+    
+        # -----------------------------
+        # 2. Income + savings
+        # -----------------------------
+        income = float(data.get("income") or 0)
+        capital = float(data.get("savings") or 0)
+    
+        # -----------------------------
+        # 3. Children
+        # -----------------------------
+        num_children = len(data.get("children", []))
+    
+        # Basic child elements (simplified)
+        child_elements = 0
+        if num_children >= 1:
+            child_elements += 292.81
+        if num_children >= 2:
+            child_elements += 292.81 * (num_children - 1)
+    
+        # -----------------------------
+        # 4. Additional elements
+        # -----------------------------
+        carer_element = 201.68 if data.get("carer") else 0
+        disability_element = 0
+        if data.get("disability"):
+            disability_element = 423.27  # LCWRA rate
+    
+        childcare_costs = float(data.get("childcare") or 0)
+    
+        # -----------------------------
+        # 5. Standard allowance
+        # -----------------------------
+        if is_single:
+            standard_allowance = 316.98 if (age and age < 25) else 400.14
+        else:
+            if age is not None and partner_age is not None:
+                if age < 25 and partner_age < 25:
+                    standard_allowance = 497.55
+                else:
+                    standard_allowance = 628.10
+            else:
+                standard_allowance = 628.10
+    
+        # -----------------------------
+        # 6. Housing element
+        # -----------------------------
+        housing_type = data.get("housing_type", "").lower()
+        housing_element = 0
+    
+        if housing_type == "rent":
+            rent = float(data.get("rent") or 0)
+            housing_element = rent  # LHA cap already applied earlier
+    
+        elif housing_type == "own":
+            mortgage = float(data.get("mortgage") or 0)
+            housing_element = mortgage
+    
+        elif housing_type == "shared accommodation":
+            shared = float(data.get("shared") or 0)
+            housing_element = shared
+    
+        # -----------------------------
+        # 7. Capital deductions
+        # -----------------------------
+        if capital >= 16000:
+            return 0  # Not eligible
+    
+        if capital < 6000:
+            capital_income = 0
+        else:
+            blocks = ((capital - 6000) + 249) // 250
+            capital_income = blocks * 4.35
+    
+        # -----------------------------
+        # 8. Sanctions
+        # -----------------------------
+        sanction_reduction = 0
+        if data.get("sanction_type") and data.get("sanction_duration"):
+            try:
+                days = int(data["sanction_duration"])
+                sanction_reduction = days * 10  # simplified
+            except:
+                sanction_reduction = 0
+    
+        # -----------------------------
+        # 9. Advance payments
+        # -----------------------------
+        advance = float(data.get("advance_amount") or 0)
+        repayment_months = int(data.get("repayment_period") or 0)
+        advance_deduction = advance / repayment_months if repayment_months > 0 else 0
+    
+        # -----------------------------
+        # 10. Total entitlement
+        # -----------------------------
+        total = (
+            standard_allowance +
+            housing_element +
+            child_elements +
+            childcare_costs +
+            carer_element +
+            disability_element
+        )
+    
+        # Apply deductions
+        total -= capital_income
+        total -= sanction_reduction
+        total -= advance_deduction
+    
+        return max(total, 0)
+
+
     def show_loading(self, message="Loading..."):
         if hasattr(self, "loading_overlay") and self.loading_overlay.parent:
             return
@@ -2603,35 +2735,45 @@ class Calculator(Screen):
     
         return outer
     
-    def run_calculation(self, instance):
-        """Perform calculation and update summary label + user_data"""
-        # Call your existing calculation logic here
+    def run_calculation(self, *args):
+        """Perform calculation and update summary label + user_data."""
         try:
-            # Example: entitlement calculation already implemented elsewhere
-            entitlement = self.calculate_entitlement()  # replace with your actual method
-            result_text = f"Your predicted entitlement is: £{entitlement:.2f}"
-        except Exception as e:
-            result_text = f"Error during calculation: {str(e)}"
+            result = self.calculate_entitlement()
+            result_text = f"Calculated Entitlement: £{result:.2f}"
     
-        # Update label and user_data
-        self.summary_label.text = result_text
-        self.user_data["calculation_result"] = result_text
+            # Append result to summary
+            self.summary_label.text += f"\n\n{result_text}"
+    
+            # Store in user_data
+            self.user_data["calculation_result"] = result_text
+    
+        except Exception as e:
+            self.summary_label.text += f"\n\nError during calculation: {str(e)}"
+
     
     def on_pre_enter_summary(self, *args):
-        summary = []
+        d = self.user_data
     
-        summary.append(f"Claimant DOB: {self.user_data.get('claimant_dob', '')}")
-        summary.append(f"Partner DOB: {self.user_data.get('partner_dob', '')}")
-        summary.append(f"Income: £{self.user_data.get('income', '')}")
-        summary.append(f"Savings: £{self.user_data.get('savings', '')}")
-        summary.append(f"Housing Type: {self.user_data.get('housing_type', '')}")
-        summary.append(f"BRMA: {self.user_data.get('brma', '')}")
-        summary.append(f"Children: {len(self.user_data.get('children', []))}")
-        summary.append(f"Carer: {self.user_data.get('carer', False)}")
-        summary.append(f"Disability: {self.user_data.get('disability', False)}")
-        summary.append(f"Childcare: £{self.user_data.get('childcare', '')}")
-        summary.append(f"Sanction: {self.user_data.get('sanction_type', '')}")
-        summary.append(f"Advance Payment: £{self.user_data.get('advance_amount', '')}")
+        summary = [
+            f"Claimant DOB: {d.get('claimant_dob')}",
+            f"Partner DOB: {d.get('partner_dob')}",
+            f"Income: £{d.get('income')}",
+            f"Savings: £{d.get('savings')}",
+            f"Housing Type: {d.get('housing_type')}",
+            f"Rent/Mortgage: £{d.get('rent') or d.get('mortgage')}",
+            f"Postcode: {d.get('postcode')}",
+            f"Location: {d.get('location')}",
+            f"BRMA: {d.get('brma')}",
+            f"Children: {len(d.get('children', []))}",
+            f"Carer: {d.get('carer')}",
+            f"Disability: {d.get('disability')}",
+            f"Childcare: £{d.get('childcare')}",
+            f"Sanction: {d.get('sanction_type')} ({d.get('sanction_duration')} days)",
+            f"Advance Payment: £{d.get('advance_amount')} over {d.get('repayment_period')} months",
+        ]
+    
+        if d.get("calculation_result"):
+            summary.append(d["calculation_result"])
     
         self.summary_label.text = "\n".join(summary)
 
@@ -2670,6 +2812,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
