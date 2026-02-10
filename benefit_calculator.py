@@ -8,6 +8,7 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
+Window.softinput_mode = "pan"
 from kivy.core.image import Image as CoreImage
 from kivy.metrics import sp
 from kivy.utils import get_color_from_hex
@@ -44,8 +45,121 @@ import os
 import sys
 import csv
 import tracemalloc
-from math import sin, cos, radians
 from datetime import datetime
+
+
+
+UC_RATES = {
+    "year": "2025/26",
+
+    "standard_allowance": {
+        "single_u25": 316.98,
+        "single_25plus": 400.14,
+        "couple_u25": 497.55,
+        "couple_25plus": 628.10,
+        "minimum_amount": 0.01,
+    },
+
+    "child_element": {
+        # First child born before 6 April 2017
+        "first_child_pre2017": 339.00,
+        # First child born on/after 6 April 2017, and subsequent children where allowed
+        "child": 292.81,
+    },
+
+    "disabled_child": {
+        "lower": 158.76,
+        "higher": 495.87,
+    },
+
+    "lcw_lcwra": {
+        "lcw": 158.76,
+        "lcwra": 423.27,
+    },
+
+    "carer_element": 201.68,
+
+    "childcare": {
+        "reimbursement_rate": 0.85,
+        "cap_one_child": 1031.88,
+        "cap_two_plus": 1768.94,
+    },
+
+    "non_dependant": {
+        "housing_cost_contribution": 93.02,
+    },
+
+    "work_allowance": {
+        # Higher = no housing element, with children or LCW/LCWRA
+        "higher": 684.00,
+        # Lower = with housing element, with children or LCW/LCWRA
+        "lower": 411.00,
+    },
+
+    "taper_rate": 0.55,
+
+    "capital": {
+        "lower_limit": 6000.00,
+        "upper_limit": 16000.00,
+        "tariff_per_250": 4.35,
+    },
+
+    # You can expand these if you later model daily sanction maths explicitly
+    "sanctions": {
+        "daily_100": {
+            "single_u25": 10.40,
+            "single_25plus": 13.10,
+            "joint_u25": 8.10,
+            "joint_25plus": 10.30,
+        },
+        "daily_40": {
+            "single_u25": 4.10,
+            "single_25plus": 5.20,
+            "joint_u25": 3.20,
+            "joint_25plus": 4.10,
+        },
+    },
+
+    "deduction_caps": {
+        "third_party_5pct": {
+            "single_u25": 15.85,
+            "single_25plus": 20.01,
+            "joint_u25": 24.88,
+            "joint_25plus": 31.41,
+        },
+        "rent_min_10pct": {
+            "single_u25": 31.70,
+            "single_25plus": 40.01,
+            "joint_u25": 49.76,
+            "joint_25plus": 62.81,
+        },
+        "rent_max_15pct": {
+            "single_u25": 47.55,
+            "single_25plus": 60.02,
+            "joint_u25": 74.63,
+            "joint_25plus": 94.22,
+        },
+        "overall_max_15pct": {
+            "single_u25": 47.55,
+            "single_25plus": 60.02,
+            "joint_u25": 74.63,
+            "joint_25plus": 94.22,
+        },
+    },
+
+    "child_maintenance_deduction": 36.40,
+
+    "transitional_sdp": {
+        "lcwra_included": 143.37,
+        "lcwra_not_included": 340.50,
+        "joint_higher": 483.88,
+        "extra_edp_single": 91.15,
+        "extra_edp_couple": 130.22,
+        "extra_dp_single": 186.64,
+        "extra_dp_couple": 266.94,
+        "extra_disabled_children": 192.07,
+    },
+}
 
 
 
@@ -187,6 +301,7 @@ class BenefitBuddy(App):
         sm.add_widget(MainScreenGuestAccess(name="main_guest_access"))
         sm.add_widget(MainScreenFullAccess(name="main_full_access"))
         sm.add_widget(Calculator(name="calculator"))
+        sm.add_widget(CalculationBreakdownScreen(name="breakdown"))
 
         sm.current = "instant"
         return sm
@@ -284,7 +399,7 @@ class CustomTextInput(TextInput):
 class DOBInput(CustomTextInput):
     def insert_text(self, substring, from_undo=False):
         # Allow only digits and slashes
-        allowed_chars = "0123456789/"
+        allowed_chars = "0123456789"
         substring = ''.join(c for c in substring if c in allowed_chars)
 
         # Enforce the format DD/MM/YYYY
@@ -562,6 +677,25 @@ class PNGSequenceAnimationWidget(Image):
             return
         self.source = self.frames[self.current_frame]
         self.current_frame = (self.current_frame + 1) % len(self.frames)
+
+
+class PulsingGlow(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            self.color = Color(1, 1, 1, 0.3)
+            self.ellipse = Ellipse(size=self.size, pos=self.pos)
+
+        self.bind(size=self.update_graphics, pos=self.update_graphics)
+
+        # Pulse animation
+        anim = Animation(a=0.6, duration=0.8) + Animation(a=0.3, duration=0.8)
+        anim.repeat = True
+        anim.start(self.color)
+
+    def update_graphics(self, *args):
+        self.ellipse.size = self.size
+        self.ellipse.pos = self.pos
 
 
 @with_diagnostics([])
@@ -1208,9 +1342,11 @@ class LoginPage(Screen):
 
     # Housing
     "housing_type_spinner",
+    "tenancy_type_spinner",
     "rent_input",
     "mortgage_input",
     "shared_input",
+    "non_dependants_input",
     "postcode_input",
     "location_spinner",
     "brma_spinner",
@@ -1237,13 +1373,762 @@ class LoginPage(Screen):
 ])
 class Calculator(Screen):
 
-    def calculate_entitlement(self):
-        """Calculate UC entitlement using values stored in self.user_data."""
+    def go_to_breakdown(self, *args):
+        breakdown = self.get_calculation_breakdown()
+        screen = self.manager.get_screen("breakdown")
+        screen.populate_breakdown(breakdown)
+        self.manager.current = "breakdown"
+
+    def get_calculation_breakdown(self):
+        """
+        Returns a dict of all calculation components.
+        Must match the internal logic of calculate_entitlement().
+        """
     
         data = self.user_data
     
+        # Re-run the calculation but capture each component
+        breakdown = {}
+    
+        # Standard allowance
+        age = data.get("claimant_age")
+        partner_age = data.get("partner_age")
+        is_single = (data.get("relationship") == "single")
+    
+        if is_single:
+            if age < 25:
+                sa = UC_RATES["standard_allowance"]["single_u25"]
+            else:
+                sa = UC_RATES["standard_allowance"]["single_25plus"]
+        else:
+            if age < 25 and partner_age < 25:
+                sa = UC_RATES["standard_allowance"]["couple_u25"]
+            else:
+                sa = UC_RATES["standard_allowance"]["couple_25plus"]
+    
+        breakdown["Standard Allowance"] = sa
+    
+        # Housing element
+        housing = self.calculate_housing_element(data, UC_RATES)
+        breakdown["Housing Element"] = housing
+    
+        # Child elements
+        children = self.calculate_child_elements(data, UC_RATES)
+        breakdown["Child Elements"] = children
+    
+        # Disability
+        disability_element, has_lcw, has_lcwra, lcw_payable = \
+            self.calculate_disability_elements(data, UC_RATES)
+        breakdown["Disability Element"] = disability_element
+    
+        # Carer
+        carer_element = UC_RATES["carer_element"] if (data.get("carer") and not has_lcwra) else 0.0
+        breakdown["Carer Element"] = carer_element
+    
+        # Childcare
+        childcare = float(data.get("childcare") or 0)
+        breakdown["Childcare Costs"] = childcare
+    
+        # Transitional SDP
+        transitional_sdp = self.calculate_transitional_sdp(
+            data, UC_RATES, has_lcwra, is_single
+        )
+        breakdown["Transitional SDP"] = transitional_sdp
+    
+        # Capital deduction
+        capital = float(data.get("savings") or 0)
+        lower_cap = UC_RATES["capital"]["lower_limit"]
+        upper_cap = UC_RATES["capital"]["upper_limit"]
+        tariff_per_250 = UC_RATES["capital"]["tariff_per_250"]
+    
+        if capital >= upper_cap:
+            capital_income = float("inf")
+        elif capital < lower_cap:
+            capital_income = 0.0
+        else:
+            blocks = ((capital - lower_cap) + 249) // 250
+            capital_income = blocks * tariff_per_250
+    
+        breakdown["Capital Deduction"] = -capital_income
+    
+        # Earnings deduction
+        earnings_deduction = self.calculate_earnings_deduction(
+            data, UC_RATES, housing, has_lcw, has_lcwra, len(data.get("children", []))
+        )
+        breakdown["Earnings Deduction"] = -earnings_deduction
+    
+        # Sanctions
+        sanction = self.calculate_sanction_reduction(
+            data, UC_RATES, age, partner_age
+        )
+        breakdown["Sanctions"] = -sanction
+    
+        # Advance repayment
+        advance = float(data.get("advance_amount") or 0)
+        months = int(data.get("repayment_period") or 0)
+        advance_deduction = advance / months if months > 0 else 0.0
+        breakdown["Advance Repayment"] = -advance_deduction
+    
+        # Deduction caps
+        deduction_caps_total = self.apply_deduction_caps(
+            data, UC_RATES, sa
+        )
+        breakdown["Deduction Caps"] = -deduction_caps_total
+    
+        # Final entitlement
+        total = sum(breakdown.values())
+        breakdown["Final Entitlement"] = total
+    
+        return breakdown
+    
+    class CollapsibleSection(BoxLayout):
+        def __init__(self, title, content_lines, **kwargs):
+            super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+    
+            self.is_open = False
+            self.content_lines = content_lines
+    
+            # Header button
+            self.header = RoundedButton(
+                text=f"▶  {title}",
+                size_hint=(1, None),
+                height=50,
+                font_size=18,
+                background_color=(0, 0, 0, 0),
+                color=get_color_from_hex("#FFDD00"),
+                halign="left",
+                valign="middle",
+                text_size=(Window.width - 60, None)
+            )
+            self.header.bind(on_press=self.toggle)
+            self.add_widget(self.header)
+    
+            # Content box (starts collapsed)
+            self.content_box = BoxLayout(
+                orientation="vertical",
+                spacing=5,
+                padding=(20, 0),
+                size_hint_y=None,
+                height=0,
+                opacity=0
+            )
+            self.add_widget(self.content_box)
+    
+        def toggle(self, *args):
+            self.is_open = not self.is_open
+    
+            if self.is_open:
+                # Expand
+                self.header.text = self.header.text.replace("▶", "▼")
+                self.content_box.opacity = 1
+    
+                # Add labels
+                self.content_box.clear_widgets()
+                for line in self.content_lines:
+                    lbl = SafeLabel(
+                        text=line,
+                        font_size=16,
+                        halign="left",
+                        valign="middle",
+                        color=get_color_from_hex("#FFFFFF"),
+                        size_hint_y=None
+                    )
+                    lbl.bind(
+                        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+                        texture_size=lambda inst, val: setattr(inst, "height", val[1])
+                    )
+                    self.content_box.add_widget(lbl)
+    
+                # Recalculate height
+                total_height = sum(child.height for child in self.content_box.children)
+                self.content_box.height = total_height
+    
+            else:
+                # Collapse
+                self.header.text = self.header.text.replace("▼", "▶")
+                self.content_box.opacity = 0
+                self.content_box.height = 0
+                self.content_box.clear_widgets()
+
+    def is_sar_exempt(self, data):
+        """
+        Returns True if the claimant is exempt from the Shared Accommodation Rate.
+        """
+        return any([
+            data.get("care_leaver"),
+            data.get("severe_disability"),
+            data.get("mappa"),
+            data.get("hostel_resident"),
+            data.get("domestic_abuse_refuge"),
+            data.get("ex_offender"),
+            data.get("foster_carer"),
+            data.get("prospective_adopter"),
+            data.get("temporary_accommodation"),
+            data.get("modern_slavery"),
+            data.get("armed_forces_reservist"),
+        ])
+    
+    def calculate_earnings_deduction(self, data, UC_RATES, housing_element, has_lcw, has_lcwra, num_children):
+        earnings = float(data.get("income") or 0)
+        if earnings <= 0:
+            return 0.0
+    
+        qualifies_for_WA = (
+            num_children > 0 or
+            has_lcw or
+            has_lcwra
+        )
+    
+        if not qualifies_for_WA:
+            return earnings * UC_RATES["taper_rate"]
+    
+        work_allowance = (
+            UC_RATES["work_allowance"]["lower"]
+            if housing_element > 0
+            else UC_RATES["work_allowance"]["higher"]
+        )
+    
+        earnings_after_WA = max(0, earnings - work_allowance)
+        return earnings_after_WA * UC_RATES["taper_rate"]
+
+    def calculate_child_elements(self, data, UC_RATES):
+        """
+        Calculates child elements using:
+        - First child pre-2017 rule
+        - Standard child rate for others
+        - Two-child limit with exceptions:
+            * Multiple birth
+            * Adoption
+            * Kinship care
+            * Non-consensual conception
+        """
+    
+        children = data.get("children", [])
+        if not children:
+            return 0.0
+    
+        # Parse children with DOB
+        parsed = []
+        for child in children:
+            dob_str = child.get("dob")
+            try:
+                dob = datetime.strptime(dob_str, "%d/%m/%Y")
+                parsed.append((dob, child))
+            except:
+                continue
+    
+        if not parsed:
+            return 0.0
+    
+        # Sort oldest → youngest
+        parsed.sort(key=lambda x: x[0])
+    
+        # Identify exceptions
+        def is_exception(child):
+            return (
+                child.get("adopted") or
+                child.get("kinship_care") or
+                child.get("multiple_birth") or
+                child.get("non_consensual")
+            )
+    
+        # Build list of eligible children
+        eligible_children = []
+    
+        # First, add the first two children (normal rule)
+        for i, (dob, child) in enumerate(parsed):
+            if i < 2:
+                eligible_children.append((dob, child))
+            else:
+                # For 3rd+ children, only add if exception applies
+                if is_exception(child):
+                    eligible_children.append((dob, child))
+    
+        # Now calculate the actual child element amounts
+        total = 0.0
+        cutoff = datetime(2017, 4, 6)
+    
+        # First eligible child
+        first_dob, first_child = eligible_children[0]
+        if first_dob < cutoff:
+            total += UC_RATES["child_element"]["first_child_pre2017"]
+        else:
+            total += UC_RATES["child_element"]["child"]
+    
+        # Remaining eligible children
+        for dob, child in eligible_children[1:]:
+            total += UC_RATES["child_element"]["child"]
+    
+        return total
+
+    def calculate_disability_elements(self, data, UC_RATES):
+        """
+        Determines LCW / LCWRA element and applies rules:
+        - LCWRA always payable unless claimant is a carer
+        - LCW only payable if claimant had LCW before UC
+        - LCW still gives Work Allowance even if not payable
+        Returns:
+            disability_element (float),
+            has_lcw (bool),
+            has_lcwra (bool),
+            lcw_payable (bool)
+        """
+
+        data["severe_disability"] = False
+        
+        status = (data.get("disability") or "").upper().strip()
+        is_carer = bool(data.get("carer"))
+    
+        has_lcw = (status == "LCW")
+        has_lcwra = (status == "LCWRA")
+    
+        # LCWRA + Carer rule
+        if has_lcwra and is_carer:
+            # LCWRA removed entirely
+            return 0.0, False, False, False
+    
+        # LCWRA always payable
+        if has_lcwra:
+            # LCWRA automatically counts as severe disability for SAR exemption
+            data["severe_disability"] = has_lcwra
+            return UC_RATES["lcw_lcwra"]["lcwra"], False, True, True
+    
+        # LCW logic
+        if has_lcw:
+            had_lcw_before = bool(data.get("had_lcw_before_uc"))
+    
+            if had_lcw_before:
+                # LCW payable
+                return UC_RATES["lcw_lcwra"]["lcw"], True, False, True
+            else:
+                # LCW NOT payable — but still gives Work Allowance
+                return 0.0, True, False, False
+        
+        # No disability
+        return 0.0, False, False, False
+
+    def calculate_sanction_reduction(self, data, UC_RATES, age, partner_age):
+        """
+        Calculates sanction reduction using:
+        - sanction_type: "low", "medium", "high"
+        - sanction_duration: number of days
+        - claimant type (single/couple)
+        - age category
+        - hardship rules (reduced sanction)
+        """
+    
+        sanction_type = (data.get("sanction_type") or "").lower().strip()
+        duration_str = data.get("sanction_duration")
+    
+        if not sanction_type or not duration_str:
+            return 0.0
+    
+        try:
+            days = int(duration_str)
+        except:
+            return 0.0
+    
+        # Determine claimant category
+        is_single = (data.get("relationship") == "single")
+    
+        if is_single:
+            category = "single_u25" if age < 25 else "single_25plus"
+        else:
+            if age < 25 and partner_age < 25:
+                category = "joint_u25"
+            else:
+                category = "joint_25plus"
+    
+        # Determine daily rate based on sanction type
+        if sanction_type == "high":
+            daily_rate = UC_RATES["sanctions"]["daily_100"][category]
+            base_rate_type = "100"
+        elif sanction_type == "medium":
+            daily_rate = UC_RATES["sanctions"]["daily_40"][category]
+            base_rate_type = "40"
+        elif sanction_type == "low":
+            daily_rate = UC_RATES["sanctions"]["daily_40"][category]
+            base_rate_type = "40"
+        else:
+            return 0.0
+    
+        # Hardship reduction
+        hardship = bool(data.get("hardship"))
+        if hardship:
+            # Reduce sanction to 60% of normal
+            daily_rate *= 0.6
+    
+        return daily_rate * days
+
+    def apply_deduction_caps(self, data, UC_RATES, standard_allowance):
+        """
+        Applies UC deduction caps using only the caps defined in UC_RATES:
+        - Third-party deductions (5%)
+        - Rent/service charge deductions (10–15%)
+        - Fraud/overpayment deductions (no individual cap, but included in overall 15%)
+        - Overall maximum deduction cap (15%)
+        - Child maintenance (fixed, outside cap)
+        Returns total_deductions
+        """
+    
         # -----------------------------
-        # 1. Parse claimant + partner age
+        # 0. Work out claimant category
+        # -----------------------------
+        age = data.get("claimant_age")
+        partner_age = data.get("partner_age")
+        is_single = (data.get("relationship") == "single")
+
+        if age is None:
+            raise ValueError("Claimant age missing — DOB must be entered before calculation.")
+        
+        if data.get("relationship") == "couple" and partner_age is None:
+            raise ValueError("Partner age missing — partner DOB must be entered before calculation.")
+    
+        if is_single:
+            category = "single_u25" if age < 25 else "single_25plus"
+        else:
+            if age < 25 and partner_age < 25:
+                category = "joint_u25"
+            else:
+                category = "joint_25plus"
+    
+        caps = UC_RATES["deduction_caps"]
+    
+        # -----------------------------
+        # 1. Third-party deductions (5%)
+        # -----------------------------
+        third_party = float(data.get("third_party_deductions") or 0)
+        third_party_cap = caps["third_party_5pct"][category]
+        third_party = min(third_party, third_party_cap)
+    
+        # -----------------------------
+        # 2. Rent/service charge deductions (10–15%)
+        # -----------------------------
+        rent_deduction = float(data.get("rent_arrears_deduction") or 0)
+        min_rent = caps["rent_min_10pct"][category]
+        max_rent = caps["rent_max_15pct"][category]
+    
+        # If there is any rent deduction, it must be between min and max
+        if rent_deduction > 0:
+            rent_deduction = max(min_rent, min(rent_deduction, max_rent))
+        else:
+            rent_deduction = 0.0
+    
+        # -----------------------------
+        # 3. Fraud / overpayment deductions
+        # -----------------------------
+        fraud_deduction = float(data.get("fraud_deduction") or 0)
+        overpayment = float(data.get("overpayment_deduction") or 0)
+    
+        # No individual caps defined in UC_RATES, they will be controlled by overall cap
+        fraud_deduction = max(0.0, fraud_deduction)
+        overpayment = max(0.0, overpayment)
+    
+        # -----------------------------
+        # 4. Child maintenance (outside cap)
+        # -----------------------------
+        child_maintenance = float(data.get("child_maintenance") or 0)
+        child_maintenance = min(child_maintenance, UC_RATES["child_maintenance_deduction"])
+    
+        # -----------------------------
+        # 5. Apply overall 15% cap to capped deductions
+        # -----------------------------
+        overall_cap = caps["overall_max_15pct"][category]
+    
+        capped_deductions = third_party + rent_deduction + fraud_deduction + overpayment
+        capped_deductions = min(capped_deductions, overall_cap)
+    
+        # Child maintenance is added AFTER the cap
+        total_deductions = capped_deductions + child_maintenance
+    
+        return total_deductions
+
+    def calculate_bedroom_entitlement(self, data):
+        """
+        Returns the number of bedrooms the household is entitled to.
+        Based on standard UC bedroom rules.
+        """
+        children = data.get("children", [])
+        num_children = len(children)
+    
+        # Adults
+        is_single = (data.get("relationship") == "single")
+        adults = 1 if is_single else 2
+    
+        bedrooms = 1  # for the claimant(s)
+    
+        # Children sharing rules:
+        # - Two children under 10 share regardless of sex
+        # - Two children under 16 of same sex share
+        # - Otherwise each child gets their own room
+    
+        # Parse children ages
+        child_ages = []
+        for child in children:
+            try:
+                dob = datetime.strptime(child["dob"], "%d/%m/%Y")
+                age = (datetime.now() - dob).days // 365
+                child_ages.append((age, child.get("sex", "U")))
+            except:
+                continue
+    
+        # Sort by age
+        child_ages.sort(key=lambda x: x[0])
+    
+        # Group children into rooms
+        used = [False] * len(child_ages)
+    
+        for i in range(len(child_ages)):
+            if used[i]:
+                continue
+    
+            age_i, sex_i = child_ages[i]
+    
+            # Try to pair with another child
+            paired = False
+            for j in range(i + 1, len(child_ages)):
+                if used[j]:
+                    continue
+    
+                age_j, sex_j = child_ages[j]
+    
+                # Under 10 → always share
+                if age_i < 10 and age_j < 10:
+                    used[i] = used[j] = True
+                    bedrooms += 1
+                    paired = True
+                    break
+    
+                # Same sex and both under 16 → share
+                if sex_i == sex_j and age_i < 16 and age_j < 16:
+                    used[i] = used[j] = True
+                    bedrooms += 1
+                    paired = True
+                    break
+    
+            if not paired:
+                used[i] = True
+                bedrooms += 1
+    
+        return bedrooms 
+
+    def lookup_lha_rate(self, brma, bedrooms, location):
+        """
+        Looks up the LHA rate for the given BRMA, bedroom entitlement, and location.
+        CSV files:
+            LHA-England.csv
+            LHA-Scotland.csv
+            LHA-Wales.csv
+    
+        Columns:
+            BRMA, SAR, 1 Bed, 2 bed, 3 bed, 4 Bed
+        """
+    
+        if not brma:
+            return 0.0
+    
+        # Determine which file to load
+        location = (location or "").strip().lower()
+    
+        if location == "england":
+            filename = "LHA-England.csv"
+        elif location == "scotland":
+            filename = "LHA-Scotland.csv"
+        elif location == "wales":
+            filename = "LHA-Wales.csv"
+        else:
+            return 0.0
+    
+        csv_path = resource_find(filename)
+        if not csv_path:
+            return 0.0
+    
+        # Map bedroom entitlement to column name
+        if bedrooms == "shared":
+            col = "SAR"
+        elif bedrooms == 1:
+            col = "1 Bed"
+        elif bedrooms == 2:
+            col = "2 bed"
+        elif bedrooms == 3:
+            col = "3 bed"
+        elif bedrooms >= 4:
+            col = "4 Bed"
+        else:
+            return 0.0
+    
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("BRMA", "").strip().lower() == brma.lower():
+                        weekly = float(row.get(col, 0) or 0)
+                        # Convert weekly → monthly
+                        return weekly * 52 / 12
+        except Exception:
+            pass
+    
+        return 0.0
+
+    def calculate_non_dependant_deduction(self, data, UC_RATES):
+        """
+        Applies the standard non-dependant housing cost contribution.
+        """
+        nondeps = int(data.get("non_dependants", 0))
+        if nondeps <= 0:
+            return 0.0
+    
+        rate = UC_RATES["non_dependant"]["housing_cost_contribution"]
+        return nondeps * rate
+
+    def calculate_housing_element(self, data, UC_RATES):
+        housing_type = (data.get("housing_type") or "").lower()
+    
+        # -----------------------------
+        # Owner-occupier (mortgage)
+        # -----------------------------
+        if housing_type == "own":
+            mortgage = float(data.get("mortgage") or 0)
+            return mortgage
+    
+        # -----------------------------
+        # Shared accommodation
+        # -----------------------------
+        if housing_type == "shared accommodation":
+            shared = float(data.get("shared") or 0)
+            return shared
+    
+        # -----------------------------
+        # Renting (private or social)
+        # -----------------------------
+        rent = float(data.get("rent") or 0)
+        brma = data.get("brma", "")
+        location = data.get("location", "")
+    
+        # Non-dependant deductions
+        nondep = self.calculate_non_dependant_deduction(data, UC_RATES)
+    
+        # SOCIAL RENT
+        if location.lower() in ["england", "scotland", "wales"] and data.get("tenancy_type") == "social":
+            eligible_services = self.calculate_eligible_service_charges(data)
+            eligible_rent = float(data.get("rent") or 0)
+        
+            # Eligible rent = eligible rent + eligible service charges - non-dependant deductions
+            eligible = max(0, eligible_rent + eligible_services - nondep)
+            return eligible
+    
+        # PRIVATE RENT (LHA)
+        bedrooms = self.calculate_bedroom_entitlement(data)
+    
+        # Shared accommodation rule
+        if bedrooms == 1 and data.get("single_under_35"):
+            bedrooms = "shared"
+    
+        # Lookup LHA rate
+        lha_rate = self.lookup_lha_rate(brma, bedrooms, data.get("location"))
+    
+        eligible = min(rent, lha_rate)
+        eligible -= nondep
+        return max(0, eligible)
+
+    def calculate_transitional_sdp(self, data, UC_RATES, has_lcwra, is_single):
+        """
+        Calculates Transitional SDP Element based on:
+        - Whether claimant previously received SDP
+        - Whether LCWRA is included in the award
+        - Whether single or couple
+        - Additional EDP/DP/disabled child amounts
+        """
+    
+        if not data.get("had_sdp"):
+            return 0.0
+    
+        rates = UC_RATES["transitional_sdp"]
+    
+        # Base SDP transitional protection
+        if is_single:
+            if has_lcwra:
+                base = rates["lcwra_included"]
+            else:
+                base = rates["lcwra_not_included"]
+        else:
+            base = rates["joint_higher"]
+    
+        # Additional components
+        extra = 0.0
+    
+        if data.get("extra_edp"):
+            extra += rates["extra_edp_single"] if is_single else rates["extra_edp_couple"]
+    
+        if data.get("extra_dp"):
+            extra += rates["extra_dp_single"] if is_single else rates["extra_dp_couple"]
+    
+        if data.get("extra_disabled_children"):
+            extra += rates["extra_disabled_children"]
+    
+        return base + extra
+
+    def calculate_eligible_service_charges(self, data):
+        """
+        Calculates eligible service charges for social rent.
+        Expects data['service_charges'] to be a dict like:
+            {
+                "cleaning": 12.50,
+                "lighting": 5.00,
+                "grounds": 8.00,
+                "heating": 20.00,
+                "water": 15.00,
+                ...
+            }
+        Only eligible charges are included.
+        """
+    
+        eligible_keys = {
+            "cleaning",
+            "communal_cleaning",
+            "lighting",
+            "communal_lighting",
+            "grounds",
+            "grounds_maintenance",
+            "lift_maintenance",
+            "fire_safety",
+            "door_entry",
+            "shared_facilities",
+            "communal_repairs",
+            "estate_services",
+        }
+    
+        charges = data.get("service_charges", {})
+        if not isinstance(charges, dict):
+            return 0.0
+    
+        total = 0.0
+        for key, value in charges.items():
+            if key.lower().strip() in eligible_keys:
+                try:
+                    total += float(value)
+                except:
+                    pass
+    
+        return total
+
+
+    # -----------------------------
+
+    def calculate_entitlement(self):
+        """Full Universal Credit calculation using all modular helpers."""
+    
+        data = self.user_data
+
+        if not data.get("relationship"):
+            data["relationship"] = "single"
+
+        if not data.get("tenancy_type"):
+            data["tenancy_type"] = "private"
+
+    
+        # -----------------------------
+        # Parse ages
         # -----------------------------
         def parse_age(dob_str):
             if not dob_str:
@@ -1253,104 +2138,142 @@ class Calculator(Screen):
                 return (datetime.now() - dob).days // 365
             except:
                 return None
-    
+        
         age = parse_age(data.get("claimant_dob"))
         partner_age = parse_age(data.get("partner_dob"))
-    
         is_single = (data.get("relationship") == "single")
+        
+        # Strict validation
+        if age is None:
+            raise ValueError("Please enter a valid claimant date of birth (DD/MM/YYYY).")
+        
+        if not is_single and partner_age is None:
+            raise ValueError("Please enter a valid partner date of birth (DD/MM/YYYY).")
+        
+        # Store ages for deduction caps
+        data["claimant_age"] = age
+        data["partner_age"] = partner_age if not is_single else None
     
         # -----------------------------
-        # 2. Income + savings
+        # Children (full rules)
         # -----------------------------
-        income = float(data.get("income") or 0)
-        capital = float(data.get("savings") or 0)
-    
+        child_elements = self.calculate_child_elements(data, UC_RATES)
+        children = data.get("children", [])
+        num_children = len(children)
+
         # -----------------------------
-        # 3. Children
+        # Determine SAR rule (single under 35)
         # -----------------------------
+        is_single = (data.get("relationship") == "single")
         num_children = len(data.get("children", []))
-    
-        # Basic child elements (simplified)
-        child_elements = 0
-        if num_children >= 1:
-            child_elements += 292.81
-        if num_children >= 2:
-            child_elements += 292.81 * (num_children - 1)
+        age = data.get("claimant_age")
+        tenancy_type = data.get("tenancy_type")
+        
+        data["single_under_35"] = (
+            is_single and
+            age is not None and age < 35 and
+            num_children == 0 and
+            tenancy_type == "private" and
+            not self.is_sar_exempt(data)
+        )
+        
+        # -----------------------------
+        # Disability (LCW / LCWRA)
+        # -----------------------------
+        disability_element, has_lcw, has_lcwra, lcw_payable = \
+            self.calculate_disability_elements(data, UC_RATES)
     
         # -----------------------------
-        # 4. Additional elements
+        # Carer element (LCWRA conflict handled in helper)
         # -----------------------------
-        carer_element = 201.68 if data.get("carer") else 0
-        disability_element = 0
-        if data.get("disability"):
-            disability_element = 423.27  # LCWRA rate
+        is_carer = bool(data.get("carer"))
+        carer_element = UC_RATES["carer_element"] if (is_carer and not has_lcwra) else 0.0
     
+        # -----------------------------
+        # Childcare
+        # -----------------------------
         childcare_costs = float(data.get("childcare") or 0)
     
         # -----------------------------
-        # 5. Standard allowance
+        # Standard allowance
         # -----------------------------
         if is_single:
-            standard_allowance = 316.98 if (age and age < 25) else 400.14
+            if age is not None and age < 25:
+                standard_allowance = UC_RATES["standard_allowance"]["single_u25"]
+            else:
+                standard_allowance = UC_RATES["standard_allowance"]["single_25plus"]
         else:
             if age is not None and partner_age is not None:
                 if age < 25 and partner_age < 25:
-                    standard_allowance = 497.55
+                    standard_allowance = UC_RATES["standard_allowance"]["couple_u25"]
                 else:
-                    standard_allowance = 628.10
+                    standard_allowance = UC_RATES["standard_allowance"]["couple_25plus"]
             else:
-                standard_allowance = 628.10
+                standard_allowance = UC_RATES["standard_allowance"]["couple_25plus"]
     
         # -----------------------------
-        # 6. Housing element
+        # Housing element (full LHA + social rent)
         # -----------------------------
-        housing_type = data.get("housing_type", "").lower()
-        housing_element = 0
-    
-        if housing_type == "rent":
-            rent = float(data.get("rent") or 0)
-            housing_element = rent  # LHA cap already applied earlier
-    
-        elif housing_type == "own":
-            mortgage = float(data.get("mortgage") or 0)
-            housing_element = mortgage
-    
-        elif housing_type == "shared accommodation":
-            shared = float(data.get("shared") or 0)
-            housing_element = shared
+        housing_element = self.calculate_housing_element(data, UC_RATES)
     
         # -----------------------------
-        # 7. Capital deductions
+        # Transitional SDP
         # -----------------------------
-        if capital >= 16000:
-            return 0  # Not eligible
+        transitional_sdp = self.calculate_transitional_sdp(
+            data,
+            UC_RATES,
+            has_lcwra,
+            is_single
+        )
     
-        if capital < 6000:
-            capital_income = 0
+        # -----------------------------
+        # Capital deductions
+        # -----------------------------
+        capital = float(data.get("savings") or 0)
+        lower_cap = UC_RATES["capital"]["lower_limit"]
+        upper_cap = UC_RATES["capital"]["upper_limit"]
+        tariff_per_250 = UC_RATES["capital"]["tariff_per_250"]
+    
+        if capital >= upper_cap:
+            return 0.0
+    
+        if capital < lower_cap:
+            capital_income = 0.0
         else:
-            blocks = ((capital - 6000) + 249) // 250
-            capital_income = blocks * 4.35
+            blocks = ((capital - lower_cap) + 249) // 250
+            capital_income = blocks * tariff_per_250
     
         # -----------------------------
-        # 8. Sanctions
+        # Earnings deduction (work allowance + taper)
         # -----------------------------
-        sanction_reduction = 0
-        if data.get("sanction_type") and data.get("sanction_duration"):
-            try:
-                days = int(data["sanction_duration"])
-                sanction_reduction = days * 10  # simplified
-            except:
-                sanction_reduction = 0
+        earnings_deduction = self.calculate_earnings_deduction(
+            data,
+            UC_RATES,
+            housing_element,
+            has_lcw,
+            has_lcwra,
+            num_children
+        )
     
         # -----------------------------
-        # 9. Advance payments
+        # Sanctions (full rules + hardship)
+        # -----------------------------
+        sanction_reduction = self.calculate_sanction_reduction(
+            data,
+            UC_RATES,
+            age,
+            partner_age
+        )
+    
+        # -----------------------------
+        # Advance payments
         # -----------------------------
         advance = float(data.get("advance_amount") or 0)
         repayment_months = int(data.get("repayment_period") or 0)
-        advance_deduction = advance / repayment_months if repayment_months > 0 else 0
+        advance_deduction = advance / repayment_months if repayment_months > 0 else 0.0
     
         # -----------------------------
-        # 10. Total entitlement
+        # Total before capped deductions
         # -----------------------------
         total = (
             standard_allowance +
@@ -1358,67 +2281,117 @@ class Calculator(Screen):
             child_elements +
             childcare_costs +
             carer_element +
-            disability_element
+            disability_element +
+            transitional_sdp
         )
     
         # Apply deductions
         total -= capital_income
+        total -= earnings_deduction
         total -= sanction_reduction
         total -= advance_deduction
     
-        return max(total, 0)
+        # -----------------------------
+        # Apply deduction caps
+        # -----------------------------
+        deduction_caps_total = self.apply_deduction_caps(
+            data,
+            UC_RATES,
+            standard_allowance
+        )
+    
+        total -= deduction_caps_total
+    
+        # -----------------------------
+        # Final entitlement
+        # -----------------------------
+        return max(0.0, round(total, 2))
+
 
 
     def show_loading(self, message="Loading..."):
+        # Prevent duplicate overlays
         if hasattr(self, "loading_overlay") and self.loading_overlay.parent:
             return
     
+        # Fullscreen dimmed overlay
         overlay = AnchorLayout(size_hint=(1, 1), opacity=0)
     
+        # Dim background
+        with overlay.canvas.before:
+            Color(0, 0, 0, 0.55)  # GOV.UK modal dim
+            self._dim_rect = Rectangle(size=overlay.size, pos=overlay.pos)
+        overlay.bind(size=lambda inst, val: setattr(self._dim_rect, "size", val))
+        overlay.bind(pos=lambda inst, val: setattr(self._dim_rect, "pos", val))
+    
+        # Container for glow + animation + text
         box = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
-            size=(300, 180),
-            padding=20,
-            spacing=15,
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            size=(260, 260),
+            spacing=10,
+            padding=10
         )
     
-        with box.canvas.before:
-            Color(0, 0, 0, 0.75)
-            self.bg_rect = Rectangle(size=box.size, pos=box.pos)
-        box.bind(size=lambda inst, val: setattr(self.bg_rect, "size", val))
-        box.bind(pos=lambda inst, val: setattr(self.bg_rect, "pos", val))
+        # Pulsing glow behind animation
+        glow = PulsingGlow(size_hint=(None, None), size=(220, 220))
+        box.add_widget(glow)
     
-        loader = PNGSequenceAnimationWidget(size_hint=(None, None), size=(80, 80))
+        # Animated PNG loader (your existing widget)
+        loader = PNGSequenceAnimationWidget(
+            size_hint=(None, None),
+            size=(200, 200),
+            allow_stretch=True,
+            keep_ratio=True
+        )
         box.add_widget(loader)
     
+        # Optional loading text
         label = Label(
             text=message,
-            font_size=22,
+            font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#FFFFFF"),
             halign="center",
             valign="middle",
-            text_size=(280, None)
+            size_hint=(1, None),
+            height=40
         )
+    
+        # Fade the text gently
+        text_anim = Animation(color=(1, 1, 1, 0.4), duration=0.8) + Animation(color=(1, 1, 1, 1), duration=0.8)
+        text_anim.repeat = True
+        text_anim.start(label)
+    
         box.add_widget(label)
     
         overlay.add_widget(box)
+    
+        # Store reference
         self.loading_overlay = overlay
         self.add_widget(overlay)
     
+        # Fade in overlay
         Animation(opacity=1, duration=0.25).start(overlay)
+    
+        # Optional timeout fallback (10 seconds)
+        self._loading_timeout = Clock.schedule_once(lambda dt: self.hide_loading(), 10)
     
     
     def hide_loading(self):
         if not hasattr(self, "loading_overlay") or not self.loading_overlay.parent:
             return
     
+        # Cancel timeout if active
+        if hasattr(self, "_loading_timeout"):
+            self._loading_timeout.cancel()
+    
         overlay = self.loading_overlay
+    
         anim = Animation(opacity=0, duration=0.25)
-        anim.bind(on_complete=lambda *args:self.remove_widget(overlay))
+        anim.bind(on_complete=lambda *args: self.remove_widget(overlay))
         anim.start(overlay)
+    
 
     def autosave_current_screen(self):
         """Automatically save data for whichever screen the user is leaving."""
@@ -1445,25 +2418,99 @@ class Calculator(Screen):
         super().__init__(**kwargs)
         # Central state dictionary
         self.user_data = {
-            "claimant_dob": "",
-            "partner_dob": "",
-            "relationship": "",
-            "income": "",
-            "savings": "",
-            "debts": "",
-            "housing_type": "",
-            "rent": "",
-            "mortgage": "",
-            "postcode": "",
-            "brma": "",
-            "children": [],
-            "carer": False,
-            "disability": False,
-            "childcare": "",
-            "sanction_type": "",
-            "sanction_duration": "",
-            "advance_amount": "",
-            "repayment_period": ""
+            # -----------------------------
+            # Claimant + Partner
+            # -----------------------------
+            "claimant_dob": "",          # "DD/MM/YYYY"
+            "partner_dob": "",           # "" if single
+            "relationship": "single",    # "single" or "couple"
+        
+            # -----------------------------
+            # Income + Capital
+            # -----------------------------
+            "income": 0.0,               # monthly earnings
+            "savings": 0.0,              # capital
+        
+            # -----------------------------
+            # Children (list of dicts)
+            # -----------------------------
+            "children": [
+                # {
+                #     "dob": "12/03/2018",
+                #     "sex": "M",
+                #     "adopted": False,
+                #     "kinship_care": False,
+                #     "multiple_birth": False,
+                #     "non_consensual": False
+                # }
+            ],
+        
+            # -----------------------------
+            # Disability + Carer
+            # -----------------------------
+            "disability": "",            # "", "LCW", "LCWRA"
+            "had_lcw_before_uc": False,  # legacy LCW rule
+            "carer": False,              # carer element
+        
+            # -----------------------------
+            # Childcare
+            # -----------------------------
+            "childcare": 0.0,            # monthly childcare costs
+        
+            # -----------------------------
+            # Housing
+            # -----------------------------
+            "housing_type": "",          # "own", "rent", "shared accommodation"
+            "tenancy_type": "",          # "social", "private"
+            "location": "",                # "England", "Scotland", "Wales"
+            "brma": "",                  # BRMA name for LHA lookup
+            "rent": 0.0,                 # monthly rent
+            "mortgage": 0.0,             # mortgage interest support
+            "shared": 0.0,               # shared accommodation rate
+            "non_dependants": 0,         # number of non-dependants
+        
+            # Service charges (social rent)
+            "service_charges": {
+                # "cleaning": 0.0,
+                # "lighting": 0.0,
+                # "grounds": 0.0,
+                # "heating": 0.0,  # ignored
+                # "water": 0.0,    # ignored
+            },
+
+            # SAR exemptions
+            "care_leaver": False,
+            "severe_disability": False,
+            "mappa": False,
+            "hostel_resident": False,
+            "domestic_abuse_refuge": False,
+            "ex_offender": False,
+            "foster_carer": False,
+            "prospective_adopter": False,
+            "temporary_accommodation": False,
+            "modern_slavery": False,
+            "armed_forces_reservist": False,
+        
+            # -----------------------------
+            # Sanctions
+            # -----------------------------
+            "sanction_type": "",         # "", "low", "medium", "high"
+            "sanction_duration": 0,      # days
+            "hardship": False,           # hardship reduction
+        
+            # -----------------------------
+            # Advances
+            # -----------------------------
+            "advance_amount": 0.0,
+            "repayment_period": 0,       # months
+        
+            # -----------------------------
+            # Transitional SDP
+            # -----------------------------
+            "had_sdp": False,
+            "extra_edp": False,
+            "extra_dp": False,
+            "extra_disabled_children": False,
         }
 
         self.current_subscreen = "Introduction"
@@ -1583,153 +2630,76 @@ class Calculator(Screen):
         self.add_widget(layout)
 
         
-    def calculate(self, instance):
+    def calculate(self, instance=None):
+        """
+        Wrapper that:
+        - Saves all screen data
+        - Runs the UC calculation
+        - Shows result or error popup
+        """
+    
+        # -----------------------------
+        # 1. SAVE ALL SCREEN DATA
+        # -----------------------------
         try:
-            data = self.manager.user_data  # central state dictionary
+            if hasattr(self, "save_claimant_details"):
+                self.save_claimant_details()
     
-            # Claimant details
-            dob_str = data.get("claimant_dob", "")
-            if not dob_str:
-                content = SafeLabel(text="Please enter your date of birth.", halign="center", valign="middle")
-                Popup(title="Missing Input", content=content, size_hint=(0.8, 0.4)).open()
-                return
+            if hasattr(self, "save_finances"):
+                self.save_finances()
     
-            try:
-                dob = datetime.strptime(dob_str, "%d/%m/%Y")
-            except Exception:
-                content = SafeLabel(text="Please enter DOB in format DD/MM/YYYY.", halign="center", valign="middle")
-                Popup(title="Invalid Input", content=content, size_hint=(0.8, 0.4)).open()
-                return
+            if hasattr(self, "save_housing_details"):
+                self.save_housing_details()
     
-            age = (datetime.now() - dob).days // 365
-            is_single = data.get("relationship", "single").lower() == "single"
+            if hasattr(self, "save_children"):
+                self.save_children()
     
-            partner_age = None
-            if data.get("relationship") == "couple" and data.get("partner_dob"):
-                try:
-                    partner_dob = datetime.strptime(data["partner_dob"], "%d/%m/%Y")
-                    partner_age = (datetime.now() - partner_dob).days // 365
-                except Exception:
-                    content = SafeLabel(text="Partner DOB must be DD/MM/YYYY.", halign="center", valign="middle")
-                    Popup(title="Invalid Input", content=content, size_hint=(0.8, 0.4)).open()
-                    return
+            if hasattr(self, "save_additional_elements"):
+                self.save_additional_elements()
     
-            # Income and capital
-            try:
-                income = float(data.get("income", 0) or 0)
-            except Exception:
-                Popup(title="Invalid Input", content=SafeLabel(text="Income must be a number."), size_hint=(0.8, 0.4)).open()
-                return
+            if hasattr(self, "save_sanctions"):
+                self.save_sanctions()
     
-            try:
-                capital = float(data.get("savings", 0) or 0)
-            except Exception:
-                Popup(title="Invalid Input", content=SafeLabel(text="Savings must be a number."), size_hint=(0.8, 0.4)).open()
-                return
-    
-            # Children
-            child_elements = 0
-            children_dobs = data.get("children", [])
-            for i, dob_str in enumerate(children_dobs):
-                try:
-                    child_dob = datetime.strptime(dob_str, "%d/%m/%Y")
-                    if i == 0:
-                        child_elements += 339 if child_dob < datetime(2017, 4, 6) else 292.81
-                    elif i == 1:
-                        child_elements += 292.81
-                    else:
-                        child_elements += 292.81  # add special flags if stored
-                except Exception:
-                    Popup(title="Invalid Date", content=SafeLabel(text="Children DOBs must be DD/MM/YYYY."), size_hint=(0.8, 0.4)).open()
-                    return
-    
-            # Additional elements
-            carer_element = 201.68 if data.get("carer") else 0
-            childcare_costs = float(data.get("childcare", 0) or 0)
-    
-            # Work capability
-            work_capability = 0
-            if data.get("lcwra"):
-                work_capability = 423.27
-            elif data.get("lcw_2017"):
-                work_capability = 158.76
-    
-            # Standard allowance
-            standard_allowance = 0
-            if is_single:
-                standard_allowance = 316.98 if age < 25 else 400.14
-            else:
-                if partner_age is not None:
-                    standard_allowance = 497.55 if age < 25 and partner_age < 25 else 628.10
-    
-            # Housing element
-            housing_element = 0
-            housing_type = data.get("housing_type", "").lower()
-            if housing_type == "rent":
-                rent_value = float(data.get("rent", 0) or 0)
-                brma = data.get("brma", "")
-                location = data.get("location", "")
-                if not location or not brma:
-                    Popup(title="Missing Housing Info", content=SafeLabel(text="Please select Location and BRMA."), size_hint=(0.8, 0.4)).open()
-                    return
-                # TODO: plug in your LHA lookup logic here
-                lha_rate = rent_value
-                housing_element = min(rent_value, lha_rate)
-            elif housing_type == "own":
-                housing_element = float(data.get("mortgage", 0) or 0)
-            elif housing_type == "shared accommodation":
-                housing_element = float(data.get("rent", 0) or 0)
-    
-            # Work allowance
-            has_children = len(children_dobs) > 0
-            receives_housing_support = housing_type == "rent"
-            work_allowance = 411 if (has_children or data.get("lcw")) and receives_housing_support else (684 if has_children else 0)
-    
-            # Total before deductions
-            total_allowance = (
-                standard_allowance +
-                housing_element +
-                child_elements +
-                childcare_costs +
-                carer_element +
-                work_capability
-            )
-    
-            # Capital income deduction
-            capital_income = 0
-            if capital < 6000:
-                capital_income = 0
-            elif capital >= 16000:
-                Popup(title="Calculation Result", content=SafeLabel(text="Not eligible due to capital over £16,000."), size_hint=(0.8, 0.4)).open()
-                return
-            else:
-                blocks = ((capital - 6000) + 249) // 250
-                capital_income = blocks * 4.35
-    
-            # Sanctions
-            sanctions = float(data.get("sanctions", 0) or 0)
-    
-            # Advance payments
-            advance_amount = float(data.get("advance_amount", 0) or 0)
-            repayment_period = int(data.get("repayment_period", 0) or 0)
-            advance_payments = advance_amount / repayment_period if repayment_period > 0 else 0
-    
-            # Final entitlement
-            entitlement = total_allowance - capital_income - sanctions - advance_payments
-            
-            # Update summary label
-            self.summary_label.text = f"Your predicted entitlement is: £{entitlement:.2f}"
-            
-            # ALSO show a popup
-            content = SafeLabel(
-                text=f"Your predicted entitlement is: £{entitlement:.2f}",
-                halign="center", valign="middle"
-            )
-            Popup(title="Calculation Result", content=content, size_hint=(0.8, 0.4)).open()
+            if hasattr(self, "save_advance_payments"):
+                self.save_advance_payments()
     
         except Exception as e:
-            Popup(title="Error", content=SafeLabel(text=str(e)), size_hint=(0.8, 0.4)).open()
-
+            Popup(
+                title="Error Saving Data",
+                content=SafeLabel(text=str(e)),
+                size_hint=(0.8, 0.4)
+            ).open()
+            return
+    
+        # -----------------------------
+        # 2. RUN THE CALCULATION
+        # -----------------------------
+        try:
+            result = self.calculate_entitlement()
+        except Exception as e:
+            Popup(
+                title="Calculation Error",
+                content=SafeLabel(text=str(e)),
+                size_hint=(0.8, 0.4)
+            ).open()
+            return
+    
+        # -----------------------------
+        # 3. SHOW RESULT
+        # -----------------------------
+        result_text = f"Your predicted Universal Credit entitlement is:\n\n£{result:.2f}"
+    
+        self.summary_label.text = result_text
+    
+        Popup(
+            title="Calculation Result",
+            content=SafeLabel(
+                text=result_text,
+                halign="center",
+                valign="middle"
+            ),
+            size_hint=(0.8, 0.4)
+        ).open()
      
     def create_intro_screen(self):
         # Use a ScrollView to make the intro screen vertically scrollable
@@ -2023,9 +2993,19 @@ class Calculator(Screen):
         return outer
     
     def save_finances(self):
-        self.user_data["income"] = self.income_input.text.strip()
-        self.user_data["savings"] = self.savings_input.text.strip()
+        self.user_data["income_raw"] = self.income_input.text.strip()
+        self.user_data["savings_raw"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
+    
+        try:
+            self.user_data["income"] = float(self.income_input.text or 0)
+        except:
+            self.user_data["income"] = 0.0
+    
+        try:
+            self.user_data["savings"] = float(self.savings_input.text or 0)
+        except:
+            self.user_data["savings"] = 0.0
     
     def on_pre_enter_finances(self, *args):
         self.income_input.text = self.user_data.get("income", "")
@@ -2065,6 +3045,17 @@ class Calculator(Screen):
 
         # Force text AFTER safe_props has finished touching it
         Clock.schedule_once(lambda dt: setattr(self.housing_type_spinner, "text", "Housing Type"), 0)
+
+        # Tenancy type (private or social)
+        self.tenancy_type_spinner = Spinner(
+            text="Select tenancy type",
+            values=["private", "social"],
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex(WHITE),
+            color=get_color_from_hex(GOVUK_BLUE)
+        )
+        layout.add_widget(self.tenancy_type_spinner)
     
         # Rent/Mortgage inputs
         self.rent_input = TextInput(
@@ -2096,6 +3087,17 @@ class Calculator(Screen):
             background_color=get_color_from_hex("#FFFFFF"),
             foreground_color=get_color_from_hex("#005EA5")
         )
+
+        self.non_dependants_input = TextInput(
+            hint_text="Number of non-dependants (e.g. adult children)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
+        )
+        layout.add_widget(self.non_dependants_input)
 
     
         def update_amount_input(spinner, value):
@@ -2129,6 +3131,22 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex("#005EA5")
         )
         layout.add_widget(self.postcode_input)
+
+        # ---------------------------------------------------------
+        # MANUAL OVERRIDE TOGGLE
+        # ---------------------------------------------------------
+        self.manual_location_toggle = CheckBox(size_hint=(None, None), size=(40, 40))
+        manual_label = SafeLabel(
+            text="Manual Location/BRMA selection",
+            font_size=16,
+            color=get_color_from_hex("#FFFFFF")
+        )
+        
+        manual_box = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
+        manual_box.add_widget(self.manual_location_toggle)
+        manual_box.add_widget(manual_label)
+        
+        layout.add_widget(manual_box)
     
         # ---------------------------------------------------------
         # LOCATION SPINNER
@@ -2162,6 +3180,93 @@ class Calculator(Screen):
 
         # Force text AFTER safe_props has finished touching it
         Clock.schedule_once(lambda dt: setattr(self.brma_spinner, "text", "Select BRMA"), 0)
+
+        # ---------------------------------------------------------
+        # SERVICE CHARGES (SOCIAL RENT ONLY)
+        # ---------------------------------------------------------
+
+        # Disable service charges unless tenancy type is social
+        def toggle_service_charges(spinner, value):
+            social = (value.lower() == "social")
+            for field in [
+                self.service_cleaning_input,
+                self.service_communal_cleaning_input,
+                self.service_lighting_input,
+                self.service_communal_lighting_input,
+                self.service_grounds_input,
+                self.service_lift_input,
+                self.service_fire_safety_input,
+                self.service_door_entry_input,
+                self.service_shared_facilities_input,
+                self.service_communal_repairs_input,
+                self.service_estate_services_input,
+            ]:
+                field.disabled = not social
+        
+        # Bind tenancy type to toggle
+        self.tenancy_type_spinner.bind(text=toggle_service_charges)
+        
+        service_label = SafeLabel(
+            text="Eligible Service Charges (Social Rent Only)",
+            font_size=20,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        service_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(service_label)
+        
+        # Helper to create a service charge input row
+        def add_service_charge_row(label_text, attr_name):
+            row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
+            lbl = SafeLabel(
+                text=label_text,
+                font_size=16,
+                color=get_color_from_hex("#FFFFFF"),
+                halign="left"
+            )
+            lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        
+            ti = TextInput(
+                hint_text="£0.00",
+                multiline=False,
+                font_size=18,
+                size_hint=(1, None),
+                height=50,
+                background_color=get_color_from_hex("#FFFFFF"),
+                foreground_color=get_color_from_hex("#005EA5")
+            )
+        
+            setattr(self, attr_name, ti)
+        
+            row.add_widget(lbl)
+            row.add_widget(ti)
+            layout.add_widget(row)
+        
+        # Add all eligible service charge fields
+        add_service_charge_row("Cleaning", "service_cleaning_input")
+        add_service_charge_row("Communal Cleaning", "service_communal_cleaning_input")
+        add_service_charge_row("Lighting", "service_lighting_input")
+        add_service_charge_row("Communal Lighting", "service_communal_lighting_input")
+        add_service_charge_row("Grounds Maintenance", "service_grounds_input")
+        add_service_charge_row("Lift Maintenance", "service_lift_input")
+        add_service_charge_row("Fire Safety", "service_fire_safety_input")
+        add_service_charge_row("Door Entry System", "service_door_entry_input")
+        add_service_charge_row("Shared Facilities", "service_shared_facilities_input")
+        add_service_charge_row("Communal Repairs", "service_communal_repairs_input")
+        add_service_charge_row("Estate Services", "service_estate_services_input")
+
+        # ---------------------------------------------------------
+        # DISABLE SPINNERS UNLESS MANUAL MODE IS ON
+        # ---------------------------------------------------------
+        # Default: postcode lookup controls these spinners
+        self.location_spinner.disabled = True
+        self.brma_spinner.disabled = True
+        
+        def toggle_manual_mode(instance, value):
+            self.location_spinner.disabled = not value
+            self.brma_spinner.disabled = not value
+        
+        self.manual_location_toggle.bind(active=toggle_manual_mode)
     
         # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
@@ -2227,9 +3332,15 @@ class Calculator(Screen):
             def do_lookup(dt):
                 brma_name = self.lookup_brma(postcode)
     
+                # Update BRMA spinner
                 self.brma_spinner.values = [brma_name]
                 self.brma_spinner.text = brma_name
                 self.brma_spinner._update_dropdown()
+                
+                # Auto-fill LOCATION based on CSV row
+                location = self.lookup_location_for_postcode(postcode)
+                if location:
+                    self.location_spinner.text = location
     
                 self.hide_loading()
     
@@ -2264,23 +3375,97 @@ class Calculator(Screen):
             print(f"Error reading BRMA CSV: {e}")
     
         return "BRMA not found"
+        
+
+    def lookup_location_for_postcode(self, postcode):
+        """Return England/Scotland/Wales for a given postcode."""
+        csv_path = resource_find("data/pcode_brma_lookup.csv")
+        if not csv_path:
+            return None
+    
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if postcode in (
+                        row.get("PCD", "").strip().upper(),
+                        row.get("PCD2", "").strip().upper(),
+                        row.get("PCDS", "").strip().upper()
+                    ):
+                        country_code = row.get("country", "").strip().upper()
+                        return {"E": "England", "S": "Scotland", "W": "Wales"}.get(country_code)
+        except:
+            pass
+    
+        return None
 
     
     def save_housing_details(self):
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
-        self.user_data["rent"] = self.rent_input.text.strip()
-        self.user_data["mortgage"] = self.mortgage_input.text.strip()
+        self.user_data["tenancy_type"] = self.tenancy_type_spinner.text.strip().lower()
+        self.user_data["rent_raw"] = self.rent_input.text.strip()
+        self.user_data["mortgage_raw"] = self.mortgage_input.text.strip()
+        self.user_data["non_dependants"] = self.non_dependants_input.text.strip()
         self.user_data["postcode"] = self.postcode_input.text.strip()
         self.user_data["location"] = self.location_spinner.text.strip()
         self.user_data["brma"] = self.brma_spinner.text.strip()
+        self.user_data["manual_location"] = self.manual_location_toggle.active
+
+        # SERVICE CHARGES
+        charges = {}
+        
+        def parse_charge(widget):
+            try:
+                return float(widget.text or 0)
+            except:
+                return 0.0
+        
+        charges["cleaning"] = parse_charge(self.service_cleaning_input)
+        charges["communal_cleaning"] = parse_charge(self.service_communal_cleaning_input)
+        charges["lighting"] = parse_charge(self.service_lighting_input)
+        charges["communal_lighting"] = parse_charge(self.service_communal_lighting_input)
+        charges["grounds"] = parse_charge(self.service_grounds_input)
+        charges["lift_maintenance"] = parse_charge(self.service_lift_input)
+        charges["fire_safety"] = parse_charge(self.service_fire_safety_input)
+        charges["door_entry"] = parse_charge(self.service_door_entry_input)
+        charges["shared_facilities"] = parse_charge(self.service_shared_facilities_input)
+        charges["communal_repairs"] = parse_charge(self.service_communal_repairs_input)
+        charges["estate_services"] = parse_charge(self.service_estate_services_input)
+        
+        self.user_data["service_charges"] = charges
+
+        try:
+            self.user_data["non_dependants"] = int(self.non_dependants_input.text or 0)
+        except:
+            self.user_data["non_dependants"] = 0
+    
+        if hasattr(self, "tenancy_type_spinner"):
+            self.user_data["tenancy_type"] = self.tenancy_type_spinner.text.strip().lower()
+    
+        try:
+            self.user_data["rent"] = float(self.rent_input.text or 0)
+        except:
+            self.user_data["rent"] = 0.0
+    
+        try:
+            self.user_data["mortgage"] = float(self.mortgage_input.text or 0)
+        except:
+            self.user_data["mortgage"] = 0.0
     
     def on_pre_enter_housing(self, *args):
         self.housing_type_spinner.text = self.user_data.get("housing_type", "Rent").capitalize()
-        self.rent_input.text = self.user_data.get("rent", "")
-        self.mortgage_input.text = self.user_data.get("mortgage", "")
+        self.tenancy_type_spinner.text = self.user_data.get("tenancy_type", "Select Tenancy")
+        self.rent_input.text = str(self.user_data.get("rent", ""))
+        self.mortgage_input.text = str(self.user_data.get("mortgage", ""))
+        self.non_dependants_input.text = str(self.user_data.get("non_dependants", ""))
         self.postcode_input.text = self.user_data.get("postcode", "")
         self.location_spinner.text = self.user_data.get("location", "Select Location")
         self.brma_spinner.text = self.user_data.get("brma", "Select BRMA")
+        # Restore manual toggle state
+        manual = self.user_data.get("manual_location", False)
+        self.manual_location_toggle.active = manual
+        self.location_spinner.disabled = not manual
+        self.brma_spinner.disabled = not manual
     
         # Ensure correct input is visible based on housing type
         parent_layout = self.housing_type_spinner.parent.parent
@@ -2290,6 +3475,20 @@ class Calculator(Screen):
         elif self.housing_type_spinner.text.lower() == "own":
             if not self.mortgage_input.parent:
                 parent_layout.add_widget(self.mortgage_input)
+
+        charges = self.user_data.get("service_charges", {})
+        
+        self.service_cleaning_input.text = str(charges.get("cleaning", ""))
+        self.service_communal_cleaning_input.text = str(charges.get("communal_cleaning", ""))
+        self.service_lighting_input.text = str(charges.get("lighting", ""))
+        self.service_communal_lighting_input.text = str(charges.get("communal_lighting", ""))
+        self.service_grounds_input.text = str(charges.get("grounds", ""))
+        self.service_lift_input.text = str(charges.get("lift_maintenance", ""))
+        self.service_fire_safety_input.text = str(charges.get("fire_safety", ""))
+        self.service_door_entry_input.text = str(charges.get("door_entry", ""))
+        self.service_shared_facilities_input.text = str(charges.get("shared_facilities", ""))
+        self.service_communal_repairs_input.text = str(charges.get("communal_repairs", ""))
+        self.service_estate_services_input.text = str(charges.get("estate_services", ""))
 
 
     def create_children_screen(self):
@@ -2376,9 +3575,23 @@ class Calculator(Screen):
             self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
     
     def save_children_details(self):
-        """Save children DOBs into user_data"""
-        self.user_data["children"] = [
+        # Existing simple list
+        self.user_data["children_dobs"] = [
             child.text.strip() for child in self.children_dob_inputs if child.text.strip()
+        ]
+    
+        # Engine‑friendly structure (basic version)
+        self.user_data["children"] = [
+            {
+                "dob": child.text.strip(),
+                "sex": "",
+                "adopted": False,
+                "kinship_care": False,
+                "multiple_birth": False,
+                "non_consensual": False,
+            }
+            for child in self.children_dob_inputs
+            if child.text.strip()
         ]
     
     def on_pre_enter_children(self, *args):
@@ -2448,6 +3661,39 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.childcare_input)
+
+        # --- SAR Exemptions Section ---
+        sar_label = SafeLabel(
+            text="Shared Accommodation Rate (SAR) Exemptions",
+            font_size=20,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left",
+        )
+        sar_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        layout.add_widget(sar_label)
+        
+        # Helper to create a checkbox row
+        def add_checkbox_row(text, attr_name):
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=40, spacing=10)
+            cb = CheckBox(size_hint=(None, None), size=(40, 40))
+            setattr(self, attr_name, cb)
+            label = SafeLabel(text=text, font_size=16, color=get_color_from_hex("#FFFFFF"), halign="left")
+            label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+            row.add_widget(cb)
+            row.add_widget(label)
+            layout.add_widget(row)
+        
+        add_checkbox_row("Care leaver (under 25)", "care_leaver_checkbox")
+        add_checkbox_row("Severe disability (LCWRA)", "severe_disability_checkbox")
+        add_checkbox_row("MAPPA supervision", "mappa_checkbox")
+        add_checkbox_row("Hostel resident (3+ months)", "hostel_resident_checkbox")
+        add_checkbox_row("Domestic abuse refuge", "domestic_abuse_checkbox")
+        add_checkbox_row("Ex-offender under supervision", "ex_offender_checkbox")
+        add_checkbox_row("Foster carer", "foster_carer_checkbox")
+        add_checkbox_row("Prospective adopter", "prospective_adopter_checkbox")
+        add_checkbox_row("Temporary accommodation", "temporary_accommodation_checkbox")
+        add_checkbox_row("Victim of modern slavery", "modern_slavery_checkbox")
+        add_checkbox_row("Armed forces reservist returning to civilian life", "armed_forces_checkbox")
     
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -2485,17 +3731,40 @@ class Calculator(Screen):
         return outer
     
     def save_additional_elements(self):
-        """Save additional elements into user_data"""
-        self.user_data["carer"] = self.is_carer_input.text.strip().lower() == "yes"
-        self.user_data["disability"] = self.disability_input.text.strip().lower() == "yes"
-        self.user_data["childcare"] = self.childcare_input.text.strip()
+        carer_yes_no = self.is_carer_input.text.strip().lower() == "yes"
+        disability_yes_no = self.disability_input.text.strip().lower() == "yes"
+    
+        self.user_data["carer"] = carer_yes_no
+        self.user_data["disability_flag"] = disability_yes_no
+        self.user_data["childcare_raw"] = self.childcare_input.text.strip()
+    
+        try:
+            self.user_data["childcare"] = float(self.childcare_input.text or 0)
+        except:
+            self.user_data["childcare"] = 0.0
+    
+        # For now, map yes/no to a simple disability status
+        self.user_data["disability"] = "LCW" if disability_yes_no else ""
+
+        # SAR exemptions
+        self.user_data["care_leaver"] = self.care_leaver_checkbox.active
+        self.user_data["severe_disability"] = self.severe_disability_checkbox.active
+        self.user_data["mappa"] = self.mappa_checkbox.active
+        self.user_data["hostel_resident"] = self.hostel_resident_checkbox.active
+        self.user_data["domestic_abuse_refuge"] = self.domestic_abuse_checkbox.active
+        self.user_data["ex_offender"] = self.ex_offender_checkbox.active
+        self.user_data["foster_carer"] = self.foster_carer_checkbox.active
+        self.user_data["prospective_adopter"] = self.prospective_adopter_checkbox.active
+        self.user_data["temporary_accommodation"] = self.temporary_accommodation_checkbox.active
+        self.user_data["modern_slavery"] = self.modern_slavery_checkbox.active
+        self.user_data["armed_forces_reservist"] = self.armed_forces_checkbox.active
     
     def on_pre_enter_additional(self, *args):
         """Repopulate inputs when re-entering the screen"""
         # Only repopulate with "yes" if true, otherwise leave blank so hint text shows
         self.is_carer_input.text = "yes" if self.user_data.get("carer") else ""
         self.disability_input.text = "yes" if self.user_data.get("disability") else ""
-        self.childcare_input.text = self.user_data.get("childcare", "")
+        self.childcare_input.text = str(self.user_data.get("childcare", ""))
 
 
     
@@ -2573,9 +3842,13 @@ class Calculator(Screen):
         return outer
     
     def save_sanction_details(self):
-        """Save sanction details into user_data"""
         self.user_data["sanction_type"] = self.sanction_type_input.text.strip().lower()
-        self.user_data["sanction_duration"] = self.sanction_duration_input.text.strip()
+        self.user_data["sanction_duration_raw"] = self.sanction_duration_input.text.strip()
+    
+        try:
+            self.user_data["sanction_duration"] = int(self.sanction_duration_input.text or 0)
+        except:
+            self.user_data["sanction_duration"] = 0
     
     def on_pre_enter_sanctions(self, *args):
         """Repopulate inputs when re-entering the screen"""
@@ -2660,9 +3933,18 @@ class Calculator(Screen):
         return outer
     
     def save_advance_payment(self):
-        """Save advance payment details into user_data"""
-        self.user_data["advance_amount"] = self.advance_amount_input.text.strip()
-        self.user_data["repayment_period"] = self.repayment_period_input.text.strip()
+        self.user_data["advance_amount_raw"] = self.advance_amount_input.text.strip()
+        self.user_data["repayment_period_raw"] = self.repayment_period_input.text.strip()
+    
+        try:
+            self.user_data["advance_amount"] = float(self.advance_amount_input.text or 0)
+        except:
+            self.user_data["advance_amount"] = 0.0
+    
+        try:
+            self.user_data["repayment_period"] = int(self.repayment_period_input.text or 0)
+        except:
+            self.user_data["repayment_period"] = 0
     
     def on_pre_enter_advance(self, *args):
         """Repopulate inputs when re-entering the screen"""
@@ -2746,111 +4028,285 @@ class Calculator(Screen):
             text_size=(250, None),
             on_press=self.run_calculation
         )
-    
         button_bar.add_widget(run_btn)
+        
+        breakdown_btn = RoundedButton(
+            text="View Calculation Breakdown",
+            size_hint=(1, 1),
+            background_color=(0, 0, 0, 0),
+            font_size=20,
+            on_press=self.go_to_breakdown
+        )
+        button_bar.add_widget(breakdown_btn)
+
         outer.add_widget(button_bar)
     
         return outer
     
         
     def run_calculation(self, *args):
-        """Perform calculation and update user_data, then refresh summary."""
+        """
+        Perform calculation safely:
+        - Save all screen data
+        - Run UC calculation
+        - Update summary
+        - Handle errors cleanly
+        """
+    
+        # -----------------------------
+        # 1. SAVE ALL SCREEN DATA
+        # -----------------------------
+        try:
+            if hasattr(self, "save_claimant_details"):
+                self.save_claimant_details()
+    
+            if hasattr(self, "save_finances"):
+                self.save_finances()
+    
+            if hasattr(self, "save_housing_details"):
+                self.save_housing_details()
+    
+            if hasattr(self, "save_children"):
+                self.save_children()
+    
+            if hasattr(self, "save_additional_elements"):
+                self.save_additional_elements()
+    
+            if hasattr(self, "save_sanctions"):
+                self.save_sanctions()
+    
+            if hasattr(self, "save_advance_payments"):
+                self.save_advance_payments()
+    
+        except Exception as e:
+            self.summary_label.text = f"Error saving data: {str(e)}"
+            return
+    
+        # -----------------------------
+        # 2. RUN THE CALCULATION
+        # -----------------------------
         try:
             result = self.calculate_entitlement()
             result_text = f"Calculated Entitlement: £{result:.2f}"
-    
-            # Store result once
             self.user_data["calculation_result"] = result_text
-    
-            # Refresh summary
-            self.on_pre_enter_summary()
-    
-            # Reset scroll to top
-            if hasattr(self, "calculate_scroll"):
-                Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
     
         except Exception as e:
             self.summary_label.text = f"Error during calculation: {str(e)}"
+            return
+    
+        # -----------------------------
+        # 3. REFRESH SUMMARY SCREEN
+        # -----------------------------
+        try:
+            self.on_pre_enter_summary()
+        except Exception as e:
+            self.summary_label.text = f"Error updating summary: {str(e)}"
+            return
+    
+        # -----------------------------
+        # 4. RESET SCROLL TO TOP
+        # -----------------------------
+        if hasattr(self, "calculate_scroll"):
+            Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
     
     def on_pre_enter_summary(self, *args):
         d = self.user_data
     
-        summary_lines = []
+        # Clear old content
+        summary_layout = self.calculate_scroll.children[0]
+        summary_layout.clear_widgets()
+    
+        # Title
+        summary_layout.add_widget(
+            wrapped_SafeLabel(
+                "Summary of your Universal Credit calculation:",
+                18,
+                30
+            )
+        )
+    
+        # Helper to add collapsible sections
+        def add_section(title, lines):
+            section = CollapsibleSection(title, lines)
+            summary_layout.add_widget(section)
     
         # -------------------------
         # Claimant Details
         # -------------------------
-        summary_lines.append("Claimant Details")
-        summary_lines.append(f"- Claimant DOB: {d.get('claimant_dob')}")
-        summary_lines.append(f"- Partner DOB: {d.get('partner_dob')}")
-        summary_lines.append("")
+        add_section("Claimant Details", [
+            f"Claimant DOB: {d.get('claimant_dob')}",
+            f"Partner DOB: {d.get('partner_dob')}",
+            f"Relationship: {d.get('relationship')}",
+        ])
     
         # -------------------------
         # Finances
         # -------------------------
-        summary_lines.append("Finances")
-        summary_lines.append(f"- Income: £{d.get('income')}")
-        summary_lines.append(f"- Savings: £{d.get('savings')}")
-        summary_lines.append("")
+        add_section("Finances", [
+            f"Income: £{d.get('income')}",
+            f"Savings: £{d.get('savings')}",
+            f"Debts: £{d.get('debts')}",
+        ])
     
         # -------------------------
         # Housing
         # -------------------------
-        summary_lines.append("Housing")
-        summary_lines.append(f"- Housing Type: {d.get('housing_type')}")
-        summary_lines.append(f"- Rent/Mortgage: £{d.get('rent') or d.get('mortgage')}")
-        summary_lines.append(f"- Postcode: {d.get('postcode')}")
-        summary_lines.append(f"- Location: {d.get('location')}")
-        summary_lines.append(f"- BRMA: {d.get('brma')}")
-        summary_lines.append("")
+        add_section("Housing", [
+            f"Housing Type: {d.get('housing_type')}",
+            f"Tenancy Type: {d.get('tenancy_type')}",
+            f"Rent: £{d.get('rent')}",
+            f"Mortgage: £{d.get('mortgage')}",
+            f"Shared Accommodation Charge: £{d.get('shared')}",
+            f"Non-dependants: {d.get('non_dependants')}",
+            f"Postcode: {d.get('postcode')}",
+            f"Location: {d.get('location')}",
+            f"BRMA: {d.get('brma')}",
+            f"Manual BRMA Mode: {d.get('manual_location')}",
+        ])
+    
+        # -------------------------
+        # Service Charges
+        # -------------------------
+        charges = d.get("service_charges", {})
+        if charges:
+            add_section("Service Charges (Social Rent)", [
+                f"{k.replace('_', ' ').title()}: £{v}" for k, v in charges.items()
+            ])
     
         # -------------------------
         # Children
         # -------------------------
-        summary_lines.append("Children")
-        summary_lines.append(f"- Number of Children: {len(d.get('children', []))}")
-        summary_lines.append("")
+        child_lines = [f"Number of Children: {len(d.get('children', []))}"]
+        for i, child in enumerate(d.get("children", []), start=1):
+            child_lines.extend([
+                f"Child {i}:",
+                f"  DOB: {child.get('dob')}",
+                f"  Sex: {child.get('sex')}",
+                f"  Adopted: {child.get('adopted')}",
+                f"  Kinship Care: {child.get('kinship_care')}",
+                f"  Multiple Birth: {child.get('multiple_birth')}",
+                f"  Non-consensual Conception: {child.get('non_consensual')}",
+            ])
+        add_section("Children", child_lines)
     
         # -------------------------
         # Additional Elements
         # -------------------------
-        summary_lines.append("Additional Elements")
-        summary_lines.append(f"- Carer: {d.get('carer')}")
-        summary_lines.append(f"- Disability: {d.get('disability')}")
-        summary_lines.append(f"- Childcare Costs: £{d.get('childcare')}")
-        summary_lines.append("")
+        add_section("Additional Elements", [
+            f"Carer: {d.get('carer')}",
+            f"Disability: {d.get('disability')}",
+            f"Childcare Costs: £{d.get('childcare')}",
+        ])
+    
+        # -------------------------
+        # SAR Exemptions
+        # -------------------------
+        add_section("SAR Exemptions", [
+            f"Care Leaver: {d.get('care_leaver')}",
+            f"Severe Disability: {d.get('severe_disability')}",
+            f"MAPPA: {d.get('mappa')}",
+            f"Hostel Resident: {d.get('hostel_resident')}",
+            f"Domestic Abuse Refuge: {d.get('domestic_abuse_refuge')}",
+            f"Ex-Offender: {d.get('ex_offender')}",
+            f"Foster Carer: {d.get('foster_carer')}",
+            f"Prospective Adopter: {d.get('prospective_adopter')}",
+            f"Temporary Accommodation: {d.get('temporary_accommodation')}",
+            f"Modern Slavery Victim: {d.get('modern_slavery')}",
+            f"Armed Forces Reservist: {d.get('armed_forces_reservist')}",
+        ])
     
         # -------------------------
         # Sanctions
         # -------------------------
-        summary_lines.append("Sanctions")
-        summary_lines.append(f"- Type: {d.get('sanction_type')}")
-        summary_lines.append(f"- Duration: {d.get('sanction_duration')} days")
-        summary_lines.append("")
+        add_section("Sanctions", [
+            f"Type: {d.get('sanction_type')}",
+            f"Duration: {d.get('sanction_duration')} days",
+            f"Hardship: {d.get('hardship')}",
+        ])
     
         # -------------------------
         # Advance Payments
         # -------------------------
-        summary_lines.append("Advance Payments")
-        summary_lines.append(f"- Amount: £{d.get('advance_amount')}")
-        summary_lines.append(f"- Repayment Period: {d.get('repayment_period')} months")
-        summary_lines.append("")
+        add_section("Advance Payments", [
+            f"Amount: £{d.get('advance_amount')}",
+            f"Repayment Period: {d.get('repayment_period')} months",
+        ])
     
         # -------------------------
         # Calculation Result
         # -------------------------
         if d.get("calculation_result"):
-            summary_lines.append("Calculation Result")
-            summary_lines.append(f"- {d['calculation_result']}")
-            summary_lines.append("")
+            add_section("Calculation Result", [
+                d["calculation_result"]
+            ])
     
-        # Apply to label
-        self.summary_label.text = "\n".join(summary_lines)
+        # Reset scroll
+        Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
-        # Reset scroll to top
-        if hasattr(self, "calculate_scroll"):
-            Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
+class CalculationBreakdownScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        outer = BoxLayout(orientation="vertical", spacing=20, padding=20)
+
+        # Title
+        title = wrapped_SafeLabel("Calculation Breakdown", 22, 40)
+        outer.add_widget(title)
+
+        # Scrollable table
+        self.scroll = ScrollView(size_hint=(1, 1))
+        self.table_layout = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            padding=10,
+            size_hint=(1, None)
+        )
+        self.table_layout.bind(minimum_height=self.table_layout.setter("height"))
+        self.scroll.add_widget(self.table_layout)
+
+        outer.add_widget(self.scroll)
+
+        # Back button
+        back_btn = RoundedButton(
+            text="Back to Summary",
+            size_hint=(1, None),
+            height=60,
+            on_press=self.go_back
+        )
+        outer.add_widget(back_btn)
+
+        self.add_widget(outer)
+
+    def go_back(self, *args):
+        self.manager.current = "summary"
+
+    def populate_breakdown(self, breakdown_dict):
+        """Fill the table with calculation components."""
+        self.table_layout.clear_widgets()
+
+        for label, amount in breakdown_dict.items():
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=40)
+
+            lbl = SafeLabel(
+                text=label,
+                font_size=18,
+                color=get_color_from_hex("#FFFFFF"),
+                halign="left"
+            )
+            lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+
+            amt = SafeLabel(
+                text=f"£{amount:.2f}",
+                font_size=18,
+                color=get_color_from_hex("#FFDD00"),
+                halign="right"
+            )
+            amt.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+
+            row.add_widget(lbl)
+            row.add_widget(amt)
+            self.table_layout.add_widget(row)
 
 
 # TO DO:
@@ -2887,6 +4343,7 @@ class Calculator(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
