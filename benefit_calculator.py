@@ -2997,16 +2997,6 @@ class Calculator(Screen):
         self.user_data["savings_raw"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
     
-        try:
-            self.user_data["income"] = float(self.income_input.text or 0)
-        except:
-            self.user_data["income"] = 0.0
-    
-        try:
-            self.user_data["savings"] = float(self.savings_input.text or 0)
-        except:
-            self.user_data["savings"] = 0.0
-    
     def on_pre_enter_finances(self, *args):
         self.income_input.text = self.user_data.get("income", "")
         self.savings_input.text = self.user_data.get("savings", "")
@@ -4343,6 +4333,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
