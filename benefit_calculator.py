@@ -2993,13 +2993,27 @@ class Calculator(Screen):
         return outer
     
     def save_finances(self):
+        # Raw text (for re-populating inputs)
         self.user_data["income_raw"] = self.income_input.text.strip()
         self.user_data["savings_raw"] = self.savings_input.text.strip()
         self.user_data["debts"] = self.debts_input.text.strip()
     
+        # Parsed numeric values (for calculations)
+        try:
+            self.user_data["income"] = float(self.income_input.text or 0)
+        except:
+            self.user_data["income"] = 0.0
+    
+        try:
+            self.user_data["savings"] = float(self.savings_input.text or 0)
+        except:
+            self.user_data["savings"] = 0.0
+    
+    
     def on_pre_enter_finances(self, *args):
-        self.income_input.text = self.user_data.get("income", "")
-        self.savings_input.text = self.user_data.get("savings", "")
+        # Use the raw string versions, always safe for TextInput.text
+        self.income_input.text = self.user_data.get("income_raw", "")
+        self.savings_input.text = self.user_data.get("savings_raw", "")
         self.debts_input.text = self.user_data.get("debts", "")
 
     
@@ -3510,8 +3524,8 @@ class Calculator(Screen):
             self.add_child_input()
         else:
             # Repopulate saved children
-            for dob in self.user_data["children"]:
-                self.add_child_input(prefill_text=dob)
+            for child in self.user_data["children"]:
+                self.add_child_input(prefill_text=child.get("dob", ""))
     
         # Spacer above buttons
         layout.add_widget(Widget(size_hint_y=0.05))
@@ -3601,7 +3615,7 @@ class Calculator(Screen):
     
         # Repopulate texts
         for i, child_input in enumerate(self.children_dob_inputs):
-            child_input.text = children[i] if i < len(children) else ""
+            child_input.text = children[i].get("dob", "") if i < len(children) else ""
 
     
     def create_additional_elements_screen(self):
@@ -3843,7 +3857,7 @@ class Calculator(Screen):
     def on_pre_enter_sanctions(self, *args):
         """Repopulate inputs when re-entering the screen"""
         self.sanction_type_input.text = self.user_data.get("sanction_type", "")
-        self.sanction_duration_input.text = self.user_data.get("sanction_duration", "")
+        self.sanction_duration_input.text = str(self.user_data.get("sanction_duration", ""))
 
 
 
@@ -3872,7 +3886,7 @@ class Calculator(Screen):
             size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=self.user_data.get("advance_amount", "")
+            text=str(self.user_data.get("advance_amount_raw", ""))
         )
         layout.add_widget(self.advance_amount_input)
     
@@ -3883,7 +3897,7 @@ class Calculator(Screen):
             size_hint=(1, None), height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=self.user_data.get("repayment_period", "")
+            text=str(self.user_data.get("repayment_period_raw", ""))
         )
         layout.add_widget(self.repayment_period_input)
     
@@ -3938,8 +3952,9 @@ class Calculator(Screen):
     
     def on_pre_enter_advance(self, *args):
         """Repopulate inputs when re-entering the screen"""
-        self.advance_amount_input.text = self.user_data.get("advance_amount", "")
-        self.repayment_period_input.text = self.user_data.get("repayment_period", "")
+        self.advance_amount_input.text = self.user_data.get("advance_amount_raw", "")
+        self.repayment_period_input.text = self.user_data.get("repayment_period_raw", "")
+
 
             
     def create_calculate_screen(self):
@@ -4333,6 +4348,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
