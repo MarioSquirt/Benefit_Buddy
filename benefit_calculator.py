@@ -4656,7 +4656,7 @@ class Calculator(Screen):
             self.user_data["repayment_period"] = 0
     
     
-    def on_pre_enter_advance_payments(self, *args):
+    def on_pre_enter_advance(self, *args):
         """Repopulate inputs when re-entering the screen"""
     
         # Restore advance amount
@@ -5061,6 +5061,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
