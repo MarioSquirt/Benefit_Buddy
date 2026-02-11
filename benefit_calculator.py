@@ -1463,14 +1463,14 @@ class Calculator(Screen):
         # SCREEN SPINNER
         # -----------------------------
         self.screens = [
-            ("Introduction", self.create_intro_screen),
-            ("Claimant Details", self.create_claimant_details_screen),
+            ("Intro", self.create_intro_screen),
+            ("Claimant", self.create_claimant_details_screen),
             ("Finances", self.create_finances_screen),
             ("Housing", self.create_housing_screen),
             ("Children", self.create_children_screen),
-            ("Additional Elements", self.create_additional_elements_screen),
+            ("Additional", self.create_additional_elements_screen),
             ("Sanctions", self.create_sanction_screen),
-            ("Advanced Payments", self.create_advance_payments_screen),
+            ("Advance", self.create_advance_payments_screen),
             ("Summary", self.create_calculate_screen)
         ]
 
@@ -4963,6 +4963,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
