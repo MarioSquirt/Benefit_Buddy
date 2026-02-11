@@ -769,18 +769,22 @@ class SettingsScreen(Screen):
     def go_to_main(self, instance):
         self.manager.current = "main"
 
-
 # Disclaimer Screen
 @with_diagnostics([])
 class DisclaimerScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
+        # Main layout
+        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+
+        # Disclaimer text
         disclaimer_text = SafeLabel(
-            text=("Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
-                  "It is for informational purposes only and does not constitute financial advice.\n\n\n"
-                  "Guest access has limited functionality and will not save your data."),
+            text=(
+                "Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
+                "It is for informational purposes only and does not constitute financial advice.\n\n\n"
+                "Guest access has limited functionality and will not save your data."
+            ),
             font_size=18,
             halign="center",
             valign="middle",
@@ -789,14 +793,75 @@ class DisclaimerScreen(Screen):
         disclaimer_text.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
         layout.add_widget(disclaimer_text)
 
+        # Loading label
+        self.loading_label = SafeLabel(
+            text="",
+            font_size=16,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#FFDD00"),
+            size_hint=(1, None),
+            height=40
+        )
+        layout.add_widget(self.loading_label)
+
+        # Continue button (disabled until CSV is loaded)
+        self.continue_button = RoundedButton(
+            text="Continue",
+            size_hint=(None, None),
+            size=(250, 60),
+            disabled=True,
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            color=get_color_from_hex("#005EA5"),
+            font_size=20,
+            on_press=lambda x: setattr(self.manager, "current", "main")
+        )
+        layout.add_widget(self.continue_button)
+
+        # Footer
         build_footer(layout)
+
         self.add_widget(layout)
 
+    # ---------------------------------------------------------
+    # When disclaimer screen becomes visible
+    # ---------------------------------------------------------
     def on_enter(self):
-        Clock.schedule_once(self.switch_to_main, 5)
+        # Show loading message
+        self.loading_label.text = "Loading data…"
 
-    def switch_to_main(self, dt):
-        self.manager.current = "main"
+        # Start CSV loading shortly after screen appears
+        Clock.schedule_once(self.start_csv_load, 0.2)
+
+    # ---------------------------------------------------------
+    # Start CSV loading in a background thread
+    # ---------------------------------------------------------
+    def start_csv_load(self, dt):
+        import threading
+        threading.Thread(target=self._load_csv_thread).start()
+
+    # ---------------------------------------------------------
+    # Background thread: load BRMA cache
+    # ---------------------------------------------------------
+    def _load_csv_thread(self):
+        app = App.get_running_app()
+
+        # Access the Calculator screen instance
+        calculator = app.root.ids.calculator
+
+        # Load CSV cache (heavy work)
+        calculator.load_brma_cache()
+
+        # Notify UI thread when done
+        Clock.schedule_once(self._loading_complete, 0)
+
+    # ---------------------------------------------------------
+    # Update UI when loading is complete
+    # ---------------------------------------------------------
+    def _loading_complete(self, dt):
+        self.loading_label.text = "Ready"
+        self.continue_button.disabled = False
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -1111,8 +1176,6 @@ class MainScreenFullAccess(Screen):
 
     def log_out(self, instance):
         self.manager.current = "main"
-
-
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
 @with_diagnostics([])
@@ -1185,8 +1248,6 @@ class MainScreenGuestAccess(Screen):
     def log_out(self, instance):
         self.manager.current = "main"
 
-
-
 # Define the Create Account Screen
 @with_diagnostics([])
 class CreateAccountPage(Screen):
@@ -1253,9 +1314,6 @@ class CreateAccountPage(Screen):
 
     def go_back(self, instance):
         self.manager.current = "main"
-
-
-
 
 # Define the Login Screen
 @with_diagnostics([])
@@ -1421,7 +1479,6 @@ class Calculator(Screen):
             "extra_disabled_children": False,
         }
 
-        Clock.schedule_once(lambda dt: self.load_brma_cache(), 0)
         self.current_subscreen = "Introduction"
 
         # -----------------------------
@@ -1463,14 +1520,14 @@ class Calculator(Screen):
         # SCREEN SPINNER
         # -----------------------------
         self.screens = [
-            ("Intro", self.create_intro_screen),
-            ("Claimant", self.create_claimant_details_screen),
+            ("Introduction", self.create_intro_screen),
+            ("Claimant Details", self.create_claimant_details_screen),
             ("Finances", self.create_finances_screen),
             ("Housing", self.create_housing_screen),
             ("Children", self.create_children_screen),
-            ("Additional", self.create_additional_elements_screen),
+            ("Additional Elements", self.create_additional_elements_screen),
             ("Sanctions", self.create_sanction_screen),
-            ("Advance", self.create_advance_payments_screen),
+            ("Advanced Payments", self.create_advance_payments_screen),
             ("Summary", self.create_calculate_screen)
         ]
 
@@ -1489,20 +1546,38 @@ class Calculator(Screen):
         self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
         self.screen_content.add_widget(self.create_intro_screen())
 
-        def on_screen_select(_, text):
-            clean_text = text.replace(" ▼", "")
-            self.autosave_current_screen()
-            self.current_subscreen = clean_text
-            self.screen_content.clear_widgets()
-
-            for name, builder in self.screens:
-                if name == clean_text:
-                    widget = builder()
-                    self.screen_content.add_widget(widget)
-
-                    # Trigger pre-enter
-                    getattr(self, f"on_pre_enter_{name.lower().replace(' ', '_')}")()
-                    break
+    def on_screen_select(_, text):
+        clean_text = text.replace(" ▼", "")
+        self.autosave_current_screen()
+        self.current_subscreen = clean_text
+        self.screen_content.clear_widgets()
+    
+        for name, builder in self.screens:
+            if name == clean_text:
+                widget = builder()
+                self.screen_content.add_widget(widget)
+    
+                # Explicit pre-enter calls (stable, predictable)
+                if name == "Introduction":
+                    self.on_pre_enter_intro()
+                elif name == "Claimant Details":
+                    self.on_pre_enter_claimant()
+                elif name == "Finances":
+                    self.on_pre_enter_finances()
+                elif name == "Housing":
+                    self.on_pre_enter_housing()
+                elif name == "Children":
+                    self.on_pre_enter_children()
+                elif name == "Additional Elements":
+                    self.on_pre_enter_additional()
+                elif name == "Sanctions":
+                    self.on_pre_enter_sanctions()
+                elif name == "Advanced Payments":
+                    self.on_pre_enter_advance()
+                elif name == "Summary":
+                    self.on_pre_enter_summary()
+    
+                break
 
         self.screen_spinner.bind(text=on_screen_select)
         layout.add_widget(self.screen_content)
@@ -4963,6 +5038,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
