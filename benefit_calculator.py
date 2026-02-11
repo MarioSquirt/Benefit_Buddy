@@ -2485,7 +2485,7 @@ class Calculator(Screen):
         if screen == "Claimant Details":
             self.save_claimant_details()
         elif screen == "Finances":
-            self.save_finances()
+            self.save_finances_details()
         elif screen == "Housing":
             self.save_housing_details()
         elif screen == "Children":
@@ -2495,7 +2495,7 @@ class Calculator(Screen):
         elif screen == "Sanctions":
             self.save_sanction_details()
         elif screen == "Advanced Payments":
-            self.save_advance_payment()
+            self.save_advance_payment_details()
         # Introduction and Summary screens don’t need saving
 
 
@@ -2730,23 +2730,23 @@ class Calculator(Screen):
             if hasattr(self, "save_claimant_details"):
                 self.save_claimant_details()
     
-            if hasattr(self, "save_finances"):
-                self.save_finances()
+            if hasattr(self, "save_finances_details"):
+                self.save_finances_details()
     
             if hasattr(self, "save_housing_details"):
                 self.save_housing_details()
     
-            if hasattr(self, "save_children"):
-                self.save_children()
+            if hasattr(self, "save_children_details"):
+                self.save_children_details()
     
             if hasattr(self, "save_additional_elements"):
                 self.save_additional_elements()
     
-            if hasattr(self, "save_sanctions"):
-                self.save_sanctions()
+            if hasattr(self, "save_sanction_details"):
+                self.save_sanction_details()
     
-            if hasattr(self, "save_advance_payments"):
-                self.save_advance_payments()
+            if hasattr(self, "save_advance_payment_details"):
+                self.save_advance_payment_details()
     
         except Exception as e:
             Popup(
@@ -4778,23 +4778,23 @@ class Calculator(Screen):
             if hasattr(self, "save_claimant_details"):
                 self.save_claimant_details()
     
-            if hasattr(self, "save_finances"):
-                self.save_finances()
+            if hasattr(self, "save_finances_details"):
+                self.save_finances_details()
     
             if hasattr(self, "save_housing_details"):
                 self.save_housing_details()
     
-            if hasattr(self, "save_children"):
-                self.save_children()
+            if hasattr(self, "save_children_details"):
+                self.save_children_details()
     
             if hasattr(self, "save_additional_elements"):
                 self.save_additional_elements()
     
-            if hasattr(self, "save_sanctions"):
-                self.save_sanctions()
+            if hasattr(self, "save_sanction_details"):
+                self.save_sanction_details()
     
-            if hasattr(self, "save_advance_payments"):
-                self.save_advance_payments()
+            if hasattr(self, "save_advance_payment_details"):
+                self.save_advance_payment_details()
     
         except Exception as e:
             self.summary_label.text = f"Error saving data: {str(e)}"
@@ -5061,6 +5061,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
