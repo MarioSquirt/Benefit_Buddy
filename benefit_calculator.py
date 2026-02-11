@@ -1373,6 +1373,255 @@ class LoginPage(Screen):
 ])
 class Calculator(Screen):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # -----------------------------
+        # USER DATA
+        # -----------------------------
+        self.user_data = {
+            "claimant_dob": "",
+            "partner_dob": "",
+            "relationship": "single",
+            "income": 0.0,
+            "savings": 0.0,
+            "children": [],
+            "disability": "",
+            "had_lcw_before_uc": False,
+            "carer": False,
+            "childcare": 0.0,
+            "housing_type": "",
+            "tenancy_type": "",
+            "location": "",
+            "brma": "",
+            "rent": 0.0,
+            "mortgage": 0.0,
+            "shared": 0.0,
+            "non_dependants": 0,
+            "service_charges": {},
+            "care_leaver": False,
+            "severe_disability": False,
+            "mappa": False,
+            "hostel_resident": False,
+            "domestic_abuse_refuge": False,
+            "ex_offender": False,
+            "foster_carer": False,
+            "prospective_adopter": False,
+            "temporary_accommodation": False,
+            "modern_slavery": False,
+            "armed_forces_reservist": False,
+            "sanction_type": "",
+            "sanction_duration": 0,
+            "hardship": False,
+            "advance_amount": 0.0,
+            "repayment_period": 0,
+            "had_sdp": False,
+            "extra_edp": False,
+            "extra_dp": False,
+            "extra_disabled_children": False,
+        }
+
+        Clock.schedule_once(lambda dt: self.load_brma_cache(), 0)
+        self.current_subscreen = "Introduction"
+
+        # -----------------------------
+        # MAIN LAYOUT
+        # -----------------------------
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
+
+        # Header
+        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
+        build_header(header_anchor, "Benefit Buddy")
+        layout.add_widget(header_anchor)
+
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Back button
+        button_style = {
+            "size_hint": (None, None),
+            "size": (250, 60),
+            "background_color": (0, 0, 0, 0),
+            "background_normal": "",
+            "pos_hint": {"center_x": 0.5},
+            "halign": "center",
+            "valign": "middle",
+            "text_size": (250, None)
+        }
+        back_button = RoundedButton(
+            text="Back to Guest Access",
+            **button_style,
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
+        )
+        layout.add_widget(back_button)
+
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # -----------------------------
+        # SCREEN SPINNER
+        # -----------------------------
+        self.screens = [
+            ("Introduction", self.create_intro_screen),
+            ("Claimant Details", self.create_claimant_details_screen),
+            ("Finances", self.create_finances_screen),
+            ("Housing", self.create_housing_screen),
+            ("Children", self.create_children_screen),
+            ("Additional Elements", self.create_additional_elements_screen),
+            ("Sanctions", self.create_sanction_screen),
+            ("Advanced Payments", self.create_advance_payments_screen),
+            ("Summary", self.create_calculate_screen)
+        ]
+
+        spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        self.screen_spinner = GovUkIconSpinner(
+            text="Introduction",
+            icon_map=ICON_PATHS,
+            values=[name for name, _ in self.screens],
+        )
+        spinner_anchor.add_widget(self.screen_spinner)
+        layout.add_widget(spinner_anchor)
+
+        # -----------------------------
+        # SCREEN CONTENT CONTAINER
+        # -----------------------------
+        self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        self.screen_content.add_widget(self.create_intro_screen())
+
+        def on_screen_select(_, text):
+            clean_text = text.replace(" ▼", "")
+            self.autosave_current_screen()
+            self.current_subscreen = clean_text
+            self.screen_content.clear_widgets()
+
+            for name, builder in self.screens:
+                if name == clean_text:
+                    widget = builder()
+                    self.screen_content.add_widget(widget)
+
+                    # Trigger pre-enter
+                    getattr(self, f"on_pre_enter_{name.lower().replace(' ', '_')}")()
+                    break
+
+        self.screen_spinner.bind(text=on_screen_select)
+        layout.add_widget(self.screen_content)
+
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        # Footer
+        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
+        build_footer(footer_anchor)
+        layout.add_widget(footer_anchor)
+
+        self.add_widget(layout)
+
+    # =========================================================
+    # ⭐ COLLAPSIBLE SECTION CLASS (NOW IN THE CORRECT PLACE)
+    # =========================================================
+    class CollapsibleSection(BoxLayout):
+        def __init__(self, title, content_lines, **kwargs):
+            super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+
+            self.is_open = False
+            self.content_lines = content_lines
+
+            self.header = RoundedButton(
+                text=f"▶  {title}",
+                size_hint=(1, None),
+                height=50,
+                font_size=18,
+                background_color=(0, 0, 0, 0),
+                color=get_color_from_hex("#FFDD00"),
+                halign="left",
+                valign="middle",
+                text_size=(Window.width - 60, None)
+            )
+            self.header.bind(on_press=self.toggle)
+            self.add_widget(self.header)
+
+            self.content_box = BoxLayout(
+                orientation="vertical",
+                spacing=5,
+                padding=(20, 0),
+                size_hint_y=None,
+                height=0,
+                opacity=0
+            )
+            self.add_widget(self.content_box)
+
+        def toggle(self, *args):
+            self.is_open = not self.is_open
+
+            if self.is_open:
+                self.header.text = self.header.text.replace("▶", "▼")
+                self.content_box.opacity = 1
+                self.content_box.clear_widgets()
+
+                for line in self.content_lines:
+                    lbl = SafeLabel(
+                        text=line,
+                        font_size=16,
+                        halign="left",
+                        valign="middle",
+                        color=get_color_from_hex("#FFFFFF"),
+                        size_hint_y=None
+                    )
+                    lbl.bind(
+                        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+                        texture_size=lambda inst, val: setattr(inst, "height", val[1])
+                    )
+                    self.content_box.add_widget(lbl)
+
+                total_height = sum(child.height for child in self.content_box.children)
+                self.content_box.height = total_height
+
+            else:
+                self.header.text = self.header.text.replace("▼", "▶")
+                self.content_box.opacity = 0
+                self.content_box.height = 0
+                self.content_box.clear_widgets()
+
+
+    def load_brma_cache(self):
+        if hasattr(self, "_brma_cache_loaded"):
+            return
+    
+        self._brma_cache_loaded = True
+        self._brmas_by_country = {"England": set(), "Scotland": set(), "Wales": set()}
+        self._postcode_to_brma = {}
+        self._postcode_to_country = {}
+    
+        csv_path = resource_find("data/pcode_brma_lookup.csv")
+        if not csv_path:
+            print("BRMA CSV not found")
+            return
+    
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    brma = row.get("brma_name", "").strip()
+                    country_code = row.get("country", "").strip().upper()
+    
+                    # Build BRMA lists
+                    if country_code == "E":
+                        self._brmas_by_country["England"].add(brma)
+                    elif country_code == "S":
+                        self._brmas_by_country["Scotland"].add(brma)
+                    elif country_code == "W":
+                        self._brmas_by_country["Wales"].add(brma)
+    
+                    # Build postcode lookup
+                    for key in ("PCD", "PCD2", "PCDS"):
+                        p = row.get(key, "").strip().upper()
+                        if p:
+                            self._postcode_to_brma[p] = brma
+                            self._postcode_to_country[p] = country_code
+    
+        except Exception as e:
+            print("Error loading BRMA cache:", e)
+
     def go_to_breakdown(self, *args):
         breakdown = self.get_calculation_breakdown()
         screen = self.manager.get_screen("breakdown")
@@ -1481,75 +1730,6 @@ class Calculator(Screen):
     
         return breakdown
     
-    class CollapsibleSection(BoxLayout):
-        def __init__(self, title, content_lines, **kwargs):
-            super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
-    
-            self.is_open = False
-            self.content_lines = content_lines
-    
-            # Header button
-            self.header = RoundedButton(
-                text=f"▶  {title}",
-                size_hint=(1, None),
-                height=50,
-                font_size=18,
-                background_color=(0, 0, 0, 0),
-                color=get_color_from_hex("#FFDD00"),
-                halign="left",
-                valign="middle",
-                text_size=(Window.width - 60, None)
-            )
-            self.header.bind(on_press=self.toggle)
-            self.add_widget(self.header)
-    
-            # Content box (starts collapsed)
-            self.content_box = BoxLayout(
-                orientation="vertical",
-                spacing=5,
-                padding=(20, 0),
-                size_hint_y=None,
-                height=0,
-                opacity=0
-            )
-            self.add_widget(self.content_box)
-    
-        def toggle(self, *args):
-            self.is_open = not self.is_open
-    
-            if self.is_open:
-                # Expand
-                self.header.text = self.header.text.replace("▶", "▼")
-                self.content_box.opacity = 1
-    
-                # Add labels
-                self.content_box.clear_widgets()
-                for line in self.content_lines:
-                    lbl = SafeLabel(
-                        text=line,
-                        font_size=16,
-                        halign="left",
-                        valign="middle",
-                        color=get_color_from_hex("#FFFFFF"),
-                        size_hint_y=None
-                    )
-                    lbl.bind(
-                        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
-                        texture_size=lambda inst, val: setattr(inst, "height", val[1])
-                    )
-                    self.content_box.add_widget(lbl)
-    
-                # Recalculate height
-                total_height = sum(child.height for child in self.content_box.children)
-                self.content_box.height = total_height
-    
-            else:
-                # Collapse
-                self.header.text = self.header.text.replace("▼", "▶")
-                self.content_box.opacity = 0
-                self.content_box.height = 0
-                self.content_box.clear_widgets()
-
     def is_sar_exempt(self, data):
         """
         Returns True if the claimant is exempt from the Shared Accommodation Rate.
@@ -2499,220 +2679,7 @@ class Calculator(Screen):
         # Introduction and Summary screens don’t need saving
 
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Central state dictionary
-        self.user_data = {
-            # -----------------------------
-            # Claimant + Partner
-            # -----------------------------
-            "claimant_dob": "",          # "DD/MM/YYYY"
-            "partner_dob": "",           # "" if single
-            "relationship": "single",    # "single" or "couple"
-        
-            # -----------------------------
-            # Income + Capital
-            # -----------------------------
-            "income": 0.0,               # monthly earnings
-            "savings": 0.0,              # capital
-        
-            # -----------------------------
-            # Children (list of dicts)
-            # -----------------------------
-            "children": [
-                # {
-                #     "dob": "12/03/2018",
-                #     "sex": "M",
-                #     "adopted": False,
-                #     "kinship_care": False,
-                #     "multiple_birth": False,
-                #     "non_consensual": False
-                # }
-            ],
-        
-            # -----------------------------
-            # Disability + Carer
-            # -----------------------------
-            "disability": "",            # "", "LCW", "LCWRA"
-            "had_lcw_before_uc": False,  # legacy LCW rule
-            "carer": False,              # carer element
-        
-            # -----------------------------
-            # Childcare
-            # -----------------------------
-            "childcare": 0.0,            # monthly childcare costs
-        
-            # -----------------------------
-            # Housing
-            # -----------------------------
-            "housing_type": "",          # "own", "rent", "shared accommodation"
-            "tenancy_type": "",          # "social", "private"
-            "location": "",                # "England", "Scotland", "Wales"
-            "brma": "",                  # BRMA name for LHA lookup
-            "rent": 0.0,                 # monthly rent
-            "mortgage": 0.0,             # mortgage interest support
-            "shared": 0.0,               # shared accommodation rate
-            "non_dependants": 0,         # number of non-dependants
-        
-            # Service charges (social rent)
-            "service_charges": {
-                # "cleaning": 0.0,
-                # "lighting": 0.0,
-                # "grounds": 0.0,
-                # "heating": 0.0,  # ignored
-                # "water": 0.0,    # ignored
-            },
 
-            # SAR exemptions
-            "care_leaver": False,
-            "severe_disability": False,
-            "mappa": False,
-            "hostel_resident": False,
-            "domestic_abuse_refuge": False,
-            "ex_offender": False,
-            "foster_carer": False,
-            "prospective_adopter": False,
-            "temporary_accommodation": False,
-            "modern_slavery": False,
-            "armed_forces_reservist": False,
-        
-            # -----------------------------
-            # Sanctions
-            # -----------------------------
-            "sanction_type": "",         # "", "low", "medium", "high"
-            "sanction_duration": 0,      # days
-            "hardship": False,           # hardship reduction
-        
-            # -----------------------------
-            # Advances
-            # -----------------------------
-            "advance_amount": 0.0,
-            "repayment_period": 0,       # months
-        
-            # -----------------------------
-            # Transitional SDP
-            # -----------------------------
-            "had_sdp": False,
-            "extra_edp": False,
-            "extra_dp": False,
-            "extra_disabled_children": False,
-        }
-
-        self.current_subscreen = "Introduction"
-        
-        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
-
-        # Header
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
-        build_header(header_anchor, "Benefit Buddy")
-        layout.add_widget(header_anchor)
-
-        # Spacer
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Back button (consistent style, centered)
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5},
-            "halign": "center",
-            "valign": "middle",
-            "text_size": (250, None)
-        }
-        back_button = RoundedButton(
-            text="Back to Guest Access",
-            **button_style,
-            font_size=20, font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
-            on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
-        )
-        layout.add_widget(back_button)
-
-        # Spacer before spinner
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Define screens
-        self.screens = [
-            ("Introduction", self.create_intro_screen),
-            ("Claimant Details", self.create_claimant_details_screen),
-            ("Finances", self.create_finances_screen),
-            ("Housing", self.create_housing_screen),
-            ("Children", self.create_children_screen),
-            ("Additional Elements", self.create_additional_elements_screen),
-            ("Sanctions", self.create_sanction_screen),
-            ("Advanced Payments", self.create_advance_payments_screen),
-            ("Summary", self.create_calculate_screen)
-        ]
-
-
-        # Spinner
-        spinner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        
-        self.screen_spinner = GovUkIconSpinner(
-            text="Introduction",
-            icon_map=ICON_PATHS,
-            values=[name for name, _ in self.screens],
-        )
-        
-        spinner_anchor.add_widget(self.screen_spinner)
-        layout.add_widget(spinner_anchor)
-
-
-        # Container for screen content
-        self.screen_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        self.screen_content.add_widget(self.create_intro_screen())
-
-        def on_screen_select(_, text):
-            clean_text = text.replace(" ▼", "")
-        
-            # ⭐ Auto-save the screen we are leaving
-            self.autosave_current_screen()
-        
-            # Update tracker
-            self.current_subscreen = clean_text
-        
-            # Continue as before
-            self.screen_content.clear_widgets()
-
-            for name, builder in self.screens:
-                if name == clean_text:
-                    widget = builder()
-                    self.screen_content.add_widget(widget)
-                    # Manually trigger the right pre_enter
-                    if name == "Introduction":
-                        self.on_pre_enter_intro()
-                    elif name == "Claimant Details":
-                        self.on_pre_enter_claimant()
-                    elif name == "Finances":
-                        self.on_pre_enter_finances()
-                    elif name == "Housing":
-                        self.on_pre_enter_housing()
-                    elif name == "Children":
-                        self.on_pre_enter_children()
-                    elif name == "Additional Elements":
-                        self.on_pre_enter_additional()
-                    elif name == "Sanctions":
-                        self.on_pre_enter_sanctions()
-                    elif name == "Advanced Payments":
-                        self.on_pre_enter_advance()
-                    elif name == "Summary":
-                        self.on_pre_enter_summary()
-                    break
-
-        self.screen_spinner.bind(text=on_screen_select)
-        layout.add_widget(self.screen_content)
-
-        # Spacer before footer
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Footer
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
-        build_footer(footer_anchor)
-        layout.add_widget(footer_anchor)
-
-        self.add_widget(layout)
 
         
     def calculate(self, instance=None):
@@ -3533,39 +3500,12 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
         # ---------------------------------------------------------
-        def populate_brmas_for_country(spinner, country):
-            csv_path = resource_find("data/pcode_brma_lookup.csv")
-            if not csv_path:
-                print("BRMA CSV not found")
-                return
-    
-            brmas = set()
-    
-            try:
-                with open(csv_path, newline="", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        brma = row.get("brma_name", "").strip()
-                        if not brma:
-                            continue
-    
-                        if country == "England" and row.get("country") == "E":
-                            brmas.add(brma)
-                        elif country == "Scotland" and row.get("country") == "S":
-                            brmas.add(brma)
-                        elif country == "Wales" and row.get("country") == "W":
-                            brmas.add(brma)
-    
-            except Exception as e:
-                print("Error populating BRMAs:", e)
-    
-            if brmas:
-                sorted_brmas = sorted(brmas)
-                self.brma_spinner.values = sorted_brmas
-                self.brma_spinner.text = sorted_brmas[0]
-                self.brma_spinner._update_dropdown()
-    
-        self.location_spinner.bind(text=populate_brmas_for_country)
+    def populate_brmas_for_country(self, spinner, country):
+        self.load_brma_cache()
+        brmas = sorted(self._brmas_by_country.get(country, []))
+        if brmas:
+            self.brma_spinner.values = brmas
+            self.brma_spinner.text = brmas[0]
     
         # ---------------------------------------------------------
         # FIND BRMA BUTTON (ALWAYS VISIBLE)
@@ -3618,52 +3558,14 @@ class Calculator(Screen):
     
     
     def lookup_brma(self, postcode):
-        """Lookup BRMA name for a given postcode from CSV."""
-        csv_path = resource_find("data/pcode_brma_lookup.csv")
-        if not csv_path:
-            print("BRMA CSV not found in packaged resources")
-            return "BRMA not found"
-    
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                print("CSV columns:", reader.fieldnames)
-    
-                for row in reader:
-                    pcd = row.get("PCD", "").strip().upper()
-                    pcd2 = row.get("PCD2", "").strip().upper()
-                    pcds = row.get("PCDS", "").strip().upper()
-    
-                    if postcode in (pcd, pcd2, pcds):
-                        return row.get("brma_name", "BRMA found")
-    
-        except Exception as e:
-            print(f"Error reading BRMA CSV: {e}")
-    
-        return "BRMA not found"
+        self.load_brma_cache()
+        return self._postcode_to_brma.get(postcode, "BRMA not found")
     
     
     def lookup_location_for_postcode(self, postcode):
-        """Return England/Scotland/Wales for a given postcode."""
-        csv_path = resource_find("data/pcode_brma_lookup.csv")
-        if not csv_path:
-            return None
-    
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if postcode in (
-                        row.get("PCD", "").strip().upper(),
-                        row.get("PCD2", "").strip().upper(),
-                        row.get("PCDS", "").strip().upper()
-                    ):
-                        country_code = row.get("country", "").strip().upper()
-                        return {"E": "England", "S": "Scotland", "W": "Wales"}.get(country_code)
-        except:
-            pass
-    
-        return None
+        self.load_brma_cache()
+        code = self._postcode_to_country.get(postcode)
+        return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code)
     
     
     def save_housing_details(self):
@@ -5061,6 +4963,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
