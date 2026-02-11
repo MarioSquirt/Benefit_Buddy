@@ -4529,7 +4529,7 @@ class Calculator(Screen):
             self.sanction_duration_spinner.text = "Select duration"
 
 
-    def create_advance_payment_screen(self):
+    def create_advance_payments_screen(self):
         # ---------------------------------------------------------
         # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
         # ---------------------------------------------------------
@@ -5061,6 +5061,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
