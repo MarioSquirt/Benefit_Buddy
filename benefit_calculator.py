@@ -8,7 +8,7 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
-Window.softinput_mode = "pan"
+Window.softinput_mode = "below_target"
 from kivy.core.image import Image as CoreImage
 from kivy.metrics import sp
 from kivy.utils import get_color_from_hex
@@ -1593,71 +1593,156 @@ class Calculator(Screen):
 
     def calculate_child_elements(self, data, UC_RATES):
         """
-        Calculates child elements using:
+        Fully modular, DWP-accurate child element calculation:
+        - Two-child limit
+        - Exceptions (adoption, kinship care, multiple birth, NCC)
         - First child pre-2017 rule
-        - Standard child rate for others
-        - Two-child limit with exceptions:
-            * Multiple birth
-            * Adoption
-            * Kinship care
-            * Non-consensual conception
+        - Multiple birth addition
+        - Disabled child additions (lower / higher)
         """
     
-        children = data.get("children", [])
+        # ---------------------------------------------------------
+        # 1. Parse children safely
+        # ---------------------------------------------------------
+        children = self._parse_children(data.get("children", []))
         if not children:
             return 0.0
     
-        # Parse children with DOB
+        # ---------------------------------------------------------
+        # 2. Apply two-child limit with exceptions
+        # ---------------------------------------------------------
+        eligible = self._apply_two_child_limit(children)
+    
+        # ---------------------------------------------------------
+        # 3. Calculate base child elements
+        # ---------------------------------------------------------
+        total = 0.0
+    
+        # First eligible child
+        first_child = eligible[0]
+        total += self._first_child_rate(first_child, UC_RATES)
+    
+        # Remaining eligible children
+        for child in eligible[1:]:
+            total += UC_RATES["child_element"]["child"]
+    
+        # ---------------------------------------------------------
+        # 4. Add multiple birth additions
+        # ---------------------------------------------------------
+        total += self._multiple_birth_additions(children, UC_RATES)
+    
+        # ---------------------------------------------------------
+        # 5. Add disabled child additions
+        # ---------------------------------------------------------
+        total += self._disabled_child_additions(children, UC_RATES)
+    
+        return total
+    
+    
+    # ============================================================
+    # MODULE 1 — PARSE CHILDREN
+    # ============================================================
+    def _parse_children(self, children):
         parsed = []
         for child in children:
-            dob_str = child.get("dob")
+            dob_str = child.get("dob", "")
             try:
                 dob = datetime.strptime(dob_str, "%d/%m/%Y")
-                parsed.append((dob, child))
+                parsed.append({
+                    "dob": dob,
+                    "raw": child
+                })
             except:
                 continue
     
-        if not parsed:
-            return 0.0
-    
         # Sort oldest → youngest
-        parsed.sort(key=lambda x: x[0])
+        parsed.sort(key=lambda c: c["dob"])
+        return parsed
     
-        # Identify exceptions
-        def is_exception(child):
-            return (
-                child.get("adopted") or
-                child.get("kinship_care") or
-                child.get("multiple_birth") or
-                child.get("non_consensual")
-            )
     
-        # Build list of eligible children
-        eligible_children = []
+    # ============================================================
+    # MODULE 2 — TWO-CHILD LIMIT
+    # ============================================================
+    def _is_exception(self, child_raw):
+        return (
+            child_raw.get("adopted") or
+            child_raw.get("kinship_care") or
+            child_raw.get("multiple_birth") or
+            child_raw.get("non_consensual")
+        )
     
-        # First, add the first two children (normal rule)
-        for i, (dob, child) in enumerate(parsed):
+    
+    def _apply_two_child_limit(self, children):
+        """
+        children = list of {"dob": datetime, "raw": {...}}
+        """
+        eligible = []
+    
+        for i, child in enumerate(children):
             if i < 2:
-                eligible_children.append((dob, child))
+                eligible.append(child)
             else:
-                # For 3rd+ children, only add if exception applies
-                if is_exception(child):
-                    eligible_children.append((dob, child))
+                if self._is_exception(child["raw"]):
+                    eligible.append(child)
     
-        # Now calculate the actual child element amounts
-        total = 0.0
+        return eligible
+    
+    
+    # ============================================================
+    # MODULE 3 — FIRST CHILD RATE
+    # ============================================================
+    def _first_child_rate(self, child, UC_RATES):
         cutoff = datetime(2017, 4, 6)
+        if child["dob"] < cutoff:
+            return UC_RATES["child_element"]["first_child_pre2017"]
+        return UC_RATES["child_element"]["child"]
     
-        # First eligible child
-        first_dob, first_child = eligible_children[0]
-        if first_dob < cutoff:
-            total += UC_RATES["child_element"]["first_child_pre2017"]
-        else:
-            total += UC_RATES["child_element"]["child"]
     
-        # Remaining eligible children
-        for dob, child in eligible_children[1:]:
-            total += UC_RATES["child_element"]["child"]
+    # ============================================================
+    # MODULE 4 — MULTIPLE BIRTH ADDITIONS
+    # ============================================================
+    def _multiple_birth_additions(self, children, UC_RATES):
+        """
+        Correct DWP logic:
+        - Group children by DOB
+        - If two or more share the same DOB → multiple birth
+        - First child in that birth gets NO addition
+        - Additional children get the multiple birth addition
+        """
+    
+        # Group by DOB
+        from collections import defaultdict
+        groups = defaultdict(list)
+    
+        for child in children:
+            groups[child["dob"]].append(child)
+    
+        total = 0.0
+    
+        for dob, group in groups.items():
+            if len(group) <= 1:
+                continue  # not a multiple birth
+    
+            # First child in the group gets no addition
+            extra_children = len(group) - 1
+            total += extra_children * UC_RATES["child_element"]["multiple_birth"]
+    
+        return total
+    
+    
+    # ============================================================
+    # MODULE 5 — DISABLED CHILD ADDITIONS
+    # ============================================================
+    def _disabled_child_additions(self, children, UC_RATES):
+        total = 0.0
+    
+        for child in children:
+            raw = child["raw"]
+    
+            if raw.get("severely_disabled"):
+                total += UC_RATES["child_element"]["disabled_child_higher"]
+            elif raw.get("disabled"):
+                total += UC_RATES["child_element"]["disabled_child_lower"]
     
         return total
 
@@ -2733,20 +2818,26 @@ class Calculator(Screen):
 
 
     def create_claimant_details_screen(self):
-        # Match other screens: wrap everything in an AnchorLayout
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-
-        # Main vertical layout
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=20,
+            padding=(20, 120, 20, 20),  # upward bias to match other screens
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
-
-        # Section header
+    
+        # ---------------------------------------------------------
+        # SECTION HEADER: CLAIMANT TYPE
+        # ---------------------------------------------------------
         header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=60)
         header_label = SafeLabel(
             text="Select Claimant Type",
@@ -2755,24 +2846,23 @@ class Calculator(Screen):
             valign="middle",
             color=get_color_from_hex(WHITE)
         )
-        header_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        header_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         header_anchor.add_widget(header_label)
         layout.add_widget(header_anchor)
-
-        # Horizontal layout for checkboxes and labels
+    
+        # ---------------------------------------------------------
+        # CLAIMANT TYPE CHECKBOXES (MUTUALLY EXCLUSIVE)
+        # ---------------------------------------------------------
         claimant_type_layout = BoxLayout(
             orientation="horizontal",
             spacing=20,
             size_hint_y=None
         )
-        claimant_type_layout.bind(
-            minimum_height=claimant_type_layout.setter("height")
-        )
-
+        claimant_type_layout.bind(minimum_height=claimant_type_layout.setter("height"))
+    
         self.single_claimant_checkbox = CheckBox(group="claimant_type")
         self.couple_claim_checkbox = CheckBox(group="claimant_type")
-
-        # Labels for checkboxes
+    
         single_label = SafeLabel(
             text="Single",
             font_size=18,
@@ -2781,7 +2871,7 @@ class Calculator(Screen):
             color=get_color_from_hex(WHITE)
         )
         single_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+    
         couple_label = SafeLabel(
             text="Couple",
             font_size=18,
@@ -2790,18 +2880,20 @@ class Calculator(Screen):
             color=get_color_from_hex(WHITE)
         )
         couple_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+    
         claimant_type_layout.add_widget(single_label)
         claimant_type_layout.add_widget(self.single_claimant_checkbox)
         claimant_type_layout.add_widget(couple_label)
         claimant_type_layout.add_widget(self.couple_claim_checkbox)
-
+    
         layout.add_widget(claimant_type_layout)
-
-        # Bind couple checkbox to enable partner fields
+    
+        # Enable/disable partner fields when couple selected
         self.couple_claim_checkbox.bind(active=self.on_couple_claim_checkbox_active)
-
-        # Claimant details section
+    
+        # ---------------------------------------------------------
+        # CLAIMANT DETAILS SECTION
+        # ---------------------------------------------------------
         claimant_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
         claimant_label = SafeLabel(
             text="Enter Claimant Details",
@@ -2810,11 +2902,11 @@ class Calculator(Screen):
             valign="middle",
             color=get_color_from_hex(WHITE)
         )
-        claimant_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        claimant_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         claimant_anchor.add_widget(claimant_label)
         layout.add_widget(claimant_anchor)
-
-        # Full-width inputs (matching other screens)
+    
+        # Name
         self.name_input = CustomTextInput(
             hint_text="Name",
             multiline=False,
@@ -2825,7 +2917,8 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.name_input)
-
+    
+        # DOB (using your DOBInput)
         self.dob_input = DOBInput(
             hint_text="DD/MM/YYYY",
             multiline=False,
@@ -2836,8 +2929,10 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.dob_input)
-
-        # Partner details section
+    
+        # ---------------------------------------------------------
+        # PARTNER DETAILS SECTION
+        # ---------------------------------------------------------
         partner_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=60)
         partner_label = SafeLabel(
             text="Enter Partner Details",
@@ -2846,10 +2941,11 @@ class Calculator(Screen):
             valign="middle",
             color=get_color_from_hex(WHITE)
         )
-        partner_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        partner_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         partner_anchor.add_widget(partner_label)
         layout.add_widget(partner_anchor)
-
+    
+        # Partner name
         self.partner_name_input = CustomTextInput(
             hint_text="Partner Name",
             multiline=False,
@@ -2861,7 +2957,8 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.partner_name_input)
-
+    
+        # Partner DOB (using DOBInput)
         self.partner_dob_input = DOBInput(
             hint_text="DD/MM/YYYY",
             multiline=False,
@@ -2873,22 +2970,14 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.partner_dob_input)
-
-        # Shared button style for consistency
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
-
-        return outer
-
     
+        return scroll
+    
+    
+    # ---------------------------------------------------------
+    # SAVE LOGIC (unchanged except for scroll support)
+    # ---------------------------------------------------------
     def save_claimant_details(self):
-        """Save claimant details into user_data"""
-        # Relationship based on checkbox state
         if self.single_claimant_checkbox.active:
             self.user_data["relationship"] = "single"
         elif self.couple_claim_checkbox.active:
@@ -2896,11 +2985,9 @@ class Calculator(Screen):
         else:
             self.user_data["relationship"] = ""
     
-        # Claimant details
         self.user_data["claimant_name"] = self.name_input.text.strip()
         self.user_data["claimant_dob"] = self.dob_input.text.strip()
     
-        # Partner details (only if couple selected)
         if self.couple_claim_checkbox.active:
             self.user_data["partner_name"] = self.partner_name_input.text.strip()
             self.user_data["partner_dob"] = self.partner_dob_input.text.strip()
@@ -2908,97 +2995,163 @@ class Calculator(Screen):
             self.user_data["partner_name"] = ""
             self.user_data["partner_dob"] = ""
     
+    
+    # ---------------------------------------------------------
+    # RESTORE LOGIC (unchanged)
+    # ---------------------------------------------------------
     def on_pre_enter_claimant(self, *args):
-        """Repopulate inputs when re-entering the screen"""
         self.name_input.text = self.user_data.get("claimant_name", "")
         self.dob_input.text = self.user_data.get("claimant_dob", "")
     
-        # Relationship checkboxes
         rel = self.user_data.get("relationship", "")
         self.single_claimant_checkbox.active = (rel == "single")
         self.couple_claim_checkbox.active = (rel == "couple")
     
-        # Partner fields
         self.partner_name_input.text = self.user_data.get("partner_name", "")
         self.partner_dob_input.text = self.user_data.get("partner_dob", "")
-        # Disable if not couple
+    
         is_couple = (rel == "couple")
         self.partner_name_input.disabled = not is_couple
         self.partner_dob_input.disabled = not is_couple
 
 
     def create_finances_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),  # upward bias
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Instruction label
+        # ---------------------------------------------------------
+        # INSTRUCTION LABEL
+        # ---------------------------------------------------------
         instruction = SafeLabel(
             text="Enter your financial details:",
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex(WHITE)
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(instruction)
     
-        # Income input
+        # ---------------------------------------------------------
+        # MONTHLY INCOME (£)
+        # ---------------------------------------------------------
+        income_label = SafeLabel(
+            text="Monthly income (£)",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        income_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(income_label)
+    
         self.income_input = TextInput(
-            hint_text="Monthly income (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+            hint_text="Enter monthly income (£)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            input_filter="float",
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.income_input)
     
-        # Savings input
+        # ---------------------------------------------------------
+        # SAVINGS (£)
+        # ---------------------------------------------------------
+        savings_label = SafeLabel(
+            text="Savings (£)",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        savings_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(savings_label)
+    
         self.savings_input = TextInput(
-            hint_text="Total savings (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+            hint_text="Enter total savings (£)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            input_filter="float",
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.savings_input)
     
-        # Debts input
+        # ---------------------------------------------------------
+        # DEBTS (£)
+        # ---------------------------------------------------------
+        debts_label = SafeLabel(
+            text="Debts (£)",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        debts_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(debts_label)
+    
         self.debts_input = TextInput(
-            hint_text="Outstanding debts (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+            hint_text="Enter total debts (£)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            input_filter="float",
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.debts_input)
     
-        # Spacer above buttons
+        # ---------------------------------------------------------
+        # SPACER ABOVE BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Shared button style for consistency
+        # ---------------------------------------------------------
+        # BUTTONS BOX (EMPTY BUT PRESERVED FOR CONSISTENCY)
+        # ---------------------------------------------------------
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_color": (0, 0, 0, 0),
             "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
+            "pos_hint": {"center_x": 0.5},
         }
     
-        # Spacer below buttons
+        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+        layout.add_widget(buttons_box)
+    
+        # ---------------------------------------------------------
+        # SPACER BELOW BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        return outer
+        return scroll
     
-    def save_finances(self):
-        # Raw text (for re-populating inputs)
+    
+    def save_finances_details(self):
+        # Save raw values
         self.user_data["income_raw"] = self.income_input.text.strip()
         self.user_data["savings_raw"] = self.savings_input.text.strip()
-        self.user_data["debts"] = self.debts_input.text.strip()
+        self.user_data["debts_raw"] = self.debts_input.text.strip()
     
-        # Parsed numeric values (for calculations)
+        # Parse floats safely
         try:
             self.user_data["income"] = float(self.income_input.text or 0)
         except:
@@ -3009,21 +3162,33 @@ class Calculator(Screen):
         except:
             self.user_data["savings"] = 0.0
     
+        try:
+            self.user_data["debts"] = float(self.debts_input.text or 0)
+        except:
+            self.user_data["debts"] = 0.0
+    
     
     def on_pre_enter_finances(self, *args):
-        # Use the raw string versions, always safe for TextInput.text
-        self.income_input.text = self.user_data.get("income_raw", "")
-        self.savings_input.text = self.user_data.get("savings_raw", "")
-        self.debts_input.text = self.user_data.get("debts", "")
+        """Repopulate inputs when re-entering the screen"""
+    
+        self.income_input.text = str(self.user_data.get("income_raw", ""))
+        self.savings_input.text = str(self.user_data.get("savings_raw", ""))
+        self.debts_input.text = str(self.user_data.get("debts_raw", ""))
 
     
     def create_housing_screen(self):
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
     
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=20,
+            padding=(20, 120, 20, 20),  # upward bias (B2-A)
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
@@ -3041,16 +3206,17 @@ class Calculator(Screen):
                 "Own",
                 "Shared Accommodation"
             ],
-            icon_map={}  # no icons needed here
+            icon_map={}
         )
-        
+    
         housing_anchor.add_widget(self.housing_type_spinner)
         layout.add_widget(housing_anchor)
-
-        # Force text AFTER safe_props has finished touching it
+    
         Clock.schedule_once(lambda dt: setattr(self.housing_type_spinner, "text", "Housing Type"), 0)
-
-        # Tenancy type (private or social)
+    
+        # ---------------------------------------------------------
+        # TENANCY TYPE SPINNER
+        # ---------------------------------------------------------
         self.tenancy_type_spinner = Spinner(
             text="Select tenancy type",
             values=["private", "social"],
@@ -3061,37 +3227,63 @@ class Calculator(Screen):
         )
         layout.add_widget(self.tenancy_type_spinner)
     
-        # Rent/Mortgage inputs
-        self.rent_input = TextInput(
-            hint_text="Enter monthly rent amount (£)",
-            multiline=False,
-            font_size=18,
-            size_hint=(1, None),
-            height=50,
-            background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
-        )
+        # ---------------------------------------------------------
+        # RENT / MORTGAGE / SHARED INPUTS (NO ADD/REMOVE)
+        # ---------------------------------------------------------
+        def make_money_input(hint):
+            return TextInput(
+                hint_text=hint,
+                multiline=False,
+                font_size=18,
+                size_hint=(1, None),
+                height=50,
+                background_color=get_color_from_hex("#FFFFFF"),
+                foreground_color=get_color_from_hex("#005EA5")
+            )
     
-        self.mortgage_input = TextInput(
-            hint_text="Enter monthly mortgage amount (£)",
-            multiline=False,
-            font_size=18,
-            size_hint=(1, None),
-            height=50,
-            background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
-        )
-
-        self.shared_input = TextInput(
-            hint_text="Enter shared accommodation contribution (£)",
-            multiline=False,
-            font_size=18,
-            size_hint=(1, None),
-            height=50,
-            background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
-        )
-
+        self.rent_input = make_money_input("Enter monthly rent amount (£)")
+        self.mortgage_input = make_money_input("Enter monthly mortgage amount (£)")
+        self.shared_input = make_money_input("Enter shared accommodation contribution (£)")
+    
+        layout.add_widget(self.rent_input)
+        layout.add_widget(self.mortgage_input)
+        layout.add_widget(self.shared_input)
+    
+        # Start all hidden; we’ll reveal the correct one based on housing type
+        for w in (self.rent_input, self.mortgage_input, self.shared_input):
+            w.opacity = 0
+            w.disabled = True
+            w.height = 0
+    
+        def _show_amount_widget(value_text):
+            # Hide all
+            for w in (self.rent_input, self.mortgage_input, self.shared_input):
+                w.opacity = 0
+                w.disabled = True
+                w.height = 0
+    
+            text = (value_text or "").lower()
+            if "rent" in text:
+                target = self.rent_input
+            elif "own" in text:
+                target = self.mortgage_input
+            elif "shared" in text:
+                target = self.shared_input
+            else:
+                return
+    
+            target.opacity = 1
+            target.disabled = False
+            target.height = 50
+    
+        def update_amount_input(spinner, value):
+            _show_amount_widget(value)
+    
+        self.housing_type_spinner.bind(text=update_amount_input)
+    
+        # ---------------------------------------------------------
+        # NON-DEPENDANTS
+        # ---------------------------------------------------------
         self.non_dependants_input = TextInput(
             hint_text="Number of non-dependants (e.g. adult children)",
             multiline=False,
@@ -3102,25 +3294,6 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex("#005EA5")
         )
         layout.add_widget(self.non_dependants_input)
-
-    
-        def update_amount_input(spinner, value):
-            if self.rent_input.parent:
-                layout.remove_widget(self.rent_input)
-            if self.mortgage_input.parent:
-                layout.remove_widget(self.mortgage_input)
-            if self.shared_input.parent:
-                layout.remove_widget(self.shared_input)
-    
-            if "Rent" in value:
-                layout.add_widget(self.rent_input)
-            elif "Own" in value:
-                layout.add_widget(self.mortgage_input)
-            elif "Shared Accommodation" in value:
-                layout.add_widget(self.shared_input)
-    
-        self.housing_type_spinner.bind(text=update_amount_input)
-        update_amount_input(self.housing_type_spinner, self.housing_type_spinner.text)
     
         # ---------------------------------------------------------
         # POSTCODE INPUT
@@ -3135,26 +3308,57 @@ class Calculator(Screen):
             foreground_color=get_color_from_hex("#005EA5")
         )
         layout.add_widget(self.postcode_input)
-
+    
         # ---------------------------------------------------------
-        # MANUAL OVERRIDE TOGGLE
+        # COLLAPSIBLE: MANUAL LOCATION / BRMA OVERRIDE
         # ---------------------------------------------------------
+        # Header button
+        self.manual_section_expanded = False
+        manual_header = RoundedButton(
+            text="Manual Location/BRMA selection ▸",
+            size_hint=(1, None),
+            height=50,
+            background_normal="",
+            background_color=(0, 0, 0, 0),
+            font_size=18,
+            font_name="roboto",
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left",
+            valign="middle"
+        )
+        manual_header.bind(
+            size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None))
+        )
+        layout.add_widget(manual_header)
+    
+        # Content box
+        self.manual_box = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            size_hint=(1, None)
+        )
+        self.manual_box.bind(minimum_height=self.manual_box.setter("height"))
+        layout.add_widget(self.manual_box)
+    
+        # Start collapsed
+        self.manual_box.opacity = 0
+        self.manual_box.height = 0
+        self.manual_box.disabled = True
+    
+        # Manual toggle row
+        toggle_row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
         self.manual_location_toggle = CheckBox(size_hint=(None, None), size=(40, 40))
         manual_label = SafeLabel(
-            text="Manual Location/BRMA selection",
+            text="Enable manual Location/BRMA override",
             font_size=16,
             color=get_color_from_hex("#FFFFFF")
         )
-        
-        manual_box = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
-        manual_box.add_widget(self.manual_location_toggle)
-        manual_box.add_widget(manual_label)
-        
-        layout.add_widget(manual_box)
+        manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        toggle_row.add_widget(self.manual_location_toggle)
+        toggle_row.add_widget(manual_label)
+        self.manual_box.add_widget(toggle_row)
     
-        # ---------------------------------------------------------
         # LOCATION SPINNER
-        # ---------------------------------------------------------
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
         self.location_spinner = GovUkIconSpinner(
@@ -3162,16 +3366,13 @@ class Calculator(Screen):
             values=["England", "Scotland", "Wales"],
             icon_map={}
         )
-        
+    
         location_anchor.add_widget(self.location_spinner)
-        layout.add_widget(location_anchor)
-
-        # Force text AFTER safe_props has finished touching it
+        self.manual_box.add_widget(location_anchor)
+    
         self.location_spinner.text = "Select Location"
-        
-        # ---------------------------------------------------------
+    
         # BRMA SPINNER
-        # ---------------------------------------------------------
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
     
         self.brma_spinner = GovUkIconSpinner(
@@ -3180,18 +3381,130 @@ class Calculator(Screen):
             icon_map={}
         )
         brma_anchor.add_widget(self.brma_spinner)
-        layout.add_widget(brma_anchor)
-
-        # Force text AFTER safe_props has finished touching it
+        self.manual_box.add_widget(brma_anchor)
+    
         Clock.schedule_once(lambda dt: setattr(self.brma_spinner, "text", "Select BRMA"), 0)
-
+    
+        # Default: postcode lookup controls these spinners
+        self.location_spinner.disabled = True
+        self.brma_spinner.disabled = True
+    
+        def toggle_manual_mode(instance, value):
+            self.location_spinner.disabled = not value
+            self.brma_spinner.disabled = not value
+    
+        self.manual_location_toggle.bind(active=toggle_manual_mode)
+    
+        def toggle_manual_section(instance):
+            self.manual_section_expanded = not self.manual_section_expanded
+            if self.manual_section_expanded:
+                manual_header.text = "Manual Location/BRMA selection ▾"
+                self.manual_box.opacity = 1
+                self.manual_box.disabled = False
+                # Let minimum_height drive height
+            else:
+                manual_header.text = "Manual Location/BRMA selection ▸"
+                self.manual_box.opacity = 0
+                self.manual_box.disabled = True
+                self.manual_box.height = 0
+    
+        manual_header.bind(on_press=lambda inst: toggle_manual_section(inst))
+    
         # ---------------------------------------------------------
-        # SERVICE CHARGES (SOCIAL RENT ONLY)
+        # COLLAPSIBLE: SERVICE CHARGES (SOCIAL RENT ONLY)
         # ---------------------------------------------------------
-
+        self.service_section_expanded = False
+        service_header = RoundedButton(
+            text="Eligible Service Charges (Social Rent Only) ▸",
+            size_hint=(1, None),
+            height=50,
+            background_normal="",
+            background_color=(0, 0, 0, 0),
+            font_size=18,
+            font_name="roboto",
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left",
+            valign="middle"
+        )
+        service_header.bind(
+            size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None))
+        )
+        layout.add_widget(service_header)
+    
+        self.service_box = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            size_hint=(1, None)
+        )
+        self.service_box.bind(minimum_height=self.service_box.setter("height"))
+        layout.add_widget(self.service_box)
+    
+        # Start collapsed
+        self.service_box.opacity = 0
+        self.service_box.disabled = True
+        self.service_box.height = 0
+    
+        def add_service_charge_row(label_text, attr_name):
+            row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
+            lbl = SafeLabel(
+                text=label_text,
+                font_size=16,
+                color=get_color_from_hex("#FFFFFF"),
+                halign="left"
+            )
+            lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+    
+            ti = TextInput(
+                hint_text="£0.00",
+                multiline=False,
+                font_size=18,
+                size_hint=(1, None),
+                height=50,
+                background_color=get_color_from_hex("#FFFFFF"),
+                foreground_color=get_color_from_hex("#005EA5")
+            )
+    
+            setattr(self, attr_name, ti)
+    
+            row.add_widget(lbl)
+            row.add_widget(ti)
+            self.service_box.add_widget(row)
+    
+        add_service_charge_row("Cleaning", "service_cleaning_input")
+        add_service_charge_row("Communal Cleaning", "service_communal_cleaning_input")
+        add_service_charge_row("Lighting", "service_lighting_input")
+        add_service_charge_row("Communal Lighting", "service_communal_lighting_input")
+        add_service_charge_row("Grounds Maintenance", "service_grounds_input")
+        add_service_charge_row("Lift Maintenance", "service_lift_input")
+        add_service_charge_row("Fire Safety", "service_fire_safety_input")
+        add_service_charge_row("Door Entry System", "service_door_entry_input")
+        add_service_charge_row("Shared Facilities", "service_shared_facilities_input")
+        add_service_charge_row("Communal Repairs", "service_communal_repairs_input")
+        add_service_charge_row("Estate Services", "service_estate_services_input")
+    
+        def toggle_service_section(instance):
+            # Only allow expanding if enabled (tenancy = social)
+            if service_header.disabled:
+                return
+            self.service_section_expanded = not self.service_section_expanded
+            if self.service_section_expanded:
+                service_header.text = "Eligible Service Charges (Social Rent Only) ▾"
+                self.service_box.opacity = 1
+                self.service_box.disabled = False
+            else:
+                service_header.text = "Eligible Service Charges (Social Rent Only) ▸"
+                self.service_box.opacity = 0
+                self.service_box.disabled = True
+                self.service_box.height = 0
+    
+        service_header.bind(on_press=lambda inst: toggle_service_section(inst))
+    
         # Disable service charges unless tenancy type is social
         def toggle_service_charges(spinner, value):
             social = (value.lower() == "social")
+            service_header.disabled = not social
+            service_header.opacity = 1 if social else 0.4
+    
             for field in [
                 self.service_cleaning_input,
                 self.service_communal_cleaning_input,
@@ -3206,71 +3519,16 @@ class Calculator(Screen):
                 self.service_estate_services_input,
             ]:
                 field.disabled = not social
-        
-        # Bind tenancy type to toggle
+    
+            # If not social, force collapse
+            if not social:
+                self.service_section_expanded = False
+                service_header.text = "Eligible Service Charges (Social Rent Only) ▸"
+                self.service_box.opacity = 0
+                self.service_box.disabled = True
+                self.service_box.height = 0
+    
         self.tenancy_type_spinner.bind(text=toggle_service_charges)
-        
-        service_label = SafeLabel(
-            text="Eligible Service Charges (Social Rent Only)",
-            font_size=20,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        service_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(service_label)
-        
-        # Helper to create a service charge input row
-        def add_service_charge_row(label_text, attr_name):
-            row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
-            lbl = SafeLabel(
-                text=label_text,
-                font_size=16,
-                color=get_color_from_hex("#FFFFFF"),
-                halign="left"
-            )
-            lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        
-            ti = TextInput(
-                hint_text="£0.00",
-                multiline=False,
-                font_size=18,
-                size_hint=(1, None),
-                height=50,
-                background_color=get_color_from_hex("#FFFFFF"),
-                foreground_color=get_color_from_hex("#005EA5")
-            )
-        
-            setattr(self, attr_name, ti)
-        
-            row.add_widget(lbl)
-            row.add_widget(ti)
-            layout.add_widget(row)
-        
-        # Add all eligible service charge fields
-        add_service_charge_row("Cleaning", "service_cleaning_input")
-        add_service_charge_row("Communal Cleaning", "service_communal_cleaning_input")
-        add_service_charge_row("Lighting", "service_lighting_input")
-        add_service_charge_row("Communal Lighting", "service_communal_lighting_input")
-        add_service_charge_row("Grounds Maintenance", "service_grounds_input")
-        add_service_charge_row("Lift Maintenance", "service_lift_input")
-        add_service_charge_row("Fire Safety", "service_fire_safety_input")
-        add_service_charge_row("Door Entry System", "service_door_entry_input")
-        add_service_charge_row("Shared Facilities", "service_shared_facilities_input")
-        add_service_charge_row("Communal Repairs", "service_communal_repairs_input")
-        add_service_charge_row("Estate Services", "service_estate_services_input")
-
-        # ---------------------------------------------------------
-        # DISABLE SPINNERS UNLESS MANUAL MODE IS ON
-        # ---------------------------------------------------------
-        # Default: postcode lookup controls these spinners
-        self.location_spinner.disabled = True
-        self.brma_spinner.disabled = True
-        
-        def toggle_manual_mode(instance, value):
-            self.location_spinner.disabled = not value
-            self.brma_spinner.disabled = not value
-        
-        self.manual_location_toggle.bind(active=toggle_manual_mode)
     
         # ---------------------------------------------------------
         # AUTO-POPULATE BRMA BASED ON LOCATION
@@ -3310,7 +3568,7 @@ class Calculator(Screen):
         self.location_spinner.bind(text=populate_brmas_for_country)
     
         # ---------------------------------------------------------
-        # FIND BRMA BUTTON
+        # FIND BRMA BUTTON (ALWAYS VISIBLE)
         # ---------------------------------------------------------
         find_brma_btn = RoundedButton(
             text="Find BRMA",
@@ -3336,12 +3594,10 @@ class Calculator(Screen):
             def do_lookup(dt):
                 brma_name = self.lookup_brma(postcode)
     
-                # Update BRMA spinner
                 self.brma_spinner.values = [brma_name]
                 self.brma_spinner.text = brma_name
                 self.brma_spinner._update_dropdown()
-                
-                # Auto-fill LOCATION based on CSV row
+    
                 location = self.lookup_location_for_postcode(postcode)
                 if location:
                     self.location_spinner.text = location
@@ -3352,7 +3608,13 @@ class Calculator(Screen):
     
         find_brma_btn.bind(on_press=on_find_brma)
     
-        return outer
+        # ---------------------------------------------------------
+        # INITIAL STATE SYNC
+        # ---------------------------------------------------------
+        # Ensure correct amount input is visible on first load
+        _show_amount_widget(self.housing_type_spinner.text)
+    
+        return scroll
     
     
     def lookup_brma(self, postcode):
@@ -3379,8 +3641,8 @@ class Calculator(Screen):
             print(f"Error reading BRMA CSV: {e}")
     
         return "BRMA not found"
-        
-
+    
+    
     def lookup_location_for_postcode(self, postcode):
         """Return England/Scotland/Wales for a given postcode."""
         csv_path = resource_find("data/pcode_brma_lookup.csv")
@@ -3402,28 +3664,29 @@ class Calculator(Screen):
             pass
     
         return None
-
+    
     
     def save_housing_details(self):
         self.user_data["housing_type"] = self.housing_type_spinner.text.strip().lower()
         self.user_data["tenancy_type"] = self.tenancy_type_spinner.text.strip().lower()
         self.user_data["rent_raw"] = self.rent_input.text.strip()
         self.user_data["mortgage_raw"] = self.mortgage_input.text.strip()
-        self.user_data["non_dependants"] = self.non_dependants_input.text.strip()
+        self.user_data["shared_raw"] = self.shared_input.text.strip()
+        self.user_data["non_dependants_raw"] = self.non_dependants_input.text.strip()
         self.user_data["postcode"] = self.postcode_input.text.strip()
         self.user_data["location"] = self.location_spinner.text.strip()
         self.user_data["brma"] = self.brma_spinner.text.strip()
         self.user_data["manual_location"] = self.manual_location_toggle.active
-
+    
         # SERVICE CHARGES
         charges = {}
-        
+    
         def parse_charge(widget):
             try:
                 return float(widget.text or 0)
             except:
                 return 0.0
-        
+    
         charges["cleaning"] = parse_charge(self.service_cleaning_input)
         charges["communal_cleaning"] = parse_charge(self.service_communal_cleaning_input)
         charges["lighting"] = parse_charge(self.service_lighting_input)
@@ -3435,9 +3698,9 @@ class Calculator(Screen):
         charges["shared_facilities"] = parse_charge(self.service_shared_facilities_input)
         charges["communal_repairs"] = parse_charge(self.service_communal_repairs_input)
         charges["estate_services"] = parse_charge(self.service_estate_services_input)
-        
+    
         self.user_data["service_charges"] = charges
-
+    
         try:
             self.user_data["non_dependants"] = int(self.non_dependants_input.text or 0)
         except:
@@ -3456,32 +3719,56 @@ class Calculator(Screen):
         except:
             self.user_data["mortgage"] = 0.0
     
+        try:
+            self.user_data["shared"] = float(self.shared_input.text or 0)
+        except:
+            self.user_data["shared"] = 0.0
+    
+    
     def on_pre_enter_housing(self, *args):
+        # Restore basic fields
         self.housing_type_spinner.text = self.user_data.get("housing_type", "Rent").capitalize()
-        self.tenancy_type_spinner.text = self.user_data.get("tenancy_type", "Select Tenancy")
-        self.rent_input.text = str(self.user_data.get("rent", ""))
-        self.mortgage_input.text = str(self.user_data.get("mortgage", ""))
-        self.non_dependants_input.text = str(self.user_data.get("non_dependants", ""))
+        self.tenancy_type_spinner.text = self.user_data.get("tenancy_type", "Select tenancy type")
+    
+        self.rent_input.text = str(self.user_data.get("rent_raw", ""))
+        self.mortgage_input.text = str(self.user_data.get("mortgage_raw", ""))
+        self.shared_input.text = str(self.user_data.get("shared_raw", ""))
+        self.non_dependants_input.text = str(self.user_data.get("non_dependants_raw", ""))
         self.postcode_input.text = self.user_data.get("postcode", "")
-        self.location_spinner.text = self.user_data.get("location", "Select Location")
-        self.brma_spinner.text = self.user_data.get("brma", "Select BRMA")
-        # Restore manual toggle state
+    
+        # Manual override
         manual = self.user_data.get("manual_location", False)
         self.manual_location_toggle.active = manual
         self.location_spinner.disabled = not manual
         self.brma_spinner.disabled = not manual
     
-        # Ensure correct input is visible based on housing type
-        parent_layout = self.housing_type_spinner.parent.parent
-        if self.housing_type_spinner.text.lower() == "rent":
-            if not self.rent_input.parent:
-                parent_layout.add_widget(self.rent_input)
-        elif self.housing_type_spinner.text.lower() == "own":
-            if not self.mortgage_input.parent:
-                parent_layout.add_widget(self.mortgage_input)
-
+        self.location_spinner.text = self.user_data.get("location", "Select Location")
+        self.brma_spinner.text = self.user_data.get("brma", "Select BRMA")
+    
+        # Show correct rent/mortgage/shared input
+        text = self.housing_type_spinner.text.lower()
+        for w in (self.rent_input, self.mortgage_input, self.shared_input):
+            w.opacity = 0
+            w.disabled = True
+            w.height = 0
+    
+        if "rent" in text:
+            target = self.rent_input
+        elif "own" in text:
+            target = self.mortgage_input
+        elif "shared" in text:
+            target = self.shared_input
+        else:
+            target = None
+    
+        if target is not None:
+            target.opacity = 1
+            target.disabled = False
+            target.height = 50
+    
+        # Restore service charges
         charges = self.user_data.get("service_charges", {})
-        
+    
         self.service_cleaning_input.text = str(charges.get("cleaning", ""))
         self.service_communal_cleaning_input.text = str(charges.get("communal_cleaning", ""))
         self.service_lighting_input.text = str(charges.get("lighting", ""))
@@ -3493,200 +3780,489 @@ class Calculator(Screen):
         self.service_shared_facilities_input.text = str(charges.get("shared_facilities", ""))
         self.service_communal_repairs_input.text = str(charges.get("communal_repairs", ""))
         self.service_estate_services_input.text = str(charges.get("estate_services", ""))
+    
+        # Re-apply tenancy-dependent service charge enable/disable
+        tenancy = self.tenancy_type_spinner.text.strip().lower()
+        social = (tenancy == "social")
+        # We can safely reuse the same logic as in create_housing_screen:
+        for field in [
+            self.service_cleaning_input,
+            self.service_communal_cleaning_input,
+            self.service_lighting_input,
+            self.service_communal_lighting_input,
+            self.service_grounds_input,
+            self.service_lift_input,
+            self.service_fire_safety_input,
+            self.service_door_entry_input,
+            self.service_shared_facilities_input,
+            self.service_communal_repairs_input,
+            self.service_estate_services_input,
+        ]:
+            field.disabled = not social
 
 
     def create_children_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),  # upward bias
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Keep a reference for add_child_input
+        # Keep reference for dynamic insertion
         self.children_layout = layout
     
-        # Instruction label
+        # ---------------------------------------------------------
+        # INSTRUCTION LABEL
+        # ---------------------------------------------------------
         instruction = SafeLabel(
             text="Enter children details:",
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+            color=get_color_from_hex("#005EA5")
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(instruction)
     
-        # Dynamic list of child DOB inputs
-        self.children_dob_inputs = []
+        # ---------------------------------------------------------
+        # CHILDREN CONTAINER
+        # ---------------------------------------------------------
+        self.child_sections = []  # list of dicts: {header_btn, content_box, widgets...}
     
-        # Add first child input by default if none saved
-        if not self.user_data.get("children"):
-            self.add_child_input()
+        saved_children = self.user_data.get("children", [])
+    
+        if not saved_children:
+            self.add_child_section()
         else:
-            # Repopulate saved children
-            for child in self.user_data["children"]:
-                self.add_child_input(prefill_text=child.get("dob", ""))
+            for child in saved_children:
+                self.add_child_section(prefill=child)
     
-        # Spacer above buttons
+        # ---------------------------------------------------------
+        # SPACER ABOVE BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Shared button style for consistency
-        button_style = {
-            "size_hint": (None, None),
-            "size": (250, 60),
-            "background_color": (0, 0, 0, 0),
-            "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
-        }
+        # ---------------------------------------------------------
+        # ADD CHILD BUTTON
+        # ---------------------------------------------------------
+        add_btn = RoundedButton(
+            text="Add Another Child",
+            size_hint=(None, None),
+            size=(250, 60),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            pos_hint={"center_x": 0.5},
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            on_press=self.add_child_section
+        )
+        layout.add_widget(add_btn)
     
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-            ("Add Another Child", self.add_child_input),
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
-        layout.add_widget(buttons_box)
-    
-        # Spacer below buttons
+        # ---------------------------------------------------------
+        # SPACER BELOW BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        return outer
+        return scroll
     
-    def add_child_input(self, instance=None, prefill_text=""):
-        """Add a new child DOB input to the layout"""
-        child_input = DOBInput(
-            hint_text="Child Date of Birth (DD/MM/YYYY)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+    
+    # ---------------------------------------------------------
+    # ADD CHILD SECTION
+    # ---------------------------------------------------------
+    def add_child_section(self, instance=None, prefill=None):
+        """
+        Creates a collapsible child section with:
+        - Name
+        - DOB
+        - Gender
+        - Adoption / Kinship / Multiple birth flags
+        - Remove button
+        """
+    
+        # ---------------------------------------------------------
+        # COLLAPSIBLE HEADER
+        # ---------------------------------------------------------
+        header_btn = RoundedButton(
+            text="▸ New Child",
+            size_hint=(1, None),
+            height=50,
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            color=get_color_from_hex(WHITE),
+            font_size=18,
+            halign="left",
+            valign="middle",
+            text_size=(self.children_layout.width, None)
+        )
+    
+        # ---------------------------------------------------------
+        # CONTENT BOX (starts collapsed)
+        # ---------------------------------------------------------
+        content_box = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            padding=(10, 10),
+            size_hint=(1, None),
+            height=0,
+            opacity=0
+        )
+    
+        # ---------------------------------------------------------
+        # CHILD NAME
+        # ---------------------------------------------------------
+        name_input = CustomTextInput(
+            hint_text="Child Name",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=prefill_text
+            text=prefill.get("name", "") if prefill else ""
         )
-        self.children_dob_inputs.append(child_input)
-        # Insert above the buttons box (last two widgets are spacer + buttons)
-        if hasattr(self, "children_layout"):
-            self.children_layout.add_widget(child_input, index=len(self.children_layout.children)-2)
+        content_box.add_widget(name_input)
     
+        # ---------------------------------------------------------
+        # CHILD DOB
+        # ---------------------------------------------------------
+        dob_input = DOBInput(
+            hint_text="Child Date of Birth (DD/MM/YYYY)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex(WHITE),
+            foreground_color=get_color_from_hex(GOVUK_BLUE),
+            text=prefill.get("dob", "") if prefill else ""
+        )
+        content_box.add_widget(dob_input)
+    
+        # ---------------------------------------------------------
+        # GENDER SPINNER
+        # ---------------------------------------------------------
+        gender_spinner = GovUkIconSpinner(
+            text=prefill.get("gender", "Select gender") if prefill else "Select gender",
+            values=["Male", "Female", "Prefer not to say"],
+            icon_map={}
+        )
+        content_box.add_widget(gender_spinner)
+    
+        # ---------------------------------------------------------
+        # FLAGS
+        # ---------------------------------------------------------
+        def make_flag(label, value=False):
+            row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=40)
+            cb = CheckBox(active=value)
+            lbl = SafeLabel(text=label, font_size=16, color=get_color_from_hex(WHITE))
+            row.add_widget(cb)
+            row.add_widget(lbl)
+            return row, cb
+    
+        adopted_row, adopted_cb = make_flag("Adopted", prefill.get("adopted", False) if prefill else False)
+        kinship_row, kinship_cb = make_flag("Kinship care", prefill.get("kinship_care", False) if prefill else False)
+        multiple_row, multiple_cb = make_flag("Multiple birth", prefill.get("multiple_birth", False) if prefill else False)
+    
+        content_box.add_widget(adopted_row)
+        content_box.add_widget(kinship_row)
+        content_box.add_widget(multiple_row)
+    
+        # ---------------------------------------------------------
+        # REMOVE CHILD BUTTON
+        # ---------------------------------------------------------
+        remove_btn = RoundedButton(
+            text="Remove Child",
+            size_hint=(None, None),
+            size=(200, 50),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            color=get_color_from_hex("#D4351C"),  # GOV.UK red
+            font_size=16,
+            on_press=lambda inst: self.remove_child_section(section)
+        )
+        content_box.add_widget(remove_btn)
+    
+        # ---------------------------------------------------------
+        # COLLAPSE/EXPAND LOGIC
+        # ---------------------------------------------------------
+        def toggle_section(instance):
+            if content_box.height == 0:
+                # Expand
+                content_box.height = content_box.minimum_height
+                content_box.opacity = 1
+                header_btn.text = f"▾ {self.get_child_header_text(section)}"
+            else:
+                # Collapse
+                content_box.height = 0
+                content_box.opacity = 0
+                header_btn.text = f"▸ {self.get_child_header_text(section)}"
+    
+        header_btn.bind(on_press=toggle_section)
+    
+        # ---------------------------------------------------------
+        # STORE SECTION
+        # ---------------------------------------------------------
+        section = {
+            "header": header_btn,
+            "content": content_box,
+            "name": name_input,
+            "dob": dob_input,
+            "gender": gender_spinner,
+            "adopted": adopted_cb,
+            "kinship": kinship_cb,
+            "multiple": multiple_cb
+        }
+    
+        self.child_sections.append(section)
+    
+        # ---------------------------------------------------------
+        # INSERT INTO LAYOUT ABOVE BUTTONS
+        # ---------------------------------------------------------
+        insert_index = len(self.children_layout.children) - 2
+        self.children_layout.add_widget(header_btn, index=insert_index)
+        self.children_layout.add_widget(content_box, index=insert_index)
+    
+    
+    # ---------------------------------------------------------
+    # REMOVE CHILD SECTION
+    # ---------------------------------------------------------
+    def remove_child_section(self, section):
+        if section in self.child_sections:
+            self.child_sections.remove(section)
+            self.children_layout.remove_widget(section["header"])
+            self.children_layout.remove_widget(section["content"])
+    
+    
+    # ---------------------------------------------------------
+    # HEADER TEXT (Child 1 (Name))
+    # ---------------------------------------------------------
+    def get_child_header_text(self, section):
+        index = self.child_sections.index(section) + 1
+        name = section["name"].text.strip()
+        return f"Child {index} ({name})" if name else f"Child {index}"
+    
+    
+    # ---------------------------------------------------------
+    # SAVE LOGIC
+    # ---------------------------------------------------------
     def save_children_details(self):
-        # Existing simple list
-        self.user_data["children_dobs"] = [
-            child.text.strip() for child in self.children_dob_inputs if child.text.strip()
-        ]
+        children = []
     
-        # Engine‑friendly structure (basic version)
-        self.user_data["children"] = [
-            {
-                "dob": child.text.strip(),
-                "sex": "",
-                "adopted": False,
-                "kinship_care": False,
-                "multiple_birth": False,
-                "non_consensual": False,
-            }
-            for child in self.children_dob_inputs
-            if child.text.strip()
-        ]
+        for section in self.child_sections:
+            name = section["name"].text.strip()
+            dob = section["dob"].text.strip()
+            gender = section["gender"].text.strip()
     
+            if not dob:
+                continue  # skip empty entries
+    
+            children.append({
+                "name": name,
+                "dob": dob,
+                "gender": gender,
+                "adopted": section["adopted"].active,
+                "kinship_care": section["kinship"].active,
+                "multiple_birth": section["multiple"].active
+            })
+    
+        self.user_data["children"] = children
+        self.user_data["children_dobs"] = [c["dob"] for c in children]
+    
+    
+    # ---------------------------------------------------------
+    # RESTORE LOGIC
+    # ---------------------------------------------------------
     def on_pre_enter_children(self, *args):
-        """Repopulate child DOB inputs when re-entering the screen"""
-        children = self.user_data.get("children", [])
-        # Ensure enough inputs exist
-        while len(self.children_dob_inputs) < len(children):
-            # Add extra inputs if needed
-            child_input = DOBInput(
-                hint_text="Child Date of Birth (DD/MM/YYYY)",
-                multiline=False, font_size=18,
-                size_hint=(1, None), height=50,
-                background_color=get_color_from_hex(WHITE),
-                foreground_color=get_color_from_hex(GOVUK_BLUE)
-            )
-            self.children_dob_inputs.append(child_input)
+        saved_children = self.user_data.get("children", [])
     
-        # Repopulate texts
-        for i, child_input in enumerate(self.children_dob_inputs):
-            child_input.text = children[i].get("dob", "") if i < len(children) else ""
+        # Clear existing
+        for section in list(self.child_sections):
+            self.remove_child_section(section)
+    
+        # Rebuild
+        if not saved_children:
+            self.add_child_section()
+        else:
+            for child in saved_children:
+                self.add_child_section(prefill=child)
 
     
     def create_additional_elements_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),  # upward bias
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Instruction label
+        # ---------------------------------------------------------
+        # INSTRUCTION
+        # ---------------------------------------------------------
         instruction = SafeLabel(
             text="Enter additional elements:",
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+            color=get_color_from_hex("#005EA5")
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(instruction)
     
-        # Carer status input
-        self.is_carer_input = TextInput(
-            hint_text="Are you a carer? (yes/no)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        # ---------------------------------------------------------
+        # CARER CHECKBOX
+        # ---------------------------------------------------------
+        carer_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=50, spacing=10)
+        self.carer_checkbox = CheckBox(size_hint=(None, None), size=(40, 40))
+        carer_label = SafeLabel(
+            text="Are you a carer?",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
         )
-        layout.add_widget(self.is_carer_input)
+        carer_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        carer_row.add_widget(self.carer_checkbox)
+        carer_row.add_widget(carer_label)
+        layout.add_widget(carer_row)
     
-        # Disability status input
-        self.disability_input = TextInput(
-            hint_text="Do you have a disability? (yes/no)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        # ---------------------------------------------------------
+        # DISABILITY: LCW / LCWRA CHECKBOXES (MUTUALLY EXCLUSIVE)
+        # ---------------------------------------------------------
+        disability_title = SafeLabel(
+            text="Disability status",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
         )
-        layout.add_widget(self.disability_input)
+        disability_title.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(disability_title)
     
-        # Childcare costs input
+        # LCW row
+        lcw_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=50, spacing=10)
+        self.lcw_checkbox = CheckBox(size_hint=(None, None), size=(40, 40))
+        lcw_label = SafeLabel(
+            text="Limited Capability for Work (LCW)",
+            font_size=16,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        lcw_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        lcw_row.add_widget(self.lcw_checkbox)
+        lcw_row.add_widget(lcw_label)
+        layout.add_widget(lcw_row)
+    
+        # LCWRA row
+        lcwra_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=50, spacing=10)
+        self.lcwra_checkbox = CheckBox(size_hint=(None, None), size=(40, 40))
+        lcwra_label = SafeLabel(
+            text="Limited Capability for Work and Related Activity (LCWRA)",
+            font_size=16,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        lcwra_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        lcwra_row.add_widget(self.lcwra_checkbox)
+        lcwra_row.add_widget(lcwra_label)
+        layout.add_widget(lcwra_row)
+    
+        # Mutual exclusion logic
+        def on_lcw_active(instance, value):
+            if value:
+                self.lcwra_checkbox.active = False
+    
+        def on_lcwra_active(instance, value):
+            if value:
+                self.lcw_checkbox.active = False
+    
+        self.lcw_checkbox.bind(active=on_lcw_active)
+        self.lcwra_checkbox.bind(active=on_lcwra_active)
+    
+        # ---------------------------------------------------------
+        # CHILDCARE INPUT
+        # ---------------------------------------------------------
         self.childcare_input = TextInput(
             hint_text="Monthly childcare costs (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
             background_color=get_color_from_hex(WHITE),
             foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.childcare_input)
-
-        # --- SAR Exemptions Section ---
-        sar_label = SafeLabel(
-            text="Shared Accommodation Rate (SAR) Exemptions",
+    
+        # ---------------------------------------------------------
+        # COLLAPSIBLE: SAR EXEMPTIONS
+        # ---------------------------------------------------------
+        self.sar_section_expanded = False
+        sar_header = RoundedButton(
+            text="Shared Accommodation Rate (SAR) Exemptions ▸",
+            size_hint=(1, None),
+            height=50,
+            background_color=(0, 0, 0, 0),
+            background_normal="",
             font_size=20,
+            font_name="roboto",
             color=get_color_from_hex("#FFFFFF"),
             halign="left",
+            valign="middle",
         )
-        sar_label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
-        layout.add_widget(sar_label)
-        
-        # Helper to create a checkbox row
+        sar_header.bind(
+            size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None))
+        )
+        layout.add_widget(sar_header)
+    
+        self.sar_box = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            size_hint=(1, None)
+        )
+        self.sar_box.bind(minimum_height=self.sar_box.setter("height"))
+        layout.add_widget(self.sar_box)
+    
+        # Start collapsed
+        self.sar_box.opacity = 0
+        self.sar_box.disabled = True
+        self.sar_box.height = 0
+    
         def add_checkbox_row(text, attr_name):
             row = BoxLayout(orientation="horizontal", size_hint_y=None, height=40, spacing=10)
             cb = CheckBox(size_hint=(None, None), size=(40, 40))
             setattr(self, attr_name, cb)
-            label = SafeLabel(text=text, font_size=16, color=get_color_from_hex("#FFFFFF"), halign="left")
-            label.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+            label = SafeLabel(
+                text=text,
+                font_size=16,
+                color=get_color_from_hex("#FFFFFF"),
+                halign="left"
+            )
+            label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
             row.add_widget(cb)
             row.add_widget(label)
-            layout.add_widget(row)
-        
+            self.sar_box.add_widget(row)
+    
         add_checkbox_row("Care leaver (under 25)", "care_leaver_checkbox")
         add_checkbox_row("Severe disability (LCWRA)", "severe_disability_checkbox")
         add_checkbox_row("MAPPA supervision", "mappa_checkbox")
@@ -3699,57 +4275,67 @@ class Calculator(Screen):
         add_checkbox_row("Victim of modern slavery", "modern_slavery_checkbox")
         add_checkbox_row("Armed forces reservist returning to civilian life", "armed_forces_checkbox")
     
-        # Spacer above buttons
+        def toggle_sar_section(instance):
+            self.sar_section_expanded = not self.sar_section_expanded
+            if self.sar_section_expanded:
+                sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▾"
+                self.sar_box.opacity = 1
+                self.sar_box.disabled = False
+            else:
+                sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▸"
+                self.sar_box.opacity = 0
+                self.sar_box.disabled = True
+                self.sar_box.height = 0
+    
+        sar_header.bind(on_press=lambda inst: toggle_sar_section(inst))
+    
+        # ---------------------------------------------------------
+        # SPACERS / BUTTONS (KEEP STRUCTURE, EVEN IF EMPTY)
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Shared button style for consistency
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_color": (0, 0, 0, 0),
             "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
+            "pos_hint": {"center_x": 0.5},
         }
     
-        # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
+        # No buttons currently defined, but structure preserved for future use
         layout.add_widget(buttons_box)
     
-        # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        return outer
+        return scroll
+    
     
     def save_additional_elements(self):
-        carer_yes_no = self.is_carer_input.text.strip().lower() == "yes"
-        disability_yes_no = self.disability_input.text.strip().lower() == "yes"
+        # Carer
+        self.user_data["carer"] = self.carer_checkbox.active
     
-        self.user_data["carer"] = carer_yes_no
-        self.user_data["disability_flag"] = disability_yes_no
+        # Disability: LCW / LCWRA
+        lcw = self.lcw_checkbox.active
+        lcwra = self.lcwra_checkbox.active
+    
+        # Simple flag: any disability
+        self.user_data["disability_flag"] = lcw or lcwra
+    
+        if lcwra:
+            self.user_data["disability"] = "LCWRA"
+        elif lcw:
+            self.user_data["disability"] = "LCW"
+        else:
+            self.user_data["disability"] = ""
+    
+        # Childcare
         self.user_data["childcare_raw"] = self.childcare_input.text.strip()
-    
         try:
             self.user_data["childcare"] = float(self.childcare_input.text or 0)
         except:
             self.user_data["childcare"] = 0.0
     
-        # For now, map yes/no to a simple disability status
-        self.user_data["disability"] = "LCW" if disability_yes_no else ""
-
         # SAR exemptions
         self.user_data["care_leaver"] = self.care_leaver_checkbox.active
         self.user_data["severe_disability"] = self.severe_disability_checkbox.active
@@ -3763,198 +4349,325 @@ class Calculator(Screen):
         self.user_data["modern_slavery"] = self.modern_slavery_checkbox.active
         self.user_data["armed_forces_reservist"] = self.armed_forces_checkbox.active
     
+    
     def on_pre_enter_additional(self, *args):
         """Repopulate inputs when re-entering the screen"""
-        # Only repopulate with "yes" if true, otherwise leave blank so hint text shows
-        self.is_carer_input.text = "yes" if self.user_data.get("carer") else ""
-        self.disability_input.text = "yes" if self.user_data.get("disability") else ""
-        self.childcare_input.text = str(self.user_data.get("childcare", ""))
-
-
     
+        # Carer
+        self.carer_checkbox.active = self.user_data.get("carer", False)
+    
+        # Disability
+        disability_value = self.user_data.get("disability", "").upper()
+        if disability_value == "LCWRA":
+            self.lcwra_checkbox.active = True
+            self.lcw_checkbox.active = False
+        elif disability_value == "LCW":
+            self.lcw_checkbox.active = True
+            self.lcwra_checkbox.active = False
+        else:
+            self.lcw_checkbox.active = False
+            self.lcwra_checkbox.active = False
+    
+        # Childcare
+        self.childcare_input.text = str(self.user_data.get("childcare_raw", ""))
+    
+        # Restore SAR checkboxes
+        self.care_leaver_checkbox.active = self.user_data.get("care_leaver", False)
+        self.severe_disability_checkbox.active = self.user_data.get("severe_disability", False)
+        self.mappa_checkbox.active = self.user_data.get("mappa", False)
+        self.hostel_resident_checkbox.active = self.user_data.get("hostel_resident", False)
+        self.domestic_abuse_checkbox.active = self.user_data.get("domestic_abuse_refuge", False)
+        self.ex_offender_checkbox.active = self.user_data.get("ex_offender", False)
+        self.foster_carer_checkbox.active = self.user_data.get("foster_carer", False)
+        self.prospective_adopter_checkbox.active = self.user_data.get("prospective_adopter", False)
+        self.temporary_accommodation_checkbox.active = self.user_data.get("temporary_accommodation", False)
+        self.modern_slavery_checkbox.active = self.user_data.get("modern_slavery", False)
+        self.armed_forces_checkbox.active = self.user_data.get("armed_forces_reservist", False)
+    
+        # Start SAR section collapsed on re-entry
+        self.sar_section_expanded = False
+        self.sar_box.opacity = 0
+        self.sar_box.disabled = True
+        self.sar_box.height = 0
+
+
     def create_sanction_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),  # upward bias
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Instruction label
+        # ---------------------------------------------------------
+        # INSTRUCTION LABEL
+        # ---------------------------------------------------------
         instruction = SafeLabel(
             text="Enter sanction details:",
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(instruction)
     
-        # Sanction type input
-        self.sanction_type_input = TextInput(
-            hint_text="Sanction type (e.g. low/medium/high)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        # ---------------------------------------------------------
+        # SANCTION TYPE SPINNER
+        # ---------------------------------------------------------
+        sanction_type_label = SafeLabel(
+            text="Sanction type",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
         )
-        layout.add_widget(self.sanction_type_input)
+        sanction_type_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(sanction_type_label)
     
-        # Sanction duration input
-        self.sanction_duration_input = TextInput(
-            hint_text="Sanction duration (weeks)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
+        self.sanction_type_spinner = GovUkIconSpinner(
+            text="Select sanction type",
+            values=["lowest", "low", "medium", "high"],
+            icon_map={}
         )
-        layout.add_widget(self.sanction_duration_input)
+        layout.add_widget(self.sanction_type_spinner)
     
-        # Spacer above buttons
+        # ---------------------------------------------------------
+        # SANCTION DURATION SPINNER
+        # ---------------------------------------------------------
+        sanction_duration_label = SafeLabel(
+            text="Sanction duration",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        sanction_duration_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(sanction_duration_label)
+    
+        self.sanction_duration_spinner = GovUkIconSpinner(
+            text="Select duration",
+            values=[
+                "7 days",
+                "14 days",
+                "28 days",
+                "91 days",
+                "182 days"
+            ],
+            icon_map={}
+        )
+        layout.add_widget(self.sanction_duration_spinner)
+    
+        # ---------------------------------------------------------
+        # SPACER ABOVE BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Shared button style for consistency
+        # ---------------------------------------------------------
+        # BUTTONS BOX (EMPTY BUT PRESERVED FOR CONSISTENCY)
+        # ---------------------------------------------------------
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_color": (0, 0, 0, 0),
             "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
+            "pos_hint": {"center_x": 0.5},
         }
     
-        # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
         layout.add_widget(buttons_box)
     
-        # Spacer below buttons
+        # ---------------------------------------------------------
+        # SPACER BELOW BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        return outer
+        return scroll
+    
     
     def save_sanction_details(self):
-        self.user_data["sanction_type"] = self.sanction_type_input.text.strip().lower()
-        self.user_data["sanction_duration_raw"] = self.sanction_duration_input.text.strip()
+        # Save sanction type
+        self.user_data["sanction_type"] = self.sanction_type_spinner.text.strip().lower()
     
+        # Save raw duration string
+        self.user_data["sanction_duration_raw"] = self.sanction_duration_spinner.text.strip()
+    
+        # Convert duration to integer days
         try:
-            self.user_data["sanction_duration"] = int(self.sanction_duration_input.text or 0)
+            # Extract the number from strings like "14 days"
+            duration_str = self.sanction_duration_spinner.text.split()[0]
+            self.user_data["sanction_duration"] = int(duration_str)
         except:
             self.user_data["sanction_duration"] = 0
     
+    
     def on_pre_enter_sanctions(self, *args):
         """Repopulate inputs when re-entering the screen"""
-        self.sanction_type_input.text = self.user_data.get("sanction_type", "")
-        self.sanction_duration_input.text = str(self.user_data.get("sanction_duration", ""))
+    
+        # Restore sanction type
+        saved_type = self.user_data.get("sanction_type", "")
+        if saved_type in ["lowest", "low", "medium", "high"]:
+            self.sanction_type_spinner.text = saved_type
+        else:
+            self.sanction_type_spinner.text = "Select sanction type"
+    
+        # Restore sanction duration
+        saved_duration = self.user_data.get("sanction_duration_raw", "")
+        if saved_duration in [
+            "7 days", "14 days", "28 days", "91 days", "182 days"
+        ]:
+            self.sanction_duration_spinner.text = saved_duration
+        else:
+            self.sanction_duration_spinner.text = "Select duration"
 
 
-
-    def create_advance_payments_screen(self):
-        # Outer anchor to center content vertically
-        outer = AnchorLayout(anchor_x="center", anchor_y="center")
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20, size_hint=(1, None))
+    def create_advance_payment_screen(self):
+        # ---------------------------------------------------------
+        # SCROLLABLE, CENTERED, UPWARD-BIASED OUTER LAYOUT
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+    
+        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
+        scroll.add_widget(outer)
+    
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),  # upward bias
+            size_hint=(1, None)
+        )
         layout.bind(minimum_height=layout.setter("height"))
         outer.add_widget(layout)
     
-        # Instruction label
+        # ---------------------------------------------------------
+        # INSTRUCTION LABEL
+        # ---------------------------------------------------------
         instruction = SafeLabel(
             text="Enter advance payment details:",
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#005EA5")  # GOV.UK blue for visibility
+            color=get_color_from_hex("#005EA5")  # GOV.UK blue
         )
-        instruction.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(instruction)
     
-        # Advance payment amount input
+        # ---------------------------------------------------------
+        # ADVANCE AMOUNT (NUMERIC TEXTINPUT)
+        # ---------------------------------------------------------
+        amount_label = SafeLabel(
+            text="Advance amount (£)",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(amount_label)
+    
         self.advance_amount_input = TextInput(
-            hint_text="Advance payment amount (£)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
+            hint_text="Enter amount (£)",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            input_filter="float",
             background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=str(self.user_data.get("advance_amount_raw", ""))
+            foreground_color=get_color_from_hex(GOVUK_BLUE)
         )
         layout.add_widget(self.advance_amount_input)
     
-        # Repayment period input
-        self.repayment_period_input = TextInput(
-            hint_text="Repayment period (months)",
-            multiline=False, font_size=18,
-            size_hint=(1, None), height=50,
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE),
-            text=str(self.user_data.get("repayment_period_raw", ""))
+        # ---------------------------------------------------------
+        # REPAYMENT PERIOD (SPINNER)
+        # ---------------------------------------------------------
+        repayment_label = SafeLabel(
+            text="Repayment period",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
         )
-        layout.add_widget(self.repayment_period_input)
+        repayment_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(repayment_label)
     
-        # Spacer above buttons
+        self.repayment_period_spinner = GovUkIconSpinner(
+            text="Select repayment period",
+            values=[
+                "3 months",
+                "6 months",
+                "9 months",
+                "12 months"
+            ],
+            icon_map={}
+        )
+        layout.add_widget(self.repayment_period_spinner)
+    
+        # ---------------------------------------------------------
+        # SPACER ABOVE BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        # Shared button style for consistency
+        # ---------------------------------------------------------
+        # BUTTONS BOX (EMPTY BUT PRESERVED FOR CONSISTENCY)
+        # ---------------------------------------------------------
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_color": (0, 0, 0, 0),
             "background_normal": "",
-            "pos_hint": {"center_x": 0.5}
+            "pos_hint": {"center_x": 0.5},
         }
     
-        # Grouped buttons in a vertical box
         buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        for text, handler in [
-        ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
-            buttons_box.add_widget(btn)
-    
         layout.add_widget(buttons_box)
     
-        # Spacer below buttons
+        # ---------------------------------------------------------
+        # SPACER BELOW BUTTONS
+        # ---------------------------------------------------------
         layout.add_widget(Widget(size_hint_y=0.05))
     
-        return outer
+        return scroll
     
-    def save_advance_payment(self):
-        self.user_data["advance_amount_raw"] = self.advance_amount_input.text.strip()
-        self.user_data["repayment_period_raw"] = self.repayment_period_input.text.strip()
+    
+    def save_advance_payment_details(self):
+        # Save advance amount
+        raw_amount = self.advance_amount_input.text.strip()
+        self.user_data["advance_amount_raw"] = raw_amount
     
         try:
-            self.user_data["advance_amount"] = float(self.advance_amount_input.text or 0)
+            self.user_data["advance_amount"] = float(raw_amount or 0)
         except:
             self.user_data["advance_amount"] = 0.0
     
+        # Save repayment period
+        self.user_data["repayment_period_raw"] = self.repayment_period_spinner.text.strip()
+    
+        # Convert repayment period to integer months
         try:
-            self.user_data["repayment_period"] = int(self.repayment_period_input.text or 0)
+            months_str = self.repayment_period_spinner.text.split()[0]
+            self.user_data["repayment_period"] = int(months_str)
         except:
             self.user_data["repayment_period"] = 0
     
-    def on_pre_enter_advance(self, *args):
+    
+    def on_pre_enter_advance_payments(self, *args):
         """Repopulate inputs when re-entering the screen"""
-        self.advance_amount_input.text = self.user_data.get("advance_amount_raw", "")
-        self.repayment_period_input.text = self.user_data.get("repayment_period_raw", "")
-
+    
+        # Restore advance amount
+        self.advance_amount_input.text = str(self.user_data.get("advance_amount_raw", ""))
+    
+        # Restore repayment period
+        saved_period = self.user_data.get("repayment_period_raw", "")
+        if saved_period in ["3 months", "6 months", "9 months", "12 months"]:
+            self.repayment_period_spinner.text = saved_period
+        else:
+            self.repayment_period_spinner.text = "Select repayment period"
 
             
     def create_calculate_screen(self):
@@ -4348,6 +5061,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
