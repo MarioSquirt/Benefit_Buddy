@@ -848,7 +848,7 @@ class DisclaimerScreen(Screen):
         app = App.get_running_app()
 
         # Access the Calculator screen instance
-        calculator = app.root.ids.calculator
+        calculator = app.root.get_screen("calculator")
 
         # Load CSV cache (heavy work)
         calculator.load_brma_cache()
@@ -5038,6 +5038,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
