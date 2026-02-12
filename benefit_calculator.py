@@ -1062,7 +1062,7 @@ class MainScreenFullAccess(Screen):
 
         # Initialize attributes to avoid AttributeError
         self.dob_input = TextInput(hint_text="DD/MM/YYYY")
-        self.partner_dob_input = TextInput(hint_text="DD/MM/YYYY")
+        self.claimant_widgets["partner_dob"] = TextInput(hint_text="DD/MM/YYYY")
         self.relationship_input = TextInput(hint_text="single/couple")
         self.children_dob_inputs = []
         self.is_carer = False
@@ -1170,7 +1170,7 @@ class MainScreenFullAccess(Screen):
     def calculate_entitlement(self):
         try:
             dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
-            partner_dob_date = datetime.strptime(self.partner_dob_input.text, "%d-%m-%Y")
+            partner_dob_date = datetime.strptime(self.claimant_widgets["partner_dob"].text, "%d-%m-%Y")
         except ValueError:
             self.create_popup("Invalid Date", "Please enter DOBs in DD/MM/YYYY format").open()
             return
@@ -2957,11 +2957,6 @@ class Calculator(Screen):
     def on_pre_enter_intro(self, *args):
         pass
         
-    def on_couple_claim_checkbox_active(self, checkbox, value):
-        # Enable/disable partner fields based on checkbox
-        self.partner_name_input.disabled = not value
-        self.partner_dob_input.disabled = not value
-
 
     def create_claimant_details_screen(self):
         # ---------------------------------------------------------
@@ -3077,6 +3072,16 @@ class Calculator(Screen):
         layout.add_widget(self.claimant_widgets["partner_dob"])
     
         return scroll
+
+    def on_couple_claim_checkbox_active(self, instance, value):
+        w = self.claimant_widgets
+    
+        # Guard: widgets may not exist yet during screen construction
+        if "partner_name" not in w:
+            return
+    
+        w["partner_name"].disabled = not value
+        w["partner_dob"].disabled = not value
     
     # ---------------------------------------------------------
     # SAVE LOGIC
@@ -5015,6 +5020,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
