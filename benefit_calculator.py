@@ -728,7 +728,7 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-           self.add_widget(self.content_box)
+        self.add_widget(self.content_box)
 
     def toggle(self, *args):
         self.is_open = not self.is_open
@@ -760,7 +760,7 @@ class CollapsibleSection(BoxLayout):
             self.header.text = self.header.text.replace("▼", "▶")
             self.content_box.opacity = 0
             self.content_box.height = 0
-            self.content_box.clear_widgets())
+            self.content_box.clear_widgets()
 
 
 @with_diagnostics([])
@@ -5020,6 +5020,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
