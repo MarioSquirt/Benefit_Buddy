@@ -840,8 +840,17 @@ class DisclaimerScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main layout
-        layout = BoxLayout(orientation="vertical", spacing=20, padding=20)
+        # OUTER SCROLLVIEW (fixes Android layout collapse)
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+
+        # MAIN LAYOUT (must have size_hint_y=None)
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=20,
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
 
         # Disclaimer text
         disclaimer_text = SafeLabel(
@@ -853,64 +862,79 @@ class DisclaimerScreen(Screen):
             font_size=18,
             halign="center",
             valign="middle",
-            color=get_color_from_hex("#FFFFFF")
+            color=get_color_from_hex("#FFFFFF"),
+            size_hint_y=None
         )
-        disclaimer_text.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+        disclaimer_text.bind(
+            width=lambda inst, val: setattr(inst, 'text_size', (val, None)),
+            texture_size=lambda inst, val: setattr(inst, "height", val[1])
+        )
         layout.add_widget(disclaimer_text)
 
-        # -----------------------------
-        # GOV.UK STYLE LOADING BAR
-        # -----------------------------
+        # Loading label
         self.loading_label = SafeLabel(
             text="Loading data…",
             font_size=16,
             halign="center",
             valign="middle",
             color=get_color_from_hex("#FFDD00"),
-            size_hint=(1, None),
+            size_hint_y=None,
             height=40
         )
         layout.add_widget(self.loading_label)
 
-        # Background bar (black)
+        # Background bar (GOV.UK yellow)
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
             height=20,
             padding=0,
             spacing=0
         )
-
-        # Foreground bar (GOV.UK yellow) using canvas
-        self.loading_bar_fg = BoxLayout(
-            size_hint=(0, 1)  # width grows
+        
+        with self.loading_bar_bg.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))  # Yellow background
+            self._loading_bg_rect = Rectangle(
+                size=self.loading_bar_bg.size,
+                pos=self.loading_bar_bg.pos
+            )
+        
+        self.loading_bar_bg.bind(
+            size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
+            pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
         )
         
+        # Foreground bar (GOV.UK blue) that shrinks
+        self.loading_bar_fg = BoxLayout(size_hint=(1, 1))
+        
         with self.loading_bar_fg.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
-            self._loading_bar_rect = Rectangle(
+            Color(*get_color_from_hex("#005EA5"))  # Blue overlay
+            self._loading_fg_rect = Rectangle(
                 size=self.loading_bar_fg.size,
                 pos=self.loading_bar_fg.pos
             )
         
-        # Keep rectangle synced with widget size/pos
         self.loading_bar_fg.bind(
-            size=lambda inst, val: setattr(self._loading_bar_rect, "size", val),
-            pos=lambda inst, val: setattr(self._loading_bar_rect, "pos", val)
+            size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
+            pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
-
+        
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         layout.add_widget(self.loading_bar_bg)
 
-        # Continue button (disabled until CSV is loaded)
+        # Continue button (centered + visible text)
         self.continue_button = RoundedButton(
             text="Continue",
             size_hint=(None, None),
             size=(250, 60),
             disabled=True,
-            background_color=(0, 0, 0, 0),
+            background_color=get_color_from_hex("#FFDD00"),
             background_normal="",
             color=get_color_from_hex("#005EA5"),
             font_size=20,
+            pos_hint={"center_x": 0.5},
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
             on_press=lambda x: setattr(self.manager, "current", "main")
         )
         layout.add_widget(self.continue_button)
@@ -918,43 +942,27 @@ class DisclaimerScreen(Screen):
         # Footer
         build_footer(layout)
 
-        self.add_widget(layout)
+        scroll.add_widget(layout)
+        self.add_widget(scroll)
 
         # Internal progress tracker
         self._progress = 0.0
 
-    # ---------------------------------------------------------
-    # When disclaimer screen becomes visible
-    # ---------------------------------------------------------
     def on_enter(self):
-        # Start fake progress animation
         Clock.schedule_interval(self._animate_progress, 0.05)
-
-        # Delay CSV loading slightly so Calculator screen exists
         Clock.schedule_once(self.start_csv_load, 1.0)
 
-    # ---------------------------------------------------------
-    # Animate GOV.UK loading bar (fake progress)
-    # ---------------------------------------------------------
     def _animate_progress(self, dt):
         if self._progress < 0.9:
             self._progress += 0.01
-            self.loading_bar_fg.size_hint_x = self._progress
+            self.loading_bar_fg.size_hint_x = 1 - self._progress
 
-    # ---------------------------------------------------------
-    # Start CSV loading in a background thread
-    # ---------------------------------------------------------
     def start_csv_load(self, dt):
         import threading
         threading.Thread(target=self._load_csv_thread).start()
 
-    # ---------------------------------------------------------
-    # Background thread: load BRMA cache safely
-    # ---------------------------------------------------------
     def _load_csv_thread(self):
         app = App.get_running_app()
-
-        # Wait until Calculator screen is fully created
         calculator = None
         while calculator is None:
             try:
@@ -962,20 +970,12 @@ class DisclaimerScreen(Screen):
             except:
                 calculator = None
 
-        # Load CSV cache (heavy work)
         calculator.load_brma_cache()
-
-        # Notify UI thread when done
         Clock.schedule_once(self._loading_complete, 0)
 
-    # ---------------------------------------------------------
-    # Update UI when loading is complete
-    # ---------------------------------------------------------
     def _loading_complete(self, dt):
-        # Finish bar animation
         self._progress = 1.0
-        self.loading_bar_fg.size_hint_x = 1.0
-
+        self.loading_bar_fg.size_hint_x = 0
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
 
@@ -1609,29 +1609,35 @@ class Calculator(Screen):
         # MAIN LAYOUT
         # =========================================================
         layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
-
+        
         # Header
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
+        header_anchor = AnchorLayout(
+            anchor_x="center",
+            anchor_y="top",
+            size_hint_y=None,
+            height=80
+        )
         build_header(header_anchor, "Benefit Buddy")
         layout.add_widget(header_anchor)
-
+        
         layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Back button
+        
+        # Back button (fixed width, centered, works with RoundedButton)
         back_button = RoundedButton(
             text="Back to Guest Access",
             size_hint=(None, None),
             size=(250, 60),
-            background_color=(0, 0, 0, 0),
+            background_color=get_color_from_hex("#FFDD00"),  # Yellow button
             background_normal="",
-            pos_hint={"center_x": 0.5},
+            color=get_color_from_hex("#005EA5"),             # Blue text
             font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#005EA5"),
+            pos_hint={"center_x": 0.5},
+            halign="center",
+            valign="middle",
             on_press=lambda x: setattr(self.manager, 'current', "main_guest_access")
         )
         layout.add_widget(back_button)
-
+        
         layout.add_widget(Widget(size_hint_y=0.05))
 
         # =========================================================
@@ -2964,9 +2970,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -2974,7 +2977,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE (for lazy-loading)
@@ -3134,9 +3137,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -3144,7 +3144,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE (for lazy-loading)
@@ -3273,9 +3273,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -3283,7 +3280,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE (for lazy-loading)
@@ -3808,9 +3805,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -3818,7 +3812,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # Keep reference for dynamic insertion
         self.children_layout = layout
@@ -3904,7 +3898,7 @@ class Calculator(Screen):
             height=50,
             background_color=(0, 0, 0, 0),
             background_normal="",
-            color=get_color_from_hex(WHITE),
+            color=get_color_from_hex(GOVUK_BLUE),
             font_size=18,
             halign="left",
             valign="middle"
@@ -3991,13 +3985,12 @@ class Calculator(Screen):
             text="Remove Child",
             size_hint=(None, None),
             size=(200, 50),
-            background_color=(0, 0, 0, 0),
+            background_color=get_color_from_hex("#D4351C"),  # GOV.UK red background
             background_normal="",
-            color=get_color_from_hex("#D4351C"),  # GOV.UK red
+            color=get_color_from_hex("#FFFFFF"),             # White text
             font_size=16,
             on_press=lambda inst: self.remove_child_section(section)
         )
-        content_box.add_widget(remove_btn)
     
         # ---------------------------------------------------------
         # COLLAPSE/EXPAND LOGIC
@@ -4110,9 +4103,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -4120,7 +4110,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE (for lazy-loading)
@@ -4413,9 +4403,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -4423,7 +4410,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE
@@ -4542,9 +4529,6 @@ class Calculator(Screen):
         # ---------------------------------------------------------
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
     
-        outer = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, None))
-        scroll.add_widget(outer)
-    
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -4552,7 +4536,7 @@ class Calculator(Screen):
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
-        outer.add_widget(layout)
+        scroll.add_widget(layout)
     
         # ---------------------------------------------------------
         # WIDGET STORAGE
@@ -5020,6 +5004,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
