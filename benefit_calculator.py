@@ -1072,91 +1072,112 @@ class MainScreenFullAccess(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Main vertical layout
-        layout = BoxLayout(orientation="vertical", spacing=30, padding=20)
+        # ---------------------------------------------------------
+        # SCROLLVIEW (Android-safe)
+        # ---------------------------------------------------------
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
-        # Header pinned to top
-        header_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint_y=None, height=80)
+        # ---------------------------------------------------------
+        # MAIN LAYOUT
+        # ---------------------------------------------------------
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=30,
+            padding=20,
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+        scroll.add_widget(layout)
+
+        # ---------------------------------------------------------
+        # HEADER
+        # ---------------------------------------------------------
+        header_anchor = AnchorLayout(
+            anchor_x="center",
+            anchor_y="top",
+            size_hint_y=None,
+            height=80
+        )
         build_header(header_anchor, "Benefit Buddy")
         layout.add_widget(header_anchor)
 
-        # Shared button style for consistency (only button-level props)
+        # ---------------------------------------------------------
+        # BUTTON GROUP
+        # ---------------------------------------------------------
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+        buttons_box = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            size_hint=(1, None)
+        )
+        buttons_box.bind(minimum_height=buttons_box.setter("height"))
+
         button_style = {
             "size_hint": (None, None),
             "size": (250, 60),
             "background_normal": "",
-            "background_color": (0, 0, 0, 0),  # transparent background
-            "pos_hint": {"center_x": 0.5}
+            "background_color": get_color_from_hex("#FFDD00"),  # GOV.UK yellow
+            "pos_hint": {"center_x": 0.5},
+            "font_size": 20,
+            "font_name": "roboto",
+            "color": get_color_from_hex("#005EA5"),  # GOV.UK blue text
+            "halign": "center",
+            "valign": "middle",
+            "text_size": (250, None)
         }
 
-        # Spacer above buttons
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        # Grouped buttons in a vertical box
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-
         for text, handler in [
-            ("Predict Next Payment", lambda x: print("Prediction feature not yet implemented")),
+            ("Predict Next Payment", self.predict_payment),
             ("View Previous Payments", lambda x: print("Payments feature not yet implemented")),
             ("Update Details", lambda x: print("Update details feature not yet implemented")),
             ("Log Out", self.log_out),
         ]:
-            btn = RoundedButton(
-                text=text,
-                **button_style,
-                font_size=20,
-                font_name="roboto",
-                color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
-                halign="center", valign="middle",
-                text_size=(250, None),
-                on_press=handler
-            )
+            btn = RoundedButton(text=text, on_press=handler, **button_style)
             buttons_box.add_widget(btn)
 
         layout.add_widget(buttons_box)
 
-        # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        # Footer pinned to bottom
-        footer_anchor = AnchorLayout(anchor_x="center", anchor_y="bottom", size_hint_y=None, height=60)
+        # ---------------------------------------------------------
+        # FOOTER
+        # ---------------------------------------------------------
+        footer_anchor = AnchorLayout(
+            anchor_x="center",
+            anchor_y="bottom",
+            size_hint_y=None,
+            height=60
+        )
         build_footer(footer_anchor)
         layout.add_widget(footer_anchor)
 
-        self.add_widget(layout)
+        self.add_widget(scroll)
 
-        # Initialize attributes to avoid AttributeError
-        self.dob_input = TextInput(hint_text="DD/MM/YYYY")
-        self.claimant_widgets["partner_dob"] = TextInput(hint_text="DD/MM/YYYY")
-        self.relationship_input = TextInput(hint_text="single/couple")
-        self.children_dob_inputs = []
-        self.is_carer = False
-        self.lcw = False
-        self.receives_housing_support = False
-
-    # ------------------------
-    # Popup helpers
-    # ------------------------
+    # ---------------------------------------------------------
+    # POPUP HELPERS
+    # ---------------------------------------------------------
     def create_popup(self, title, message):
         lbl = SafeLabel(
             text=message,
             halign="center",
-            color=get_color_from_hex("#005EA5"),  # GOV.UK blue text
+            color=get_color_from_hex("#005EA5"),
             font_size=18,
             font_name="roboto"
         )
         lbl.bind(width=lambda inst, val: setattr(inst, 'text_size', (val, None)))
+
         return Popup(
             title=title,
             content=lbl,
             size_hint=(0.8, 0.4),
-            title_color=get_color_from_hex("#005EA5"),  # styled popup title
-            separator_color=get_color_from_hex("#FFDD00")  # GOV.UK yellow separator
+            title_color=get_color_from_hex("#005EA5"),
+            separator_color=get_color_from_hex("#FFDD00")
         )
 
-    # ------------------------
-    # Predict Payment Flow
-    # ------------------------
+    # ---------------------------------------------------------
+    # PREDICT PAYMENT FLOW
+    # ---------------------------------------------------------
     def predict_payment(self, instance):
         content = BoxLayout(orientation="vertical", spacing=20, padding=20)
 
@@ -1170,14 +1191,16 @@ class MainScreenFullAccess(Screen):
 
         submit_button = RoundedButton(
             text="Submit",
-            size_hint=(None, None), size=(250, 50),
+            size_hint=(None, None),
+            size=(250, 50),
             background_normal="",
             background_color=get_color_from_hex("#FFDD00"),
             font_size=20,
             font_name="roboto",
             color=get_color_from_hex("#005EA5"),
             pos_hint={"center_x": 0.5},
-            halign="center", valign="middle",
+            halign="center",
+            valign="middle",
             text_size=(250, None),
             on_press=lambda _: self.show_prediction_popup(self.income_input.text)
         )
@@ -1205,7 +1228,7 @@ class MainScreenFullAccess(Screen):
         income = income.strip() if income else ""
         try:
             value = float(income)
-            predicted_payment = self.payment_prediction(value)
+            predicted_payment = value * 0.45  # placeholder logic
             message = f"Your next payment is predicted to be: £{predicted_payment:.2f}"
         except (ValueError, TypeError):
             message = "Invalid income entered. Please enter a numeric value."
@@ -1228,70 +1251,9 @@ class MainScreenFullAccess(Screen):
         )
         result_popup.open()
 
-    def payment_prediction(self, income):
-        self.income_input.text = str(income)
-        return self.calculate_entitlement()
-
-    def calculate_entitlement(self):
-        try:
-            dob_date = datetime.strptime(self.dob_input.text, "%d-%m-%Y")
-            partner_dob_date = datetime.strptime(self.claimant_widgets["partner_dob"].text, "%d-%m-%Y")
-        except ValueError:
-            self.create_popup("Invalid Date", "Please enter DOBs in DD/MM/YYYY format").open()
-            return
-
-        current_date = datetime.now()
-        age = current_date.year - dob_date.year - ((current_date.month, current_date.day) < (dob_date.month, dob_date.day))
-        partner_age = current_date.year - partner_dob_date.year - ((current_date.month, current_date.day) < (partner_dob_date.month, partner_dob_date.day))
-
-        relationship_status = self.relationship_input.text.lower()
-
-        if relationship_status == "single":
-            standard_allowance = 316.98 if age < 25 else 400.14
-        elif relationship_status == "couple":
-            standard_allowance = 497.55 if age < 25 and partner_age < 25 else 628.10
-        else:
-            self.create_popup("Invalid Relationship Status", "Please select single or couple").open()
-            return
-
-        child_element = 0
-        children_dobs = []
-        for dob_input in self.children_dob_inputs:
-            try:
-                dob = datetime.strptime(dob_input.text, "%d-%m-%Y")
-                children_dobs.append(dob)
-            except ValueError:
-                self.create_popup("Invalid Date", "Children DOBs must be DD/MM/YYYY").open()
-                return
-
-        for i, dob in enumerate(children_dobs):
-            if i == 0:
-                child_element += 339 if dob < datetime(2017, 4, 6) else 292.81
-            else:
-                child_element += 292.81
-
-        carer_element = 201.68 if self.is_carer else 0
-        disability_element = 0
-        childcare_element = 0
-        housing_element = 0
-
-        try:
-            income = float(self.income_input.text)
-        except ValueError:
-            self.create_popup("Invalid Income", "Please enter a numeric income").open()
-            return
-
-        children = len(children_dobs)
-        work_allowance = 411 if (children > 0 or self.lcw) and self.receives_housing_support else (684 if (children > 0 or self.lcw) else 0)
-
-        total_allowance = standard_allowance + child_element + carer_element + disability_element + childcare_element + housing_element
-        total_deductions = max(0, income - work_allowance) * 0.55
-        entitlement = max(0, total_allowance - total_deductions)
-
-        return entitlement
-
     def log_out(self, instance):
         self.manager.current = "main"
+        
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
 @with_diagnostics([])
@@ -5004,6 +4966,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
