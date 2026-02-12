@@ -697,6 +697,71 @@ class PulsingGlow(Widget):
         self.ellipse.size = self.size
         self.ellipse.pos = self.pos
 
+# =========================================================
+# COLLAPSIBLE SECTION CLASS
+# =========================================================
+class CollapsibleSection(BoxLayout):
+    def __init__(self, title, content_lines, **kwargs):
+        super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+        self.is_open = False
+        self.content_lines = content_lines
+
+        self.header = RoundedButton(
+            text=f"▶  {title}",
+            size_hint=(1, None),
+            height=50,
+            font_size=18,
+            background_color=(0, 0, 0, 0),
+            color=get_color_from_hex("#FFDD00"),
+            halign="left",
+            valign="middle",
+            text_size=(Window.width - 60, None)
+        )
+        self.header.bind(on_press=self.toggle)
+        self.add_widget(self.header)
+
+        self.content_box = BoxLayout(
+            orientation="vertical",
+            spacing=5,
+            padding=(20, 0),
+            size_hint_y=None,
+            height=0,
+            opacity=0
+        )
+           self.add_widget(self.content_box)
+
+    def toggle(self, *args):
+        self.is_open = not self.is_open
+
+        if self.is_open:
+            self.header.text = self.header.text.replace("▶", "▼")
+            self.content_box.opacity = 1
+            self.content_box.clear_widgets()
+
+            for line in self.content_lines:
+                lbl = SafeLabel(
+                    text=line,
+                    font_size=16,
+                    halign="left",
+                    valign="middle",
+                    color=get_color_from_hex("#FFFFFF"),
+                    size_hint_y=None
+                )
+                lbl.bind(
+                    width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+                    texture_size=lambda inst, val: setattr(inst, "height", val[1])
+                )
+                self.content_box.add_widget(lbl)
+
+            total_height = sum(child.height for child in self.content_box.children)
+            self.content_box.height = total_height
+
+        else:
+            self.header.text = self.header.text.replace("▼", "▶")
+            self.content_box.opacity = 0
+            self.content_box.height = 0
+            self.content_box.clear_widgets())
+
 
 @with_diagnostics([])
 class InstantScreen(Screen):
@@ -1688,71 +1753,6 @@ class Calculator(Screen):
         if title not in self._summary_section_cache:
             self._summary_section_cache[title] = self.CollapsibleSection(title, lines)
         return self._summary_section_cache[title]
-
-    # =========================================================
-    # COLLAPSIBLE SECTION CLASS
-    # =========================================================
-    class CollapsibleSection(BoxLayout):
-        def __init__(self, title, content_lines, **kwargs):
-            super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
-            self.is_open = False
-            self.content_lines = content_lines
-
-            self.header = RoundedButton(
-                text=f"▶  {title}",
-                size_hint=(1, None),
-                height=50,
-                font_size=18,
-                background_color=(0, 0, 0, 0),
-                color=get_color_from_hex("#FFDD00"),
-                halign="left",
-                valign="middle",
-                text_size=(Window.width - 60, None)
-            )
-            self.header.bind(on_press=self.toggle)
-            self.add_widget(self.header)
-
-            self.content_box = BoxLayout(
-                orientation="vertical",
-                spacing=5,
-                padding=(20, 0),
-                size_hint_y=None,
-                height=0,
-                opacity=0
-            )
-            self.add_widget(self.content_box)
-
-        def toggle(self, *args):
-            self.is_open = not self.is_open
-
-            if self.is_open:
-                self.header.text = self.header.text.replace("▶", "▼")
-                self.content_box.opacity = 1
-                self.content_box.clear_widgets()
-
-                for line in self.content_lines:
-                    lbl = SafeLabel(
-                        text=line,
-                        font_size=16,
-                        halign="left",
-                        valign="middle",
-                        color=get_color_from_hex("#FFFFFF"),
-                        size_hint_y=None
-                    )
-                    lbl.bind(
-                        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
-                        texture_size=lambda inst, val: setattr(inst, "height", val[1])
-                    )
-                    self.content_box.add_widget(lbl)
-
-                total_height = sum(child.height for child in self.content_box.children)
-                self.content_box.height = total_height
-
-            else:
-                self.header.text = self.header.text.replace("▼", "▶")
-                self.content_box.opacity = 0
-                self.content_box.height = 0
-                self.content_box.clear_widgets()
 
     # =========================================================
     # BRMA CACHE LOADER (unchanged)
@@ -5020,6 +5020,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
