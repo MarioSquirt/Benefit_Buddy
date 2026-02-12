@@ -815,10 +815,22 @@ class DisclaimerScreen(Screen):
             spacing=0
         )
 
-        # Foreground bar (GOV.UK yellow)
+        # Foreground bar (GOV.UK yellow) using canvas
         self.loading_bar_fg = BoxLayout(
-            size_hint=(0, 1),  # width grows
-            background_color=get_color_from_hex("#FFDD00")
+            size_hint=(0, 1)  # width grows
+        )
+        
+        with self.loading_bar_fg.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))
+            self._loading_bar_rect = Rectangle(
+                size=self.loading_bar_fg.size,
+                pos=self.loading_bar_fg.pos
+            )
+        
+        # Keep rectangle synced with widget size/pos
+        self.loading_bar_fg.bind(
+            size=lambda inst, val: setattr(self._loading_bar_rect, "size", val),
+            pos=lambda inst, val: setattr(self._loading_bar_rect, "pos", val)
         )
 
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
@@ -5003,6 +5015,7 @@ class CalculationBreakdownScreen(Screen):
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
+
 
 
 
