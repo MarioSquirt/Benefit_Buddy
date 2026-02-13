@@ -4083,6 +4083,9 @@ class MainScreen(BaseScreen):
     def go_to_settings(self, instance):
         App.get_running_app().nav.go("settings")
 
+    def exit_app(self, instance):
+        App.get_running_app().stop()
+
 # Define the Main Screen for Full Access
 @with_diagnostics([])
 class MainScreenFullAccess(BaseScreen):
@@ -4698,6 +4701,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
