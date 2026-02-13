@@ -3960,7 +3960,7 @@ class DisclaimerScreen(BaseScreen):
             halign="center",
             valign="middle",
             text_size=(250, None),
-            on_press=lambda x: setattr(self.manager, "current", "main")
+            on_press=lambda x: App.get_running_app().nav.go("main")
         )
         layout.add_widget(self.continue_button)
 
@@ -4692,6 +4692,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
