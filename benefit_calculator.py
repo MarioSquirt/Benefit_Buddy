@@ -4568,6 +4568,7 @@ class NavigationManager:
         return self.loaded.get(name)
 
     def go(self, name):
+        print("DEBUG: go() called with:", name)
         if not name:
             print("ERROR: NavigationManager.go() received invalid screen name:", name)
             return
@@ -4694,6 +4695,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
