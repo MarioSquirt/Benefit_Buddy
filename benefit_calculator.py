@@ -4568,6 +4568,10 @@ class NavigationManager:
         return self.loaded.get(name)
 
     def go(self, name):
+        if not name:
+            print("ERROR: NavigationManager.go() received invalid screen name:", name)
+            return
+    
         # destroy old
         if self.sm.current in self.loaded:
             old = self.loaded[self.sm.current]
@@ -4575,7 +4579,7 @@ class NavigationManager:
             old.destroy()
             self.sm.remove_widget(old)
             del self.loaded[self.sm.current]
-
+    
         # create new
         new = ScreenFactory.create(name)
         self.loaded[name] = new
@@ -4690,6 +4694,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
