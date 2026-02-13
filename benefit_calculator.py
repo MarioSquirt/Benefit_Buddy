@@ -3988,14 +3988,9 @@ class DisclaimerScreen(BaseScreen):
 
     def _load_csv_thread(self):
         app = App.get_running_app()
-        calculator = None
-        while calculator is None:
-            try:
-                calculator = app.root.get_screen("calculator")
-            except:
-                calculator = None
-
-        calculator.load_brma_cache()
+        calculator = app.nav.get("calculator_intro")
+        if calculator:
+            calculator.load_brma_cache()
         Clock.schedule_once(self._loading_complete, 0)
 
     def _loading_complete(self, dt):
@@ -4703,6 +4698,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
