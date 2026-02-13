@@ -3756,7 +3756,7 @@ class CalculationBreakdownScreen(BaseScreen):
         self.add_widget(outer)
 
     def go_back(self, *args):
-        self.manager.current = "summary"
+        App.get_running_app().nav.go("summary")
 
     def populate_breakdown(self, breakdown_dict):
         """Fill the table with calculation components."""
@@ -3857,7 +3857,7 @@ class SettingsScreen(BaseScreen):
         self.add_widget(layout)
 
     def go_to_main(self, instance):
-        self.manager.current = "main"
+        App.get_running_app().nav.go("main")
 
 # Disclaimer Screen
 @with_diagnostics([])
@@ -4077,19 +4077,16 @@ class MainScreen(BaseScreen):
 
     # Navigation methods
     def go_to_create_account(self, instance):
-        self.manager.current = "create_account"
-
+        App.get_running_app().nav.go("create_account")
+    
     def go_to_login(self, instance):
-        self.manager.current = "log_in"
-
+        App.get_running_app().nav.go("log_in")
+    
     def go_to_guest_access(self, instance):
-        self.manager.current = "main_guest_access"
-
+        App.get_running_app().nav.go("main_guest_access")
+    
     def go_to_settings(self, instance):
-        self.manager.current = "settings"
-
-    def exit_app(self, instance):
-        App.get_running_app().stop()
+        App.get_running_app().nav.go("settings")
 
 # Define the Main Screen for Full Access
 @with_diagnostics([])
@@ -4277,7 +4274,7 @@ class MainScreenFullAccess(BaseScreen):
         result_popup.open()
 
     def log_out(self, instance):
-        self.manager.current = "main"
+        App.get_running_app().nav.go("main")
         
         
 # Define the Guest Access Screen (reusing HomePage for simplicity)
@@ -4346,10 +4343,10 @@ class MainScreenGuestAccess(BaseScreen):
         self.add_widget(layout)
 
     def go_to_calculator(self, instance):
-        self.manager.current = "calculator"
+        App.get_running_app().nav.go("calculator")
 
     def log_out(self, instance):
-        self.manager.current = "main"
+        App.get_running_app().nav.go("main")
 
 # Define the Create Account Screen
 @with_diagnostics([])
@@ -4416,7 +4413,7 @@ class CreateAccountPage(BaseScreen):
         self.add_widget(layout)
 
     def go_back(self, instance):
-        self.manager.current = "main"
+        App.get_running_app().nav.go("main)
 
 # Define the Login Screen
 @with_diagnostics([])
@@ -4481,10 +4478,10 @@ class LoginPage(BaseScreen):
         self.add_widget(layout)
 
     def log_in(self, instance):
-        self.manager.current = "main_full_access"
+        App.get_running_app().nav.go("main_full_access")
 
     def go_back(self, instance):
-        self.manager.current = "main"
+        App.get_running_app().nav.go("main")
 
 
 class ScreenFactory:
@@ -4695,6 +4692,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
