@@ -4555,6 +4555,7 @@ class ScreenFactory:
 
         raise ValueError(f"Unknown screen: {name}")
 
+
 class NavigationManager:
 
     def __init__(self, screen_manager):
@@ -4566,23 +4567,33 @@ class NavigationManager:
 
     def go(self, name):
         print("DEBUG: go() called with:", name)
+
         if not name:
             print("ERROR: NavigationManager.go() received invalid screen name:", name)
             return
-    
-        # destroy old
-        if self.sm.current in self.loaded:
-            old = self.loaded[self.sm.current]
+
+        print("DEBUG: before destroy: sm.current =", self.sm.current,
+              "loaded keys =", list(self.loaded.keys()))
+
+        # destroy old, but only if current is valid and tracked
+        current = self.sm.current
+        if current and current in self.loaded:
+            old = self.loaded[current]
             old.on_pre_leave()
             old.destroy()
             self.sm.remove_widget(old)
-            del self.loaded[self.sm.current]
-    
+            del self.loaded[current]
+        else:
+            print("DEBUG: skip destroy, current not in loaded or is None")
+
         # create new
         new = ScreenFactory.create(name)
         self.loaded[name] = new
         self.sm.add_widget(new)
         self.sm.current = name
+        print("DEBUG: after go: sm.current =", self.sm.current,
+              "loaded keys =", list(self.loaded.keys()))
+
 
 # Define the main application class
 class BenefitBuddy(App):
@@ -4692,6 +4703,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
