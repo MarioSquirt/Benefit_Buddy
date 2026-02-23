@@ -1604,8 +1604,18 @@ class CalculatorNavBar(BoxLayout):
             spacing=12,
             padding=(10, 10),
             size_hint_y=None,
-            height=70,
+            height=90,
             **kwargs
+        )
+
+        # Full yellow background
+        with self.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))
+            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
+
+        self.bind(
+            size=lambda inst, val: setattr(self._bg_rect, "size", val),
+            pos=lambda inst, val: setattr(self._bg_rect, "pos", val),
         )
 
         app = App.get_running_app()
@@ -1625,12 +1635,24 @@ class CalculatorNavBar(BoxLayout):
         for label, screen_name in sections:
             is_current = (screen_name == current)
 
-            btn_layout = BoxLayout(
+            # Button container
+            btn = BoxLayout(
                 orientation="vertical",
                 size_hint=(None, None),
-                size=(120, 60),
-                padding=0,
-                spacing=2,
+                size=(120, 70),
+                padding=2,
+                spacing=4,
+            )
+
+            
+            # Highlight current screen with blue border
+            with btn.canvas.before:
+                Color(*get_color_from_hex("#005EA5") if is_current else (0, 0, 0, 0))
+                btn._border = Rectangle(size=btn.size, pos=btn.pos)
+
+            btn.bind(
+                size=lambda inst, val: setattr(inst._border, "size", val),
+                pos=lambda inst, val: setattr(inst._border, "pos", val),
             )
 
             # Icon
@@ -1653,29 +1675,16 @@ class CalculatorNavBar(BoxLayout):
                 height=20,
             )
 
-            # Highlight background
-            with btn_layout.canvas.before:
-                Color(*(
-                    get_color_from_hex("#FFDD00") if is_current else (0, 0, 0, 0)
-                ))
-                self._rect = Rectangle(size=btn_layout.size, pos=btn_layout.pos)
+            btn.add_widget(icon)
+            btn.add_widget(text_label)
 
-            btn_layout.bind(
-                size=lambda inst, val: setattr(self._rect, "size", val),
-                pos=lambda inst, val: setattr(self._rect, "pos", val),
-            )
-
-            # Add icon + text
-            btn_layout.add_widget(icon)
-            btn_layout.add_widget(text_label)
-
-            # Make the whole layout clickable
-            btn_layout.bind(
+            # Make clickable
+            btn.bind(
                 on_touch_down=lambda inst, touch, s=screen_name:
                     app.nav.go(s) if inst.collide_point(*touch.pos) else None
             )
 
-            self.add_widget(btn_layout)
+            self.add_widget(btn)
 
         
 class BaseScreen(Screen):
@@ -1712,6 +1721,9 @@ class CalculatorIntroScreen(BaseScreen):
             spacing=20,
         )
         container.bind(minimum_height=container.setter("height"))
+
+        # Ensure container expands to full screen height
+        scroll.bind(height=lambda inst, val: setattr(container, "size_hint_min_y", val))
 
         # Actual content layout
         content = BoxLayout(
@@ -3964,13 +3976,15 @@ class DisclaimerScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # ROOT layout (scroll + centered content)
         root = BoxLayout(orientation="vertical")
 
-        # ScrollView (fills remaining space)
-        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+        scroll = ScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True,
+            bar_width=0
+        )
 
-        # Container that expands to fill screen height
         container = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
@@ -3979,7 +3993,9 @@ class DisclaimerScreen(BaseScreen):
         )
         container.bind(minimum_height=container.setter("height"))
 
-        # Actual content layout
+        # Ensure container expands to full screen height
+        scroll.bind(height=lambda inst, val: setattr(container, "size_hint_min_y", val))
+
         content = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -3987,7 +4003,6 @@ class DisclaimerScreen(BaseScreen):
         )
         content.bind(minimum_height=content.setter("height"))
 
-        # Disclaimer text
         disclaimer_text = SafeLabel(
             text=(
                 "Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
@@ -4006,7 +4021,6 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(disclaimer_text)
 
-        # Loading label
         self.loading_label = SafeLabel(
             text="Loading data…",
             font_size=16,
@@ -4018,7 +4032,6 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.loading_label)
 
-        # Background bar (GOV.UK yellow)
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
             height=20,
@@ -4027,23 +4040,16 @@ class DisclaimerScreen(BaseScreen):
         )
         with self.loading_bar_bg.canvas.before:
             Color(*get_color_from_hex("#FFDD00"))
-            self._loading_bg_rect = Rectangle(
-                size=self.loading_bar_bg.size,
-                pos=self.loading_bar_bg.pos
-            )
+            self._loading_bg_rect = Rectangle(size=self.loading_bar_bg.size, pos=self.loading_bar_bg.pos)
         self.loading_bar_bg.bind(
             size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
         )
 
-        # Foreground bar (GOV.UK blue)
         self.loading_bar_fg = BoxLayout(size_hint=(1, 1))
         with self.loading_bar_fg.canvas.before:
             Color(*get_color_from_hex("#005EA5"))
-            self._loading_fg_rect = Rectangle(
-                size=self.loading_bar_fg.size,
-                pos=self.loading_bar_fg.pos
-            )
+            self._loading_fg_rect = Rectangle(size=self.loading_bar_fg.size, pos=self.loading_bar_fg.pos)
         self.loading_bar_fg.bind(
             size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
@@ -4052,7 +4058,6 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         content.add_widget(self.loading_bar_bg)
 
-        # Continue button
         self.continue_button = RoundedButton(
             text="Continue",
             size_hint=(None, None),
@@ -4070,19 +4075,16 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.continue_button)
 
-        # Footer
         build_footer(content)
 
-        # ⭐ Center content vertically when short
-        container.add_widget(Widget(size_hint_y=1))   # top spacer
+        container.add_widget(Widget(size_hint_y=1))
         container.add_widget(content)
-        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
+        container.add_widget(Widget(size_hint_y=1))
 
         scroll.add_widget(container)
         root.add_widget(scroll)
         self.add_widget(root)
 
-        # Internal progress tracker
         self._progress = 0.0
 
     def on_enter(self):
@@ -4813,6 +4815,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
