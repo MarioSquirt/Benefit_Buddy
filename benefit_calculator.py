@@ -1620,7 +1620,9 @@ class CalculatorNavBar(BoxLayout):
 
         app = App.get_running_app()
 
-        # ⭐ Add HOME button first
+        # ---------------------------------------------------------
+        # HOME BUTTON
+        # ---------------------------------------------------------
         home_btn = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -1630,7 +1632,7 @@ class CalculatorNavBar(BoxLayout):
         )
 
         home_icon = Image(
-            source="images/icons/Home-icon/Home-32px.png",  # <-- You can adjust this path
+            source="images/icons/Home-icon/Home-32px.png",
             size_hint=(None, None),
             size=(32, 32),
             allow_stretch=True,
@@ -1650,7 +1652,7 @@ class CalculatorNavBar(BoxLayout):
         home_btn.add_widget(home_icon)
         home_btn.add_widget(home_label)
 
-        # Underline highlight (only if current == "main")
+        # ⭐ Underline highlight for HOME
         with home_btn.canvas.after:
             Color(*get_color_from_hex("#005EA5") if current == "main" else (0, 0, 0, 0))
             home_btn._underline = Rectangle(size=(home_btn.width, 3), pos=(home_btn.x, home_btn.y))
@@ -1660,7 +1662,7 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(inst._underline, "pos", (inst.x, inst.y)),
         )
 
-        # Make home button clickable
+        # Clickable
         home_btn.bind(
             on_touch_down=lambda inst, touch:
                 app.nav.go("main") if inst.collide_point(*touch.pos) else None
@@ -1668,7 +1670,9 @@ class CalculatorNavBar(BoxLayout):
 
         self.add_widget(home_btn)
 
-        # ⭐ Calculator sections
+        # ---------------------------------------------------------
+        # CALCULATOR SECTIONS
+        # ---------------------------------------------------------
         sections = [
             ("Introduction", "calculator_intro"),
             ("Claimant Details", "calculator_claimant_details"),
@@ -1713,7 +1717,7 @@ class CalculatorNavBar(BoxLayout):
             btn.add_widget(icon)
             btn.add_widget(text_label)
 
-            # Blue underline highlight
+            # ⭐ Correct underline highlight (bottom of button)
             with btn.canvas.after:
                 Color(*get_color_from_hex("#005EA5") if is_current else (0, 0, 0, 0))
                 btn._underline = Rectangle(size=(btn.width, 3), pos=(btn.x, btn.y))
@@ -1723,7 +1727,72 @@ class CalculatorNavBar(BoxLayout):
                 pos=lambda inst, val: setattr(inst._underline, "pos", (inst.x, inst.y)),
             )
 
-            # Make clickable
+            # Clickable
+            btn.bind(
+                on_touch_down=lambda inst, touch, s=screen_name:
+                    app.nav.go(s) if inst.collide_point(*touch.pos) else None
+            )
+
+            self.add_widget(btn)
+
+        # ---------------------------------------------------------
+        # CALCULATOR SECTIONS
+        # ---------------------------------------------------------
+        sections = [
+            ("Introduction", "calculator_intro"),
+            ("Claimant Details", "calculator_claimant_details"),
+            ("Finances", "calculator_finances"),
+            ("Housing", "calculator_housing"),
+            ("Children", "calculator_children"),
+            ("Additional Elements", "calculator_additional"),
+            ("Sanctions", "calculator_sanctions"),
+            ("Advanced Payments", "calculator_advance"),
+            ("Summary", "calculator_final"),
+        ]
+
+        for label, screen_name in sections:
+            is_current = (screen_name == current)
+
+            btn = BoxLayout(
+                orientation="vertical",
+                size_hint=(None, None),
+                size=(120, 80),
+                spacing=4,
+                padding=0,
+            )
+
+            icon = Image(
+                source=ICON_PATHS[label],
+                size_hint=(None, None),
+                size=(32, 32),
+                allow_stretch=True,
+                keep_ratio=True,
+            )
+
+            text_label = SafeLabel(
+                text=label,
+                font_size=12,
+                halign="center",
+                valign="middle",
+                color=get_color_from_hex("#005EA5"),
+                size_hint=(1, None),
+                height=20,
+            )
+
+            btn.add_widget(icon)
+            btn.add_widget(text_label)
+
+            # ⭐ Correct underline highlight (bottom of button)
+            with btn.canvas.after:
+                Color(*get_color_from_hex("#005EA5") if is_current else (0, 0, 0, 0))
+                btn._underline = Rectangle(size=(btn.width, 3), pos=(btn.x, btn.y))
+
+            btn.bind(
+                size=lambda inst, val: setattr(inst._underline, "size", (val[0], 3)),
+                pos=lambda inst, val: setattr(inst._underline, "pos", (inst.x, inst.y)),
+            )
+
+            # Clickable
             btn.bind(
                 on_touch_down=lambda inst, touch, s=screen_name:
                     app.nav.go(s) if inst.collide_point(*touch.pos) else None
@@ -1749,28 +1818,24 @@ class CalculatorIntroScreen(BaseScreen):
         self.build_ui()
 
     def build_ui(self):
-        # ROOT layout (nav bar + scroll)
         root = BoxLayout(orientation="vertical")
-
-        # ⭐ Navigation bar at the top
         root.add_widget(CalculatorNavBar(current="calculator_intro"))
 
-        # ScrollView (fills remaining space)
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
-        # Container that expands to fill screen height
         container = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
             padding=20,
             spacing=20,
         )
+
+        # ⭐ REQUIRED for centering
         container.bind(minimum_height=container.setter("height"))
 
-        # ⭐ Ensure container expands to full screen height
+        # ⭐ REQUIRED for centering
         scroll.bind(height=lambda inst, val: setattr(container, "minimum_height", val))
 
-        # Actual content layout
         content = BoxLayout(
             orientation="vertical",
             spacing=20,
@@ -1778,7 +1843,6 @@ class CalculatorIntroScreen(BaseScreen):
         )
         content.bind(minimum_height=content.setter("height"))
 
-        # Introductory text
         content.add_widget(wrapped_SafeLabel("Welcome to the Benefit Buddy Calculator", 20, 32))
         content.add_widget(wrapped_SafeLabel("This calculator will help you estimate your Universal Credit entitlement.", 16, 28))
         content.add_widget(wrapped_SafeLabel("Please follow the steps to enter your details.", 16, 28))
@@ -1791,18 +1855,12 @@ class CalculatorIntroScreen(BaseScreen):
         content.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
         content.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
 
-        # ⭐ Center content vertically when short
-        container.add_widget(Widget(size_hint_y=1))   # top spacer
+        container.add_widget(Widget(size_hint_y=1))
         container.add_widget(content)
-        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
+        container.add_widget(Widget(size_hint_y=1))
 
-        # Add container to scroll
         scroll.add_widget(container)
-
-        # Add scroll to root
         root.add_widget(scroll)
-
-        # Add root to screen
         self.add_widget(root)
 
     def on_pre_enter(self, *args):
@@ -1821,6 +1879,11 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
     # BUILD UI (converted from create_claimant_details_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_claimant_details"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
         layout = BoxLayout(
@@ -1922,7 +1985,10 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
         )
         layout.add_widget(self.claimant_widgets["partner_dob"])
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_claimant_details"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # CHECKBOX CALLBACK
@@ -1993,6 +2059,11 @@ class CalculatorFinancesScreen(BaseScreen):
     # BUILD UI (converted from create_finances_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_finances"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         # Scrollable outer layout
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
@@ -2087,7 +2158,10 @@ class CalculatorFinancesScreen(BaseScreen):
         # Spacer
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_finances"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # SAVE LOGIC (unchanged)
@@ -2142,6 +2216,11 @@ class CalculatorHousingScreen(BaseScreen):
     # BUILD UI (Part 1 + Part 2 merged)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_housing"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
         layout = BoxLayout(
@@ -2526,7 +2605,10 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         _show_amount_widget(self.housing_widgets["housing_type"].text)
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_housing"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # SAVE LOGIC (move your existing function here)
@@ -2770,6 +2852,11 @@ class CalculatorChildrenScreen(BaseScreen):
     # BUILD UI (converted from create_children_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_children"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         # Scrollable outer layout
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
@@ -2829,7 +2916,10 @@ class CalculatorChildrenScreen(BaseScreen):
         # Spacer below buttons
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_children"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # ADD CHILD SECTION
@@ -3040,6 +3130,11 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
     # BUILD UI (converted from create_additional_elements_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_additional"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
         layout = BoxLayout(
@@ -3245,7 +3340,10 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
 
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_additional"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # SAVE LOGIC (move your existing save_additional_elements here)
@@ -3347,6 +3445,11 @@ class CalculatorSanctionsScreen(BaseScreen):
     # BUILD UI (converted from create_sanction_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_sanctions"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
         layout = BoxLayout(
@@ -3427,7 +3530,10 @@ class CalculatorSanctionsScreen(BaseScreen):
 
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_sanctions"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # SAVE LOGIC (converted from save_sanction_details)
@@ -3485,6 +3591,11 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
     # BUILD UI (converted from create_advance_payments_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_advance"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
         layout = BoxLayout(
@@ -3569,7 +3680,10 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
 
         layout.add_widget(Widget(size_hint_y=0.05))
 
-        self.add_widget(scroll)
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_advance"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # SAVE LOGIC (converted from save_advance_payment_details)
@@ -3641,6 +3755,11 @@ class CalculatorFinalScreen(BaseScreen):
     # BUILD UI (converted from create_calculate_screen)
     # ---------------------------------------------------------
     def build_ui(self):
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_final"))
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         outer = BoxLayout(
             orientation="vertical",
             spacing=0,
@@ -3727,6 +3846,11 @@ class CalculatorFinalScreen(BaseScreen):
         outer.add_widget(button_bar)
 
         self.add_widget(outer)
+
+        root = BoxLayout(orientation="vertical")
+        root.add_widget(CalculatorNavBar(current="calculator_final"))
+        root.add_widget(scroll)
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # RUN CALCULATION (converted from run_calculation)
@@ -4036,6 +4160,8 @@ class DisclaimerScreen(BaseScreen):
             padding=20,
             spacing=20,
         )
+
+        # ⭐ REQUIRED for centering — you were missing this
         container.bind(minimum_height=container.setter("height"))
 
         # ⭐ Correct centering rule
@@ -4158,7 +4284,6 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_fg.size_hint_x = 0
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
-
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -4862,6 +4987,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
