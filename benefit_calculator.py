@@ -4341,7 +4341,7 @@ class MainScreenGuestAccess(BaseScreen):
         self.add_widget(layout)
 
     def go_to_calculator(self, instance):
-        App.get_running_app().nav.go("calculator")
+        App.get_running_app().nav.go("calculator_intro")
 
     def log_out(self, instance):
         App.get_running_app().nav.go("main")
@@ -4701,6 +4701,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
