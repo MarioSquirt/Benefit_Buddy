@@ -1597,6 +1597,87 @@ class CollapsibleSection(BoxLayout):
             self.content_box.height = 0
             self.content_box.clear_widgets()
 
+class CalculatorNavBar(BoxLayout):
+    def __init__(self, current, **kwargs):
+        super().__init__(
+            orientation="horizontal",
+            spacing=12,
+            padding=(10, 10),
+            size_hint_y=None,
+            height=70,
+            **kwargs
+        )
+
+        app = App.get_running_app()
+
+        sections = [
+            ("Introduction", "calculator_intro"),
+            ("Claimant Details", "calculator_claimant_details"),
+            ("Finances", "calculator_finances"),
+            ("Housing", "calculator_housing"),
+            ("Children", "calculator_children"),
+            ("Additional Elements", "calculator_additional"),
+            ("Sanctions", "calculator_sanctions"),
+            ("Advanced Payments", "calculator_advance"),
+            ("Summary", "calculator_final"),
+        ]
+
+        for label, screen_name in sections:
+            is_current = (screen_name == current)
+
+            btn_layout = BoxLayout(
+                orientation="vertical",
+                size_hint=(None, None),
+                size=(120, 60),
+                padding=0,
+                spacing=2,
+            )
+
+            # Icon
+            icon = Image(
+                source=ICON_PATHS[label],
+                size_hint=(None, None),
+                size=(32, 32),
+                allow_stretch=True,
+                keep_ratio=True,
+            )
+
+            # Label
+            text_label = SafeLabel(
+                text=label,
+                font_size=12,
+                halign="center",
+                valign="middle",
+                color=get_color_from_hex("#005EA5"),
+                size_hint=(1, None),
+                height=20,
+            )
+
+            # Highlight background
+            with btn_layout.canvas.before:
+                Color(*(
+                    get_color_from_hex("#FFDD00") if is_current else (0, 0, 0, 0)
+                ))
+                self._rect = Rectangle(size=btn_layout.size, pos=btn_layout.pos)
+
+            btn_layout.bind(
+                size=lambda inst, val: setattr(self._rect, "size", val),
+                pos=lambda inst, val: setattr(self._rect, "pos", val),
+            )
+
+            # Add icon + text
+            btn_layout.add_widget(icon)
+            btn_layout.add_widget(text_label)
+
+            # Make the whole layout clickable
+            btn_layout.bind(
+                on_touch_down=lambda inst, touch, s=screen_name:
+                    app.nav.go(s) if inst.collide_point(*touch.pos) else None
+            )
+
+            self.add_widget(btn_layout)
+
+        
 class BaseScreen(Screen):
     def on_pre_leave(self):
         pass
@@ -1610,47 +1691,65 @@ class CalculatorIntroScreen(BaseScreen):
 
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
-        self.calculator_state = calculator_state   # shared state object
+        self.calculator_state = calculator_state
         self.build_ui()
 
-    # ---------------------------------------------------------
-    # BUILD UI (converted from create_intro_screen)
-    # ---------------------------------------------------------
     def build_ui(self):
-        # Scrollable container
+        # ROOT layout (nav bar + scroll)
+        root = BoxLayout(orientation="vertical")
+
+        # ⭐ Navigation bar at the top
+        root.add_widget(CalculatorNavBar(current="calculator_intro"))
+
+        # ScrollView (fills remaining space)
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
-        # Vertical layout inside scroll
-        layout = BoxLayout(
+        # Container that expands to fill screen height
+        container = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            padding=20,
+            spacing=20,
+        )
+        container.bind(minimum_height=container.setter("height"))
+
+        # Actual content layout
+        content = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=20,
-            size_hint=(1, None)
+            size_hint=(1, None),
         )
-        layout.bind(minimum_height=layout.setter("height"))
+        content.bind(minimum_height=content.setter("height"))
 
-        # Introductory text (GOV.UK style spacing)
-        layout.add_widget(wrapped_SafeLabel("Welcome to the Benefit Buddy Calculator", 20, 32))
-        layout.add_widget(wrapped_SafeLabel("This calculator will help you estimate your Universal Credit entitlement.", 16, 28))
-        layout.add_widget(wrapped_SafeLabel("Please follow the steps to enter your details.", 16, 28))
-        layout.add_widget(wrapped_SafeLabel("You can navigate through the screens using the dropdown menu above.", 16, 28))
+        # Introductory text
+        content.add_widget(wrapped_SafeLabel("Welcome to the Benefit Buddy Calculator", 20, 32))
+        content.add_widget(wrapped_SafeLabel("This calculator will help you estimate your Universal Credit entitlement.", 16, 28))
+        content.add_widget(wrapped_SafeLabel("Please follow the steps to enter your details.", 16, 28))
+        content.add_widget(wrapped_SafeLabel("You can navigate through the screens using the dropdown menu above.", 16, 28))
 
-        layout.add_widget(wrapped_SafeLabel("Before you start, please ensure you have the following information ready:", 16, 28))
-        layout.add_widget(wrapped_SafeLabel("- Your personal details (name, date of birth, etc.)", 14, 24))
-        layout.add_widget(wrapped_SafeLabel("- Your income and capital details", 14, 24))
-        layout.add_widget(wrapped_SafeLabel("- Your housing situation (rent or own)", 14, 24))
-        layout.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
-        layout.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
+        content.add_widget(wrapped_SafeLabel("Before you start, please ensure you have the following information ready:", 16, 28))
+        content.add_widget(wrapped_SafeLabel("- Your personal details (name, date of birth, etc.)", 14, 24))
+        content.add_widget(wrapped_SafeLabel("- Your income and capital details", 14, 24))
+        content.add_widget(wrapped_SafeLabel("- Your housing situation (rent or own)", 14, 24))
+        content.add_widget(wrapped_SafeLabel("- Details of any children or dependents", 14, 24))
+        content.add_widget(wrapped_SafeLabel("- Any additional elements that may apply to you", 14, 24))
 
-        scroll.add_widget(layout)
-        self.add_widget(scroll)
+        # ⭐ Center content vertically when short
+        container.add_widget(Widget(size_hint_y=1))   # top spacer
+        container.add_widget(content)
+        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
 
-    # ---------------------------------------------------------
-    # RESTORE LOGIC (unchanged)
-    # ---------------------------------------------------------
+        # Add container to scroll
+        scroll.add_widget(container)
+
+        # Add scroll to root
+        root.add_widget(scroll)
+
+        # Add root to screen
+        self.add_widget(root)
+
     def on_pre_enter(self, *args):
-        # Nothing to restore for intro screen
-        pass   
+        pass
 
 
 class CalculatorClaimantDetailsScreen(BaseScreen):
@@ -3865,17 +3964,28 @@ class DisclaimerScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # OUTER SCROLLVIEW (fixes Android layout collapse)
+        # ROOT layout (scroll + centered content)
+        root = BoxLayout(orientation="vertical")
+
+        # ScrollView (fills remaining space)
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
 
-        # MAIN LAYOUT (must have size_hint_y=None)
-        layout = BoxLayout(
+        # Container that expands to fill screen height
+        container = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            padding=20,
+            spacing=20,
+        )
+        container.bind(minimum_height=container.setter("height"))
+
+        # Actual content layout
+        content = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=20,
-            size_hint_y=None
+            size_hint=(1, None),
         )
-        layout.bind(minimum_height=layout.setter("height"))
+        content.bind(minimum_height=content.setter("height"))
 
         # Disclaimer text
         disclaimer_text = SafeLabel(
@@ -3894,7 +4004,7 @@ class DisclaimerScreen(BaseScreen):
             width=lambda inst, val: setattr(inst, 'text_size', (val, None)),
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
-        layout.add_widget(disclaimer_text)
+        content.add_widget(disclaimer_text)
 
         # Loading label
         self.loading_label = SafeLabel(
@@ -3906,7 +4016,7 @@ class DisclaimerScreen(BaseScreen):
             size_hint_y=None,
             height=40
         )
-        layout.add_widget(self.loading_label)
+        content.add_widget(self.loading_label)
 
         # Background bar (GOV.UK yellow)
         self.loading_bar_bg = BoxLayout(
@@ -3915,38 +4025,34 @@ class DisclaimerScreen(BaseScreen):
             padding=0,
             spacing=0
         )
-        
         with self.loading_bar_bg.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))  # Yellow background
+            Color(*get_color_from_hex("#FFDD00"))
             self._loading_bg_rect = Rectangle(
                 size=self.loading_bar_bg.size,
                 pos=self.loading_bar_bg.pos
             )
-        
         self.loading_bar_bg.bind(
             size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
         )
-        
-        # Foreground bar (GOV.UK blue) that shrinks
+
+        # Foreground bar (GOV.UK blue)
         self.loading_bar_fg = BoxLayout(size_hint=(1, 1))
-        
         with self.loading_bar_fg.canvas.before:
-            Color(*get_color_from_hex("#005EA5"))  # Blue overlay
+            Color(*get_color_from_hex("#005EA5"))
             self._loading_fg_rect = Rectangle(
                 size=self.loading_bar_fg.size,
                 pos=self.loading_bar_fg.pos
             )
-        
         self.loading_bar_fg.bind(
             size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
-        
-        self.loading_bar_bg.add_widget(self.loading_bar_fg)
-        layout.add_widget(self.loading_bar_bg)
 
-        # Continue button (centered + visible text)
+        self.loading_bar_bg.add_widget(self.loading_bar_fg)
+        content.add_widget(self.loading_bar_bg)
+
+        # Continue button
         self.continue_button = RoundedButton(
             text="Continue",
             size_hint=(None, None),
@@ -3962,13 +4068,19 @@ class DisclaimerScreen(BaseScreen):
             text_size=(250, None),
             on_press=lambda x: App.get_running_app().nav.go("main")
         )
-        layout.add_widget(self.continue_button)
+        content.add_widget(self.continue_button)
 
         # Footer
-        build_footer(layout)
+        build_footer(content)
 
-        scroll.add_widget(layout)
-        self.add_widget(scroll)
+        # ⭐ Center content vertically when short
+        container.add_widget(Widget(size_hint_y=1))   # top spacer
+        container.add_widget(content)
+        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
+
+        scroll.add_widget(container)
+        root.add_widget(scroll)
+        self.add_widget(root)
 
         # Internal progress tracker
         self._progress = 0.0
@@ -4701,6 +4813,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
