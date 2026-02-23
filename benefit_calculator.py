@@ -1601,10 +1601,10 @@ class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
         super().__init__(
             orientation="horizontal",
-            spacing=12,
-            padding=(10, 10),
+            spacing=20,
+            padding=(20, 10),
             size_hint_y=None,
-            height=90,
+            height=100,
             **kwargs
         )
 
@@ -1620,6 +1620,55 @@ class CalculatorNavBar(BoxLayout):
 
         app = App.get_running_app()
 
+        # ⭐ Add HOME button first
+        home_btn = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),
+            size=(100, 80),
+            spacing=4,
+            padding=0,
+        )
+
+        home_icon = Image(
+            source="images/icons/Home-icon/Home-32px.png",  # <-- You can adjust this path
+            size_hint=(None, None),
+            size=(32, 32),
+            allow_stretch=True,
+            keep_ratio=True,
+        )
+
+        home_label = SafeLabel(
+            text="Home",
+            font_size=12,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5"),
+            size_hint=(1, None),
+            height=20,
+        )
+
+        home_btn.add_widget(home_icon)
+        home_btn.add_widget(home_label)
+
+        # Underline highlight (only if current == "main")
+        with home_btn.canvas.after:
+            Color(*get_color_from_hex("#005EA5") if current == "main" else (0, 0, 0, 0))
+            home_btn._underline = Rectangle(size=(home_btn.width, 3), pos=(home_btn.x, home_btn.y))
+
+        home_btn.bind(
+            size=lambda inst, val: setattr(inst._underline, "size", (val[0], 3)),
+            pos=lambda inst, val: setattr(inst._underline, "pos", (inst.x, inst.y)),
+        )
+
+        # Make home button clickable
+        home_btn.bind(
+            on_touch_down=lambda inst, touch:
+                app.nav.go("main") if inst.collide_point(*touch.pos) else None
+        )
+
+        self.add_widget(home_btn)
+
+        # ⭐ Calculator sections
         sections = [
             ("Introduction", "calculator_intro"),
             ("Claimant Details", "calculator_claimant_details"),
@@ -1635,27 +1684,14 @@ class CalculatorNavBar(BoxLayout):
         for label, screen_name in sections:
             is_current = (screen_name == current)
 
-            # Button container
             btn = BoxLayout(
                 orientation="vertical",
                 size_hint=(None, None),
-                size=(120, 70),
-                padding=2,
+                size=(120, 80),
                 spacing=4,
+                padding=0,
             )
 
-            
-            # Highlight current screen with blue border
-            with btn.canvas.before:
-                Color(*get_color_from_hex("#005EA5") if is_current else (0, 0, 0, 0))
-                btn._border = Rectangle(size=btn.size, pos=btn.pos)
-
-            btn.bind(
-                size=lambda inst, val: setattr(inst._border, "size", val),
-                pos=lambda inst, val: setattr(inst._border, "pos", val),
-            )
-
-            # Icon
             icon = Image(
                 source=ICON_PATHS[label],
                 size_hint=(None, None),
@@ -1664,7 +1700,6 @@ class CalculatorNavBar(BoxLayout):
                 keep_ratio=True,
             )
 
-            # Label
             text_label = SafeLabel(
                 text=label,
                 font_size=12,
@@ -1677,6 +1712,16 @@ class CalculatorNavBar(BoxLayout):
 
             btn.add_widget(icon)
             btn.add_widget(text_label)
+
+            # Blue underline highlight
+            with btn.canvas.after:
+                Color(*get_color_from_hex("#005EA5") if is_current else (0, 0, 0, 0))
+                btn._underline = Rectangle(size=(btn.width, 3), pos=(btn.x, btn.y))
+
+            btn.bind(
+                size=lambda inst, val: setattr(inst._underline, "size", (val[0], 3)),
+                pos=lambda inst, val: setattr(inst._underline, "pos", (inst.x, inst.y)),
+            )
 
             # Make clickable
             btn.bind(
@@ -1722,8 +1767,8 @@ class CalculatorIntroScreen(BaseScreen):
         )
         container.bind(minimum_height=container.setter("height"))
 
-        # Ensure container expands to full screen height
-        scroll.bind(height=lambda inst, val: setattr(container, "size_hint_min_y", val))
+        # ⭐ Ensure container expands to full screen height
+        scroll.bind(height=lambda inst, val: setattr(container, "minimum_height", val))
 
         # Actual content layout
         content = BoxLayout(
@@ -3993,8 +4038,8 @@ class DisclaimerScreen(BaseScreen):
         )
         container.bind(minimum_height=container.setter("height"))
 
-        # Ensure container expands to full screen height
-        scroll.bind(height=lambda inst, val: setattr(container, "size_hint_min_y", val))
+        # ⭐ Correct centering rule
+        scroll.bind(height=lambda inst, val: setattr(container, "minimum_height", val))
 
         content = BoxLayout(
             orientation="vertical",
@@ -4077,9 +4122,10 @@ class DisclaimerScreen(BaseScreen):
 
         build_footer(content)
 
-        container.add_widget(Widget(size_hint_y=1))
+        # ⭐ Center content vertically when short
+        container.add_widget(Widget(size_hint_y=1))   # top spacer
         container.add_widget(content)
-        container.add_widget(Widget(size_hint_y=1))
+        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
 
         scroll.add_widget(container)
         root.add_widget(scroll)
@@ -4112,6 +4158,7 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_fg.size_hint_x = 0
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
+
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -4815,6 +4862,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
