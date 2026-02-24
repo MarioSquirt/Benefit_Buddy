@@ -2548,7 +2548,7 @@ class CalculatorHousingScreen(BaseScreen):
                 box.opacity = 1
                 box.disabled = False
             else:
-                manual_header.text = "Manual Location/BRMA selection ▸"
+                manual_header.text = "Manual Location/BRMA selection"
                 box.opacity = 0
                 box.disabled = True
                 box.height = 0
@@ -2749,22 +2749,38 @@ class CalculatorHousingScreen(BaseScreen):
 
         def on_find_brma(instance):
             postcode = self.housing_widgets["postcode"].text.strip().upper()
-
+        
             self.show_loading("Finding BRMA...")
-
+        
             def do_lookup(dt):
-                brma_name = self.lookup_brma(postcode)
-
-                self.housing_widgets["brma"].values = [brma_name]
-                self.housing_widgets["brma"].text = brma_name
-                self.housing_widgets["brma"]._update_dropdown()
-
-                location = self.lookup_location_for_postcode(postcode)
-                if location:
-                    self.housing_widgets["location"].text = location
-
-                self.hide_loading()
-
+                try:
+                    # BRMA lookup
+                    brma_name = self.lookup_brma(postcode)
+        
+                    # ⭐ STORE IN STATE (so it persists across screens)
+                    data = self.calculator_state
+                    data.brma = brma_name
+        
+                    # Update BRMA spinner
+                    self.housing_widgets["brma"].values = [brma_name]
+                    self.housing_widgets["brma"].text = brma_name
+                    self.housing_widgets["brma"]._update_dropdown()
+        
+                    # Location lookup
+                    location = self.lookup_location_for_postcode(postcode)
+        
+                    # ⭐ STORE IN STATE
+                    if location:
+                        data.location = location
+                        self.housing_widgets["location"].text = location
+        
+                except Exception as e:
+                    print("BRMA lookup error:", e)
+                    self.housing_widgets["brma"].text = "Lookup failed"
+        
+                finally:
+                    self.hide_loading()
+        
             Clock.schedule_once(do_lookup, 0.1)
 
         find_brma_btn.bind(on_press=on_find_brma)
@@ -2776,7 +2792,7 @@ class CalculatorHousingScreen(BaseScreen):
 
     def save_state(self):
         w = self.housing_widgets
-        data = self.user_data  # your housing state store
+        data = self.calculator_state  # your housing state store
     
         # ---------------------------------------------------------
         # BASIC FIELDS
@@ -2837,7 +2853,7 @@ class CalculatorHousingScreen(BaseScreen):
     
     def load_state(self):
         w = self.housing_widgets
-        data = self.user_data
+        data = self.calculator_state   # ⭐ FIXED
     
         # ---------------------------------------------------------
         # BASIC FIELDS
@@ -2903,7 +2919,6 @@ class CalculatorHousingScreen(BaseScreen):
     
         for widget in w["service_fields"].values():
             widget.disabled = not social
-
 
     # ---------------------------------------------------------
     # LOOKUP HELPERS (move your existing functions here)
@@ -5125,6 +5140,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
