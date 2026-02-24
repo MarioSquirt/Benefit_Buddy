@@ -1114,9 +1114,32 @@ class CalculatorEngine:
         total -= deduction_caps_total
 
         # -----------------------------
+        # Build breakdown dictionary
+        # -----------------------------
+        breakdown = {
+            "Standard Allowance": standard_allowance,
+            "Housing Element": housing_element,
+            "Child Element": child_elements,
+            "Childcare Costs": childcare_costs,
+            "Carer Element": carer_element,
+            "Disability Element": disability_element,
+            "Transitional SDP": transitional_sdp,
+            "Capital Deduction": -capital_income,
+            "Earnings Deduction": -earnings_deduction,
+            "Sanction Reduction": -sanction_reduction,
+            "Advance Payment Deduction": -advance_deduction,
+            "Deduction Caps": -deduction_caps_total,
+        }
+        
+        # Store for breakdown screen
+        data.breakdown = breakdown
+
+        # -----------------------------
         # Final entitlement
         # -----------------------------
-        return max(0.0, round(total, 2))
+        final_total = max(0.0, round(total, 2))
+        data.breakdown["Final Entitlement"] = final_total
+        return final_total
 
 
 def with_diagnostics(widget_names=None):
@@ -1889,12 +1912,55 @@ class CalculatorNavBar(BoxLayout):
 
         
 class BaseScreen(Screen):
+
+    # ---------------------------------------------------------
+    # LIFECYCLE METHODS (KEEP THESE!)
+    # ---------------------------------------------------------
     def on_pre_leave(self):
         pass
 
     def destroy(self):
+        # Clean teardown so NavigationManager can safely recreate screens
         self.clear_widgets()
         self.canvas.clear()
+
+    # ---------------------------------------------------------
+    # OPTIONAL LOADING OVERLAY (NEW)
+    # ---------------------------------------------------------
+    def show_loading(self, message="Loading..."):
+        if hasattr(self, "_loading_overlay"):
+            return
+
+        overlay = FloatLayout(size_hint=(1, 1))
+
+        with overlay.canvas.before:
+            Color(0, 0, 0, 0.6)
+            overlay._bg = Rectangle(size=overlay.size, pos=overlay.pos)
+
+        overlay.bind(
+            size=lambda inst, val: setattr(overlay._bg, "size", val),
+            pos=lambda inst, val: setattr(overlay._bg, "pos", val),
+        )
+
+        label = SafeLabel(
+            text=message,
+            font_size=24,
+            halign="center",
+            valign="middle",
+            color=(1, 1, 1, 1),
+            size_hint=(1, 1)
+        )
+        label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+
+        overlay.add_widget(label)
+
+        self._loading_overlay = overlay
+        self.add_widget(overlay)
+
+    def hide_loading(self):
+        if hasattr(self, "_loading_overlay"):
+            self.remove_widget(self._loading_overlay)
+            del self._loading_overlay
 
 
 class CalculatorIntroScreen(BaseScreen):
@@ -1954,6 +2020,12 @@ class CalculatorIntroScreen(BaseScreen):
         self.add_widget(root)
 
     def on_pre_enter(self, *args):
+        pass
+
+    def save_state(self):
+        pass
+    
+    def load_state(self):
         pass
 
 
@@ -2089,51 +2161,57 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
         w["partner_dob"].disabled = not value
 
     # ---------------------------------------------------------
-    # SAVE LOGIC (unchanged)
+    # SAVE STATE (called automatically by NavigationManager)
     # ---------------------------------------------------------
-    def save_claimant_details(self):
+    def save_state(self):
         w = self.claimant_widgets
-        data = self.calculator_state  # shared model
-
+        data = self.calculator_state
+    
+        # Relationship
         if w["single_checkbox"].active:
             data.relationship = "single"
         elif w["couple_checkbox"].active:
             data.relationship = "couple"
-
+        else:
+            data.relationship = "single"  # safe default
+    
+        # Claimant details
         data.claimant_name = w["name"].text.strip()
         data.claimant_dob = w["dob"].text.strip()
-
-        if w["couple_checkbox"].active:
+    
+        # Partner details (only if couple)
+        if data.relationship == "couple":
             data.partner_name = w["partner_name"].text.strip()
             data.partner_dob = w["partner_dob"].text.strip()
         else:
             data.partner_name = ""
             data.partner_dob = ""
-
+    
     # ---------------------------------------------------------
-    # RESTORE LOGIC (unchanged)
+    # LOAD STATE (called automatically by NavigationManager)
     # ---------------------------------------------------------
-    def on_pre_enter(self, *args):
+    def load_state(self):
         w = self.claimant_widgets
         data = self.calculator_state
-
-        # Restore relationship
+    
+        # Relationship
         rel = getattr(data, "relationship", "single")
         w["single_checkbox"].active = (rel == "single")
         w["couple_checkbox"].active = (rel == "couple")
-
-        # Restore claimant fields
+    
+        # Claimant fields
         w["name"].text = getattr(data, "claimant_name", "")
         w["dob"].text = getattr(data, "claimant_dob", "")
-
-        # Restore partner fields
+    
+        # Partner fields
         w["partner_name"].text = getattr(data, "partner_name", "")
         w["partner_dob"].text = getattr(data, "partner_dob", "")
-
+    
+        # Enable/disable partner fields
         is_couple = (rel == "couple")
         w["partner_name"].disabled = not is_couple
         w["partner_dob"].disabled = not is_couple
-
+        
 
 class CalculatorFinancesScreen(BaseScreen):
 
@@ -2249,44 +2327,44 @@ class CalculatorFinancesScreen(BaseScreen):
         layout.add_widget(Widget(size_hint_y=0.05))
 
     # ---------------------------------------------------------
-    # SAVE LOGIC (unchanged)
+    # SAVE STATE (called automatically by NavigationManager)
     # ---------------------------------------------------------
-    def save_finances_details(self):
+    def save_state(self):
         w = self.finances_widgets
         data = self.calculator_state
-
-        # Save raw values
+    
+        # Save raw text values
         data.income_raw = w["income"].text.strip()
         data.savings_raw = w["savings"].text.strip()
         data.debts_raw = w["debts"].text.strip()
-
+    
         # Parse floats safely
         try:
             data.income = float(w["income"].text or 0)
         except:
             data.income = 0.0
-
+    
         try:
             data.savings = float(w["savings"].text or 0)
         except:
             data.savings = 0.0
-
+    
         try:
             data.debts = float(w["debts"].text or 0)
         except:
             data.debts = 0.0
-
+            
     # ---------------------------------------------------------
-    # RESTORE LOGIC (unchanged)
+    # LOAD STATE (called automatically by NavigationManager)
     # ---------------------------------------------------------
-    def on_pre_enter(self, *args):
+    def load_state(self):
         w = self.finances_widgets
         data = self.calculator_state
-
+    
+        # Restore raw text values
         w["income"].text = str(getattr(data, "income_raw", ""))
         w["savings"].text = str(getattr(data, "savings_raw", ""))
         w["debts"].text = str(getattr(data, "debts_raw", ""))
-
 
     
 class CalculatorHousingScreen(BaseScreen):
@@ -2338,15 +2416,14 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         # TENANCY TYPE SPINNER
         # ---------------------------------------------------------
-        self.housing_widgets["tenancy_type"] = Spinner(
+        tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        
+        self.housing_widgets["tenancy_type"] = GovUkIconSpinner(
             text="Select tenancy type",
             values=["private", "social"],
-            size_hint=(1, None),
-            height=50,
-            background_color=get_color_from_hex(WHITE),
-            color=get_color_from_hex(GOVUK_BLUE)
         )
-        layout.add_widget(self.housing_widgets["tenancy_type"])
+        tenancy_anchor.add_widget(self.housing_widgets["tenancy_type"])
+        layout.add_widget(tenancy_anchor)
 
         # ---------------------------------------------------------
         # RENT / MORTGAGE / SHARED INPUTS
@@ -2697,29 +2774,31 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         _show_amount_widget(self.housing_widgets["housing_type"].text)
 
-    # ---------------------------------------------------------
-    # SAVE LOGIC (move your existing function here)
-    # ---------------------------------------------------------
-    def save_housing_details(self):
+    def save_state(self):
         w = self.housing_widgets
+        data = self.user_data  # your housing state store
     
-        # Basic fields
-        self.user_data["housing_type"] = w["housing_type"].text.strip().lower()
-        self.user_data["tenancy_type"] = w["tenancy_type"].text.strip().lower()
+        # ---------------------------------------------------------
+        # BASIC FIELDS
+        # ---------------------------------------------------------
+        data["housing_type"] = w["housing_type"].text.strip().lower()
+        data["tenancy_type"] = w["tenancy_type"].text.strip().lower()
     
-        self.user_data["rent_raw"] = w["rent"].text.strip()
-        self.user_data["mortgage_raw"] = w["mortgage"].text.strip()
-        self.user_data["shared_raw"] = w["shared"].text.strip()
+        data["rent_raw"] = w["rent"].text.strip()
+        data["mortgage_raw"] = w["mortgage"].text.strip()
+        data["shared_raw"] = w["shared"].text.strip()
     
-        self.user_data["non_dependants_raw"] = w["non_dependants"].text.strip()
-        self.user_data["postcode"] = w["postcode"].text.strip()
+        data["non_dependants_raw"] = w["non_dependants"].text.strip()
+        data["postcode"] = w["postcode"].text.strip()
     
-        self.user_data["location"] = w["location"].text.strip()
-        self.user_data["brma"] = w["brma"].text.strip()
+        data["location"] = w["location"].text.strip()
+        data["brma"] = w["brma"].text.strip()
     
-        self.user_data["manual_location"] = w["manual_toggle"].active
+        data["manual_location"] = w["manual_toggle"].active
     
+        # ---------------------------------------------------------
         # SERVICE CHARGES
+        # ---------------------------------------------------------
         charges = {}
     
         def parse_charge(widget):
@@ -2731,55 +2810,61 @@ class CalculatorHousingScreen(BaseScreen):
         for key, widget in w["service_fields"].items():
             charges[key] = parse_charge(widget)
     
-        self.user_data["service_charges"] = charges
+        data["service_charges"] = charges
     
-        # Parsed numeric values
+        # ---------------------------------------------------------
+        # PARSED NUMERIC VALUES
+        # ---------------------------------------------------------
         try:
-            self.user_data["non_dependants"] = int(w["non_dependants"].text or 0)
+            data["non_dependants"] = int(w["non_dependants"].text or 0)
         except:
-            self.user_data["non_dependants"] = 0
-    
-        try:
-            self.user_data["rent"] = float(w["rent"].text or 0)
-        except:
-            self.user_data["rent"] = 0.0
+            data["non_dependants"] = 0
     
         try:
-            self.user_data["mortgage"] = float(w["mortgage"].text or 0)
+            data["rent"] = float(w["rent"].text or 0)
         except:
-            self.user_data["mortgage"] = 0.0
+            data["rent"] = 0.0
     
         try:
-            self.user_data["shared"] = float(w["shared"].text or 0)
+            data["mortgage"] = float(w["mortgage"].text or 0)
         except:
-            self.user_data["shared"] = 0.0
-
-    # ---------------------------------------------------------
-    # RESTORE LOGIC (move your existing function here)
-    # ---------------------------------------------------------
-    def on_pre_enter_housing(self, *args):
+            data["mortgage"] = 0.0
+    
+        try:
+            data["shared"] = float(w["shared"].text or 0)
+        except:
+            data["shared"] = 0.0
+    
+    def load_state(self):
         w = self.housing_widgets
+        data = self.user_data
     
-        # Restore basic fields
-        w["housing_type"].text = self.user_data.get("housing_type", "Rent").capitalize()
-        w["tenancy_type"].text = self.user_data.get("tenancy_type", "Select tenancy type")
+        # ---------------------------------------------------------
+        # BASIC FIELDS
+        # ---------------------------------------------------------
+        w["housing_type"].text = data.get("housing_type", "Rent").capitalize()
+        w["tenancy_type"].text = data.get("tenancy_type", "Select tenancy type")
     
-        w["rent"].text = str(self.user_data.get("rent_raw", ""))
-        w["mortgage"].text = str(self.user_data.get("mortgage_raw", ""))
-        w["shared"].text = str(self.user_data.get("shared_raw", ""))
-        w["non_dependants"].text = str(self.user_data.get("non_dependants_raw", ""))
-        w["postcode"].text = self.user_data.get("postcode", "")
+        w["rent"].text = str(data.get("rent_raw", ""))
+        w["mortgage"].text = str(data.get("mortgage_raw", ""))
+        w["shared"].text = str(data.get("shared_raw", ""))
+        w["non_dependants"].text = str(data.get("non_dependants_raw", ""))
+        w["postcode"].text = data.get("postcode", "")
     
-        # Manual override
-        manual = self.user_data.get("manual_location", False)
+        # ---------------------------------------------------------
+        # MANUAL OVERRIDE
+        # ---------------------------------------------------------
+        manual = data.get("manual_location", False)
         w["manual_toggle"].active = manual
         w["location"].disabled = not manual
         w["brma"].disabled = not manual
     
-        w["location"].text = self.user_data.get("location", "Select Location")
-        w["brma"].text = self.user_data.get("brma", "Select BRMA")
+        w["location"].text = data.get("location", "Select Location")
+        w["brma"].text = data.get("brma", "Select BRMA")
     
-        # Show correct rent/mortgage/shared input
+        # ---------------------------------------------------------
+        # SHOW CORRECT RENT/MORTGAGE/SHARED FIELD
+        # ---------------------------------------------------------
         text = w["housing_type"].text.lower()
     
         for key in ("rent", "mortgage", "shared"):
@@ -2802,18 +2887,23 @@ class CalculatorHousingScreen(BaseScreen):
             target.disabled = False
             target.height = 50
     
-        # Restore service charges
-        charges = self.user_data.get("service_charges", {})
+        # ---------------------------------------------------------
+        # SERVICE CHARGES
+        # ---------------------------------------------------------
+        charges = data.get("service_charges", {})
     
         for key, widget in w["service_fields"].items():
             widget.text = str(charges.get(key, ""))
     
-        # Re-apply tenancy-dependent service charge enable/disable
+        # ---------------------------------------------------------
+        # TENANCY-DEPENDENT SERVICE CHARGE ENABLE/DISABLE
+        # ---------------------------------------------------------
         tenancy = w["tenancy_type"].text.strip().lower()
         social = (tenancy == "social")
     
         for widget in w["service_fields"].values():
             widget.disabled = not social
+
 
     # ---------------------------------------------------------
     # LOOKUP HELPERS (move your existing functions here)
@@ -3167,10 +3257,11 @@ class CalculatorChildrenScreen(BaseScreen):
         name = section["name"].text.strip()
         return f"Child {index} ({name})" if name else f"Child {index}"
     
-    # ---------------------------------------------------------
-    # SAVE LOGIC
-    # ---------------------------------------------------------
-    def save_children_details(self):
+    def save_state(self):
+        """
+        Save all child sections into calculator_state.children.
+        Called automatically by NavigationManager before screen destruction.
+        """
         children = []
     
         for section in self.child_sections:
@@ -3178,8 +3269,9 @@ class CalculatorChildrenScreen(BaseScreen):
             dob = section["dob"].text.strip()
             gender = section["gender"].text.strip()
     
+            # Skip empty entries (no DOB = not a real child)
             if not dob:
-                continue  # skip empty entries
+                continue
     
             children.append({
                 "name": name,
@@ -3190,23 +3282,31 @@ class CalculatorChildrenScreen(BaseScreen):
                 "multiple_birth": section["multiple"].active
             })
     
-        self.user_data["children"] = children
-        self.user_data["children_dobs"] = [c["dob"] for c in children] 
+        # Store in calculator_state
+        self.calculator_state.children = children
+        self.calculator_state.children_dobs = [c["dob"] for c in children]
     
-    # ---------------------------------------------------------
-    # RESTORE LOGIC
-    # ---------------------------------------------------------
-    def on_pre_enter_children(self, *args):
-        saved_children = self.user_data.get("children", [])
+    def load_state(self):
+        """
+        Rebuild all child sections from calculator_state.children.
+        Called automatically by NavigationManager after screen creation.
+        """
+        saved_children = getattr(self.calculator_state, "children", [])
     
-        # Clear existing
+        # ---------------------------------------------------------
+        # CLEAR EXISTING SECTIONS
+        # ---------------------------------------------------------
         for section in list(self.child_sections):
             self.remove_child_section(section)
     
-        # Rebuild
+        # ---------------------------------------------------------
+        # REBUILD SECTIONS
+        # ---------------------------------------------------------
         if not saved_children:
+            # Start with one empty child section
             self.add_child_section()
         else:
+            # Rebuild each saved child
             for child in saved_children:
                 self.add_child_section(prefill=child)
 
@@ -3362,6 +3462,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
             halign="left",
             valign="middle",
         )
+        w["sar_header"] = sar_header
         sar_header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None)))
         layout.add_widget(sar_header)
 
@@ -3436,92 +3537,107 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
 
         layout.add_widget(Widget(size_hint_y=0.05))
 
-    # ---------------------------------------------------------
-    # SAVE LOGIC (move your existing save_additional_elements here)
-    # ---------------------------------------------------------
-    def save_additional_elements(self):
+    def save_state(self):
         w = self.additional_widgets
+        data = self.calculator_state
     
-        # Carer
-        self.user_data["carer"] = w["carer"].active
+        # ---------------------------------------------------------
+        # CARER
+        # ---------------------------------------------------------
+        data.carer = w["carer"].active
     
-        # Disability: LCW / LCWRA
-        lcw = w["lcw"].active
-        lcwra = w["lcwra"].active
+        # ---------------------------------------------------------
+        # DISABILITY FLAGS (LCW / LCWRA)
+        # ---------------------------------------------------------
+        data.has_lcw = w["lcw"].active
+        data.has_lcwra = w["lcwra"].active
     
-        self.user_data["disability_flag"] = lcw or lcwra
-    
-        if lcwra:
-            self.user_data["disability"] = "LCWRA"
-        elif lcw:
-            self.user_data["disability"] = "LCW"
+        # A single combined field if you want it:
+        if data.has_lcwra:
+            data.disability = "LCWRA"
+        elif data.has_lcw:
+            data.disability = "LCW"
         else:
-            self.user_data["disability"] = ""
+            data.disability = ""
     
-        # Childcare
-        self.user_data["childcare_raw"] = w["childcare"].text.strip()
+        # ---------------------------------------------------------
+        # CHILDCARE COSTS
+        # ---------------------------------------------------------
+        raw = w["childcare"].text.strip()
+        data.childcare_raw = raw
         try:
-            self.user_data["childcare"] = float(w["childcare"].text or 0)
+            data.childcare = float(raw or 0)
         except:
-            self.user_data["childcare"] = 0.0
+            data.childcare = 0.0
     
-        # SAR exemptions
-        sar = w["sar_fields"]
-        self.user_data["care_leaver"] = sar["care_leaver"].active
-        self.user_data["severe_disability"] = sar["severe_disability"].active
-        self.user_data["mappa"] = sar["mappa"].active
-        self.user_data["hostel_resident"] = sar["hostel_resident"].active
-        self.user_data["domestic_abuse_refuge"] = sar["domestic_abuse"].active
-        self.user_data["ex_offender"] = sar["ex_offender"].active
-        self.user_data["foster_carer"] = sar["foster_carer"].active
-        self.user_data["prospective_adopter"] = sar["prospective_adopter"].active
-        self.user_data["temporary_accommodation"] = sar["temporary_accommodation"].active
-        self.user_data["modern_slavery"] = sar["modern_slavery"].active
-        self.user_data["armed_forces_reservist"] = sar["armed_forces"].active
-
-    # ---------------------------------------------------------
-    # RESTORE LOGIC (optional)
-    # ---------------------------------------------------------
-    def on_pre_enter_additional(self, *args):
+        # ---------------------------------------------------------
+        # SAR EXEMPTIONS
+        # ---------------------------------------------------------
+        sar_dict = {}
+        for key, cb in w["sar_fields"].items():
+            sar_dict[key] = cb.active
+        data.sar_exemptions = sar_dict
+    
+        # ---------------------------------------------------------
+        # SAR COLLAPSED / EXPANDED STATE
+        # ---------------------------------------------------------
+        data.sar_expanded = bool(w.get("sar_expanded", False))
+    
+    def load_state(self):
         w = self.additional_widgets
+        data = self.calculator_state
     
-        # Carer
-        w["carer"].active = self.user_data.get("carer", False)
+        # ---------------------------------------------------------
+        # CARER
+        # ---------------------------------------------------------
+        w["carer"].active = bool(getattr(data, "carer", False))
     
-        # Disability
-        disability_value = self.user_data.get("disability", "").upper()
-        if disability_value == "LCWRA":
+        # ---------------------------------------------------------
+        # DISABILITY FLAGS
+        # ---------------------------------------------------------
+        disability = getattr(data, "disability", "").upper()
+    
+        if disability == "LCWRA":
             w["lcwra"].active = True
             w["lcw"].active = False
-        elif disability_value == "LCW":
+        elif disability == "LCW":
             w["lcw"].active = True
             w["lcwra"].active = False
         else:
             w["lcw"].active = False
             w["lcwra"].active = False
     
-        # Childcare
-        w["childcare"].text = str(self.user_data.get("childcare_raw", ""))
+        # ---------------------------------------------------------
+        # CHILDCARE
+        # ---------------------------------------------------------
+        w["childcare"].text = str(getattr(data, "childcare_raw", ""))
     
-        # SAR exemptions
-        sar = w["sar_fields"]
-        sar["care_leaver"].active = self.user_data.get("care_leaver", False)
-        sar["severe_disability"].active = self.user_data.get("severe_disability", False)
-        sar["mappa"].active = self.user_data.get("mappa", False)
-        sar["hostel_resident"].active = self.user_data.get("hostel_resident", False)
-        sar["domestic_abuse"].active = self.user_data.get("domestic_abuse_refuge", False)
-        sar["ex_offender"].active = self.user_data.get("ex_offender", False)
-        sar["foster_carer"].active = self.user_data.get("foster_carer", False)
-        sar["prospective_adopter"].active = self.user_data.get("prospective_adopter", False)
-        sar["temporary_accommodation"].active = self.user_data.get("temporary_accommodation", False)
-        sar["modern_slavery"].active = self.user_data.get("modern_slavery", False)
-        sar["armed_forces"].active = self.user_data.get("armed_forces_reservist", False)
+        # ---------------------------------------------------------
+        # SAR EXEMPTIONS
+        # ---------------------------------------------------------
+        sar_saved = getattr(data, "sar_exemptions", {}) or {}
+        for key, cb in w["sar_fields"].items():
+            cb.active = bool(sar_saved.get(key, False))
     
-        # Collapse SAR section on re-entry
-        w["sar_expanded"] = False
-        w["sar_box"].opacity = 0
-        w["sar_box"].disabled = True
-        w["sar_box"].height = 0
+        # ---------------------------------------------------------
+        # SAR COLLAPSED / EXPANDED STATE
+        # ---------------------------------------------------------
+        expanded = bool(getattr(data, "sar_expanded", False))
+        w["sar_expanded"] = expanded
+    
+        sar_box = w["sar_box"]
+        sar_header = w["sar_header"]
+    
+        if expanded:
+            sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▾"
+            sar_box.opacity = 1
+            sar_box.disabled = False
+            sar_box.height = sar_box.minimum_height
+        else:
+            sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▸"
+            sar_box.opacity = 0
+            sar_box.disabled = True
+            sar_box.height = 0
 
 
 class CalculatorSanctionsScreen(BaseScreen):
@@ -3624,194 +3740,99 @@ class CalculatorSanctionsScreen(BaseScreen):
 
         layout.add_widget(Widget(size_hint_y=0.05))
 
-    # ---------------------------------------------------------
-    # SAVE LOGIC (converted from save_sanction_details)
-    # ---------------------------------------------------------
-    def save_sanction_details(self):
+    def save_state(self):
         w = self.sanctions_widgets
         data = self.calculator_state
-
-        # Save sanction type
-        data.sanction_type = w["type"].text.strip().lower()
-
-        # Save raw duration string
-        data.sanction_duration_raw = w["duration"].text.strip()
-
-        # Convert duration to integer days
+    
+        # ---------------------------------------------------------
+        # SANCTION TYPE
+        # ---------------------------------------------------------
+        sanction_type = w["type"].text.strip().lower()
+        if sanction_type in ["lowest", "low", "medium", "high"]:
+            data.sanction_type = sanction_type
+        else:
+            data.sanction_type = ""
+    
+        # ---------------------------------------------------------
+        # SANCTION DURATION
+        # ---------------------------------------------------------
+        raw_duration = w["duration"].text.strip()
+        data.sanction_duration_raw = raw_duration
+    
+        # Convert "14 days" → 14
         try:
-            duration_str = w["duration"].text.split()[0]
-            data.sanction_duration = int(duration_str)
+            data.sanction_duration = int(raw_duration.split()[0])
         except:
             data.sanction_duration = 0
-
-    # ---------------------------------------------------------
-    # RESTORE LOGIC (converted from on_pre_enter_sanctions)
-    # ---------------------------------------------------------
-    def on_pre_enter(self, *args):
+    
+    def load_state(self):
         w = self.sanctions_widgets
         data = self.calculator_state
-
-        # Restore sanction type
+    
+        # ---------------------------------------------------------
+        # SANCTION TYPE
+        # ---------------------------------------------------------
         saved_type = getattr(data, "sanction_type", "")
-        if saved_type in ["lowest", "low", "medium", "high"]:
+        valid_types = ["lowest", "low", "medium", "high"]
+    
+        if saved_type in valid_types:
             w["type"].text = saved_type
         else:
             w["type"].text = "Select sanction type"
-
-        # Restore sanction duration
+    
+        # ---------------------------------------------------------
+        # SANCTION DURATION
+        # ---------------------------------------------------------
         saved_duration = getattr(data, "sanction_duration_raw", "")
         valid_durations = ["7 days", "14 days", "28 days", "91 days", "182 days"]
-
+    
         if saved_duration in valid_durations:
             w["duration"].text = saved_duration
         else:
             w["duration"].text = "Select duration"
 
-
-class CalculatorAdvancePaymentsScreen(BaseScreen):
-
-    def __init__(self, calculator_state, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_state = calculator_state
-        self.advance_widgets = {}
-        self.build_ui()
-
-    def build_ui(self):
-        # ROOT layout (nav bar + scroll)
-        root = BoxLayout(orientation="vertical")
-
-        # ⭐ Navigation bar at the top
-        root.add_widget(CalculatorNavBar(current="calculator_advance"))
-
-        # ⭐ ScrollView for form content
-        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
-
-        # ⭐ Main layout inside ScrollView
-        layout = BoxLayout(
-            orientation="vertical",
-            spacing=20,
-            padding=(20, 120, 20, 20),
-            size_hint=(1, None)
-        )
-        layout.bind(minimum_height=layout.setter("height"))
-
-        scroll.add_widget(layout)
-        root.add_widget(scroll)
-        self.add_widget(root)
-
+    def save_state(self):
         w = self.advance_widgets
-
-        # ---------------------------------------------------------
-        # INSTRUCTION LABEL
-        # ---------------------------------------------------------
-        instruction = SafeLabel(
-            text="Enter advance payment details:",
-            font_size=18,
-            halign="center",
-            valign="middle",
-            color=get_color_from_hex("#005EA5")
-        )
-        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(instruction)
-
+        data = self.calculator_state
+    
         # ---------------------------------------------------------
         # ADVANCE AMOUNT
         # ---------------------------------------------------------
-        amount_label = SafeLabel(
-            text="Advance amount (£)",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(amount_label)
-
-        w["amount"] = TextInput(
-            hint_text="Enter amount (£)",
-            multiline=False,
-            font_size=18,
-            size_hint=(1, None),
-            height=50,
-            input_filter="float",
-            background_color=get_color_from_hex(WHITE),
-            foreground_color=get_color_from_hex(GOVUK_BLUE)
-        )
-        layout.add_widget(w["amount"])
-
-        # ---------------------------------------------------------
-        # REPAYMENT PERIOD
-        # ---------------------------------------------------------
-        repayment_label = SafeLabel(
-            text="Repayment period",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        repayment_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(repayment_label)
-
-        w["period"] = GovUkIconSpinner(
-            text="Select repayment period",
-            values=[
-                "3 months",
-                "6 months",
-                "9 months",
-                "12 months"
-            ],
-            icon_map={}
-        )
-        layout.add_widget(w["period"])
-
-        # ---------------------------------------------------------
-        # SPACERS / BUTTONS
-        # ---------------------------------------------------------
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        layout.add_widget(buttons_box)
-
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-    # ---------------------------------------------------------
-    # SAVE LOGIC (converted from save_advance_payment_details)
-    # ---------------------------------------------------------
-    def save_advance_payment_details(self):
-        w = self.advance_widgets
-        data = self.calculator_state
-
-        # Save advance amount
         raw_amount = w["amount"].text.strip()
         data.advance_amount_raw = raw_amount
-
+    
         try:
             data.advance_amount = float(raw_amount or 0)
         except:
             data.advance_amount = 0.0
-
-        # Save repayment period
-        data.repayment_period_raw = w["period"].text.strip()
-
-        # Convert repayment period to integer months
+    
+        # ---------------------------------------------------------
+        # REPAYMENT PERIOD
+        # ---------------------------------------------------------
+        raw_period = w["period"].text.strip()
+        data.repayment_period_raw = raw_period
+    
+        # Convert "6 months" → 6
         try:
-            months_str = w["period"].text.split()[0]
-            data.repayment_period = int(months_str)
+            data.repayment_period = int(raw_period.split()[0])
         except:
             data.repayment_period = 0
-
-    # ---------------------------------------------------------
-    # RESTORE LOGIC (converted from on_pre_enter_advance)
-    # ---------------------------------------------------------
-    def on_pre_enter(self, *args):
+    
+    def load_state(self):
         w = self.advance_widgets
         data = self.calculator_state
-
-        # Restore advance amount
+    
+        # ---------------------------------------------------------
+        # ADVANCE AMOUNT
+        # ---------------------------------------------------------
         w["amount"].text = str(getattr(data, "advance_amount_raw", ""))
-
-        # Restore repayment period
+    
+        # ---------------------------------------------------------
+        # REPAYMENT PERIOD
+        # ---------------------------------------------------------
         saved_period = getattr(data, "repayment_period_raw", "")
         valid_periods = ["3 months", "6 months", "9 months", "12 months"]
-
+    
         if saved_period in valid_periods:
             w["period"].text = saved_period
         else:
@@ -3945,15 +3966,7 @@ def build_ui(self):
     # RUN CALCULATION (converted from run_calculation)
     # ---------------------------------------------------------
     def run_calculation(self, *args):
-        # 1. Save all screen data
-        try:
-            for fn in self.save_callbacks.values():
-                fn()
-        except Exception as e:
-            self.summary_widgets["label"].text = f"Error saving data: {str(e)}"
-            return
-
-        # 2. Run calculation
+        # 1. Run calculation
         try:
             result = self.calculate_callback()
             result_text = f"Calculated Entitlement: £{result:.2f}"
@@ -3961,14 +3974,15 @@ def build_ui(self):
         except Exception as e:
             self.summary_widgets["label"].text = f"Error during calculation: {str(e)}"
             return
-
-        # 3. Update summary
+    
+        # 2. Update summary
         try:
             self.update_summary()
         except Exception as e:
             self.summary_widgets["label"].text = f"Error updating summary: {str(e)}"
             return
-
+    
+        # 3. Scroll to top
         Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
     # ---------------------------------------------------------
@@ -4919,10 +4933,13 @@ class ScreenFactory:
                 calculator_state=app.calculator_state,
                 save_callbacks=app.save_callbacks,
                 calculate_callback=app.calculate_entitlement,
-                go_to_breakdown_callback=lambda: app.nav.go("breakdown"),
+                go_to_breakdown_callback=lambda: (
+                    app.nav.go("breakdown"),
+                    app.nav.get("breakdown").populate_breakdown(app.calculator_state.breakdown)
+                ),
                 name=name
             )
-
+        
         if name == "breakdown":
             return CalculationBreakdownScreen(name=name)
 
@@ -4948,22 +4965,54 @@ class NavigationManager:
         print("DEBUG: before destroy: sm.current =", self.sm.current,
               "loaded keys =", list(self.loaded.keys()))
 
-        # destroy old, but only if current is valid and tracked
+        # ---------------------------------------------------------
+        # SAVE + DESTROY CURRENT SCREEN
+        # ---------------------------------------------------------
         current = self.sm.current
         if current and current in self.loaded:
             old = self.loaded[current]
-            old.on_pre_leave()
-            old.destroy()
+
+            # ⭐ Save state before leaving
+            if hasattr(old, "save_state"):
+                try:
+                    old.save_state()
+                except Exception as e:
+                    print("ERROR in save_state():", e)
+
+            # Normal teardown
+            try:
+                old.on_pre_leave()
+            except Exception as e:
+                print("ERROR in on_pre_leave():", e)
+
+            try:
+                old.destroy()
+            except Exception as e:
+                print("ERROR in destroy():", e)
+
             self.sm.remove_widget(old)
             del self.loaded[current]
+
         else:
             print("DEBUG: skip destroy, current not in loaded or is None")
 
-        # create new
+        # ---------------------------------------------------------
+        # CREATE NEW SCREEN
+        # ---------------------------------------------------------
         new = ScreenFactory.create(name)
         self.loaded[name] = new
         self.sm.add_widget(new)
         self.sm.current = name
+
+        # ---------------------------------------------------------
+        # LOAD STATE AFTER ENTERING
+        # ---------------------------------------------------------
+        if hasattr(new, "load_state"):
+            try:
+                new.load_state()
+            except Exception as e:
+                print("ERROR in load_state():", e)
+
         print("DEBUG: after go: sm.current =", self.sm.current,
               "loaded keys =", list(self.loaded.keys()))
 
@@ -5076,6 +5125,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
