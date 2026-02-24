@@ -2502,6 +2502,21 @@ class CalculatorHousingScreen(BaseScreen):
             foreground_color=get_color_from_hex("#005EA5")
         )
         layout.add_widget(self.housing_widgets["postcode"])
+        
+        # ⭐ Add this line
+        self.housing_widgets["postcode"].bind(text=self.on_postcode_changed)
+
+        # ---------------------------------------------------------
+        # BRMA DISPLAY
+        # ---------------------------------------------------------
+        self.housing_widgets["brma_display"] = SafeLabel(
+            text="",
+            font_size=16,
+            color=get_color_from_hex("#005EA5"),
+            size_hint_y=None,
+            height=30
+        )
+        layout.add_widget(self.housing_widgets["brma_display"])
 
         # ---------------------------------------------------------
         # MANUAL LOCATION / BRMA OVERRIDE (COLLAPSIBLE)
@@ -2728,6 +2743,16 @@ class CalculatorHousingScreen(BaseScreen):
 
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
+        def on_postcode_changed(self, instance, value):
+            # Clear visible BRMA result when postcode changes
+            if "brma_display" in self.housing_widgets:
+                self.housing_widgets["brma_display"].text = ""
+        
+            # Optional: also clear stored state
+            data = self.calculator_state
+            data.brma = None
+            data.location = None
+
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
         # ---------------------------------------------------------
@@ -2757,11 +2782,15 @@ class CalculatorHousingScreen(BaseScreen):
                 print("BRMA lookup callback fired")
         
                 try:
+                    print("Calling lookup_brma now…")
                     brma_name = self.lookup_brma(postcode)
                     print("BRMA result:", brma_name)
         
                     data = self.calculator_state
                     data.brma = brma_name
+
+                    #SHOW RESULT TO USER (outside manual override)
+                    self.housing_widgets["brma_display"].text = f"BRMA: {brma_name}"
         
                     self.housing_widgets["brma"].values = [brma_name]
                     self.housing_widgets["brma"].text = brma_name
@@ -2936,33 +2965,15 @@ class CalculatorHousingScreen(BaseScreen):
 
     def lookup_lha_rate(self, brma, bedrooms, location):
         """
-        Looks up the LHA rate for the given BRMA, bedroom entitlement, and location.
-        CSV files:
-            LHA-England.csv
-            LHA-Scotland.csv
-            LHA-Wales.csv
-    
-        Columns:
-            BRMA, SAR, 1 Bed, 2 bed, 3 bed, 4 Bed
+        Looks up the LHA rate using preloaded CSV data.
         """
     
         if not brma:
             return 0.0
     
-        # Determine which file to load
+        # Normalise location
         location = (location or "").strip().lower()
-    
-        if location == "england":
-            filename = "LHA-England.csv"
-        elif location == "scotland":
-            filename = "LHA-Scotland.csv"
-        elif location == "wales":
-            filename = "LHA-Wales.csv"
-        else:
-            return 0.0
-    
-        csv_path = resource_find(filename)
-        if not csv_path:
+        if location not in ("england", "scotland", "wales"):
             return 0.0
     
         # Map bedroom entitlement to column name
@@ -2979,16 +2990,23 @@ class CalculatorHousingScreen(BaseScreen):
         else:
             return 0.0
     
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row.get("BRMA", "").strip().lower() == brma.lower():
-                        weekly = float(row.get(col, 0) or 0)
-                        # Convert weekly → monthly
-                        return weekly * 52 / 12
-        except Exception:
-            pass
+        # Get preloaded LHA data
+        from kivy.app import App
+        data = App.get_running_app()._lha_data.get(location)
+        if not data:
+            return 0.0
+    
+        # Search for BRMA row
+        brma_lower = brma.lower()
+        for row in data:
+            if row.get("BRMA", "").strip().lower() == brma_lower:
+                try:
+                    weekly = float(row.get(col, 0) or 0)
+                except Exception:
+                    weekly = 0.0
+    
+                # Convert weekly → monthly
+                return weekly * 52 / 12
     
         return 0.0
 
@@ -3137,13 +3155,16 @@ class CalculatorChildrenScreen(BaseScreen):
 
         # COLLAPSIBLE HEADER
         header_btn = RoundedButton(
-            text="▸ New Child",
-            size_hint=(1, None),
-            height=50,
+            text="New Child",
+            size_hint=(None, None),
+            size=(250, 60),
+            pos_hint={"center_x": 0.5},
             background_color=(0, 0, 0, 0),
             background_normal="",
-            color=get_color_from_hex(GOVUK_BLUE),
-            font_size=18,
+            color=get_color_from_hex("#005EA5"),
+            font_name="roboto",
+            font_size=20,
+            text_size=(250, None),
             halign="left",
             valign="middle"
         )
@@ -4394,9 +4415,12 @@ class DisclaimerScreen(BaseScreen):
 
     def _load_csv_thread(self):
         app = App.get_running_app()
-        calculator = app.nav.get("calculator_intro")
-        if calculator:
-            calculator.load_brma_cache()
+    
+        try:
+            app.preload_all_data()
+        except Exception as e:
+            print("Startup preload error:", e)
+    
         Clock.schedule_once(self._loading_complete, 0)
 
     def _loading_complete(self, dt):
@@ -5061,6 +5085,56 @@ class BenefitBuddy(App):
         self.nav.go("instant")
         return self.sm
 
+    def preload_lha_csvs(self):
+        """
+        Preload all LHA CSVs into memory so lookups are instant later.
+        """
+        import csv
+        from kivy.resources import resource_find
+    
+        # Store preloaded LHA data here
+        self._lha_data = {
+            "england": [],
+            "scotland": [],
+            "wales": []
+        }
+    
+        files = {
+            "england": "LHA-England.csv",
+            "scotland": "LHA-Scotland.csv",
+            "wales": "LHA-Wales.csv"
+        }
+    
+        for key, filename in files.items():
+            path = resource_find(filename)
+            if not path:
+                print(f"LHA CSV missing: {filename}")
+                continue
+    
+            try:
+                with open(path, newline="", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    self._lha_data[key] = list(reader)
+                print(f"Loaded {filename} ({len(self._lha_data[key])} rows)")
+            except Exception as e:
+                print(f"Error loading {filename}:", e)
+
+    def preload_all_data(self):
+        """
+        Run all heavy startup loads once during the disclaimer screen.
+        """
+        print("Preloading BRMA CSV…")
+        self.load_brma_cache()
+        print("BRMA CSV loaded")
+    
+        print("Preloading LHA CSVs…")
+        self.preload_lha_csvs()
+        print("LHA CSVs loaded")
+    
+        # Future heavy tasks can be added here
+        # print("Preloading XYZ…")
+        # self.preload_xyz()
+
     def on_start(self):
         # Switch away from InstantScreen after a moment
         Clock.schedule_once(self.go_to_disclaimer, 0)
@@ -5142,58 +5216,3 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
