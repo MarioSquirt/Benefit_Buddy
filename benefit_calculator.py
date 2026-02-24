@@ -2747,43 +2747,43 @@ class CalculatorHousingScreen(BaseScreen):
         )
         layout.add_widget(find_brma_btn)
 
-def on_find_brma(instance):
-    print("BRMA button pressed")
-
-    postcode = self.housing_widgets["postcode"].text.strip().upper()
-    self.show_loading("Finding BRMA...")
-
-    def do_lookup(dt):
-        print("BRMA lookup callback fired")
-
-        try:
-            brma_name = self.lookup_brma(postcode)
-            print("BRMA result:", brma_name)
-
-            data = self.calculator_state
-            data.brma = brma_name
-
-            self.housing_widgets["brma"].values = [brma_name]
-            self.housing_widgets["brma"].text = brma_name
-            self.housing_widgets["brma"]._update_dropdown()
-
-            location = self.lookup_location_for_postcode(postcode)
-            print("Location result:", location)
-
-            if location:
-                data.location = location
-                self.housing_widgets["location"].text = location
-
-        except Exception as e:
-            print("BRMA lookup error:", e)
-            import traceback
-            traceback.print_exc()
-
-        finally:
-            print("BRMA lookup finished")
-            self.hide_loading()
-
-    Clock.schedule_once(do_lookup, 0.1)
+        def on_find_brma(instance):
+            print("BRMA button pressed")
+        
+            postcode = self.housing_widgets["postcode"].text.strip().upper()
+            self.show_loading("Finding BRMA...")
+        
+            def do_lookup(dt):
+                print("BRMA lookup callback fired")
+        
+                try:
+                    brma_name = self.lookup_brma(postcode)
+                    print("BRMA result:", brma_name)
+        
+                    data = self.calculator_state
+                    data.brma = brma_name
+        
+                    self.housing_widgets["brma"].values = [brma_name]
+                    self.housing_widgets["brma"].text = brma_name
+                    self.housing_widgets["brma"]._update_dropdown()
+        
+                    location = self.lookup_location_for_postcode(postcode)
+                    print("Location result:", location)
+        
+                    if location:
+                        data.location = location
+                        self.housing_widgets["location"].text = location
+        
+                except Exception as e:
+                    print("BRMA lookup error:", e)
+                    import traceback
+                    traceback.print_exc()
+        
+                finally:
+                    print("BRMA lookup finished")
+                    self.hide_loading()
+        
+            Clock.schedule_once(do_lookup, 0.1)
 
         find_brma_btn.bind(on_press=on_find_brma)
 
@@ -5142,6 +5142,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
