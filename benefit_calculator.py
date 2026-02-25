@@ -1716,12 +1716,13 @@ class CalculatorNavBar(BoxLayout):
         self.add_widget(self._wrap_nav_item(next_btn))
 
     def _wrap_nav_item(self, widget):
-        return BoxLayout(
+        box = BoxLayout(
             size_hint=(None, None),
-            size=(widget.size[0], 80),   # match navbar height
-            padding=(0, 0),
-            children=[widget]
+            height=80,
+            padding=(0, 0)
         )
+        box.add_widget(widget)
+        return box
 
     # =====================================================================
     # BUTTON FACTORIES
@@ -5227,6 +5228,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
