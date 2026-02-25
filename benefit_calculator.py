@@ -1852,14 +1852,16 @@ class CalculatorNavBar(BoxLayout):
 
         # Floating panel
         self.dropdown = FloatLayout(size_hint=(1, None), height=400)
-
+        
+        # Convert navbar position to window coords so dropdown always appears BELOW it
+        navbar_x, navbar_y = self.to_window(self.x, self.y)
+        
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
             width=300,
             height=400,
-            navbar_y = self.to_window(self.x, self.y)[1],
-            panel.pos = (self.current_btn.x, navbar_y - panel.height),
+            pos=(self.current_btn.x, navbar_y - 400),   # ⭐ BELOW the navbar
             padding=10,
             spacing=10,
         )
@@ -5225,5 +5227,6 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
