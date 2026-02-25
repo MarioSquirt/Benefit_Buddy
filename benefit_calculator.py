@@ -1625,9 +1625,9 @@ class CalculatorNavBar(BoxLayout):
         super().__init__(
             orientation="horizontal",
             spacing=20,
-            padding=(20, 10),
+            padding=(20, 0),
             size_hint_y=None,
-            height=100,
+            height=80,
             **kwargs
         )
 
@@ -1679,7 +1679,7 @@ class CalculatorNavBar(BoxLayout):
             icon="images/icons/Home-icon/Home-32px.png",
             on_press=lambda inst: app.nav.go("main")
         )
-        self.add_widget(home_btn)
+        self.add_widget(self._wrap_nav_item(home_btn))
 
         # ---------------------------------------------------------
         # PREVIOUS BUTTON
@@ -1689,7 +1689,7 @@ class CalculatorNavBar(BoxLayout):
             enabled=(self.current_index > 0),
             on_press=lambda inst: app.nav.go(self.screens[self.current_index - 1][1])
         )
-        self.add_widget(prev_btn)
+        self.add_widget(self._wrap_nav_item(prev_btn))
 
         # ---------------------------------------------------------
         # CURRENT SCREEN BUTTON (icon + text + chevron)
@@ -1703,7 +1703,7 @@ class CalculatorNavBar(BoxLayout):
             on_press=self.toggle_dropdown
         )
         self.current_btn = current_btn
-        self.add_widget(current_btn)
+        self.add_widget(self._wrap_nav_item(current_btn))
 
         # ---------------------------------------------------------
         # NEXT BUTTON
@@ -1713,7 +1713,15 @@ class CalculatorNavBar(BoxLayout):
             enabled=(self.current_index < len(self.screens) - 1),
             on_press=lambda inst: app.nav.go(self.screens[self.current_index + 1][1])
         )
-        self.add_widget(next_btn)
+        self.add_widget(self._wrap_nav_item(next_btn))
+
+    def _wrap_nav_item(self, widget):
+        return BoxLayout(
+            size_hint=(None, None),
+            size=(widget.size[0], 80),   # match navbar height
+            padding=(0, 0),
+            children=[widget]
+        )
 
     # =====================================================================
     # BUTTON FACTORIES
@@ -1724,7 +1732,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=6,
             size_hint=(None, None),
-            size=(140, 80),
+            size=(140, 60),
             padding=(0, 0),
         )
 
@@ -1767,7 +1775,7 @@ class CalculatorNavBar(BoxLayout):
             valign="middle",
             color=color,
             size_hint=(None, None),
-            size=(120, 80),
+            size=(120, 60),
         )
         lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
@@ -1784,7 +1792,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=6,
             size_hint=(None, None),
-            size=(240, 80),
+            size=(240, 60),
             padding=(0, 0),
         )
 
@@ -1850,7 +1858,8 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            pos=(self.current_btn.x, self.current_btn.y - 400),
+            navbar_y = self.to_window(self.x, self.y)[1],
+            panel.pos = (self.current_btn.x, navbar_y - panel.height),
             padding=10,
             spacing=10,
         )
@@ -5216,4 +5225,5 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
