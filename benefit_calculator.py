@@ -1722,6 +1722,14 @@ class CalculatorNavBar(BoxLayout):
             padding=(0, 0)
         )
         box.add_widget(widget)
+    
+        # ⭐ ensure wrapper width always matches widget width
+        def sync_width(*args):
+            box.width = widget.width
+            
+        widget.bind(width=sync_width)
+        sync_width()
+    
         return box
 
     # =====================================================================
@@ -2755,15 +2763,15 @@ class CalculatorHousingScreen(BaseScreen):
 
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
-    def on_postcode_changed(self, instance, value):
-        # Clear visible BRMA result when postcode changes
-        if "brma_display" in self.housing_widgets:
-            self.housing_widgets["brma_display"].text = ""
-        
-        # Optional: also clear stored state
-        data = self.calculator_state
-        data.brma = None
-        data.location = None
+        def on_postcode_changed(self, instance, value):
+            # Clear visible BRMA result when postcode changes
+            if "brma_display" in self.housing_widgets:
+                self.housing_widgets["brma_display"].text = ""
+            
+            # Optional: also clear stored state
+            data = self.calculator_state
+            data.brma = None
+            data.location = None
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
@@ -5228,6 +5236,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
