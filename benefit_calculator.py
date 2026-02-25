@@ -2743,15 +2743,15 @@ class CalculatorHousingScreen(BaseScreen):
 
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
-        def on_postcode_changed(self, instance, value):
-            # Clear visible BRMA result when postcode changes
-            if "brma_display" in self.housing_widgets:
-                self.housing_widgets["brma_display"].text = ""
+    def on_postcode_changed(self, instance, value):
+        # Clear visible BRMA result when postcode changes
+        if "brma_display" in self.housing_widgets:
+            self.housing_widgets["brma_display"].text = ""
         
-            # Optional: also clear stored state
-            data = self.calculator_state
-            data.brma = None
-            data.location = None
+        # Optional: also clear stored state
+        data = self.calculator_state
+        data.brma = None
+        data.location = None
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
@@ -5216,3 +5216,4 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
