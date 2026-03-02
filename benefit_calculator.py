@@ -1564,20 +1564,41 @@ class CollapsibleSection(BoxLayout):
         self.is_open = False
         self.content_lines = content_lines
 
-        self.header = RoundedButton(
-            text=f"▶  {title}",
+        # HEADER LAYOUT (text + chevron)
+        self.header = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
             size_hint=(1, None),
             height=50,
+            padding=(10, 0)
+        )
+
+        self.header_label = SafeLabel(
+            text=title,
             font_size=18,
-            background_color=(0, 0, 0, 0),
             color=get_color_from_hex("#FFDD00"),
             halign="left",
-            valign="middle",
-            text_size=(Window.width - 60, None)
+            valign="middle"
         )
-        self.header.bind(on_press=self.toggle)
+        self.header_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+
+        self.header_chevron = Image(
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
+            size_hint=(None, None),
+            size=(20, 20),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.header.add_widget(self.header_label)
+        self.header.add_widget(self.header_chevron)
+
+        # Make header clickable
+        self.header.bind(on_touch_down=self.toggle)
+
         self.add_widget(self.header)
 
+        # CONTENT BOX (collapsed initially)
         self.content_box = BoxLayout(
             orientation="vertical",
             spacing=5,
@@ -1588,11 +1609,15 @@ class CollapsibleSection(BoxLayout):
         )
         self.add_widget(self.content_box)
 
-    def toggle(self, *args):
+    def toggle(self, instance, touch=None):
+        if touch and not instance.collide_point(*touch.pos):
+            return False
+
         self.is_open = not self.is_open
 
         if self.is_open:
-            self.header.text = self.header.text.replace("▶", "▼")
+            # Expand
+            self.header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
             self.content_box.opacity = 1
             self.content_box.clear_widgets()
 
@@ -1615,19 +1640,22 @@ class CollapsibleSection(BoxLayout):
             self.content_box.height = total_height
 
         else:
-            self.header.text = self.header.text.replace("▼", "▶")
+            # Collapse
+            self.header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
             self.content_box.opacity = 0
             self.content_box.height = 0
             self.content_box.clear_widgets()
+
+        return True
 
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
         super().__init__(
             orientation="horizontal",
             spacing=20,
-            padding=(20, 0),
+            padding=(20, 10),     # more vertical padding
             size_hint_y=None,
-            height=80,
+            height=120,           # increased height for 2-line labels
             **kwargs
         )
 
@@ -1662,10 +1690,8 @@ class CalculatorNavBar(BoxLayout):
             ("Summary", "calculator_final"),
         ]
 
-        # Map for icons
         self.icon_map = ICON_PATHS
 
-        # Index of current screen
         self.current_index = next(
             (i for i, (_, name) in enumerate(self.screens) if name == current),
             0
@@ -1692,7 +1718,7 @@ class CalculatorNavBar(BoxLayout):
         self.add_widget(self._wrap_nav_item(prev_btn))
 
         # ---------------------------------------------------------
-        # CURRENT SCREEN BUTTON (icon + text + chevron)
+        # CURRENT SCREEN BUTTON
         # ---------------------------------------------------------
         current_label, current_screen = self.screens[self.current_index]
         current_icon = self.icon_map[current_label]
@@ -1715,54 +1741,55 @@ class CalculatorNavBar(BoxLayout):
         )
         self.add_widget(self._wrap_nav_item(next_btn))
 
+    # =====================================================================
+    # WRAPPER — FIXED FOR PERFECT VERTICAL ALIGNMENT
+    # =====================================================================
     def _wrap_nav_item(self, widget):
         box = BoxLayout(
-            size_hint=(None, None),
-            height=80,
-            padding=(0, 0)
+            size_hint=(None, 1),   # full vertical stretch
+            padding=(0, 0),
         )
         box.add_widget(widget)
-    
-        # ⭐ ensure wrapper width always matches widget width
+
+        # match width to widget
         def sync_width(*args):
             box.width = widget.width
-            
+
         widget.bind(width=sync_width)
         sync_width()
-    
+
         return box
 
     # =====================================================================
-    # BUTTON FACTORIES
+    # BUTTON FACTORIES — ALL VERTICALLY CENTERED
     # =====================================================================
 
     def make_nav_button(self, label, icon, on_press):
         btn = BoxLayout(
             orientation="horizontal",
-            spacing=6,
+            spacing=8,
             size_hint=(None, None),
-            size=(140, 60),
+            size=(160, 80),
             padding=(0, 0),
         )
 
         img = Image(
             source=icon,
             size_hint=(None, None),
-            size=(28, 28),
+            size=(32, 32),
             allow_stretch=True,
             keep_ratio=True,
         )
 
         lbl = SafeLabel(
             text=label,
-            font_size=16,
+            font_size=18,
             halign="left",
             valign="middle",
             color=get_color_from_hex("#005EA5"),
-            size_hint=(1, None),
-            height=28,
+            size_hint=(1, 1),
         )
-        lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
         btn.add_widget(img)
         btn.add_widget(lbl)
@@ -1779,14 +1806,14 @@ class CalculatorNavBar(BoxLayout):
 
         lbl = SafeLabel(
             text=label,
-            font_size=16,
+            font_size=18,
             halign="center",
             valign="middle",
             color=color,
             size_hint=(None, None),
-            size=(120, 60),
+            size=(140, 80),
         )
-        lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
         if enabled:
             lbl.bind(
@@ -1799,35 +1826,34 @@ class CalculatorNavBar(BoxLayout):
     def make_current_button(self, label, icon, on_press):
         btn = BoxLayout(
             orientation="horizontal",
-            spacing=6,
+            spacing=8,
             size_hint=(None, None),
-            size=(240, 60),
+            size=(300, 80),   # wider for long labels
             padding=(0, 0),
         )
 
         img = Image(
             source=icon,
             size_hint=(None, None),
-            size=(28, 28),
+            size=(32, 32),
             allow_stretch=True,
             keep_ratio=True,
         )
 
         lbl = SafeLabel(
             text=label,
-            font_size=16,
+            font_size=18,
             halign="left",
             valign="middle",
             color=get_color_from_hex("#005EA5"),
-            size_hint=(1, None),
-            height=28,
+            size_hint=(1, 1),
         )
-        lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
         chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(16, 16),
+            size=(20, 20),
             allow_stretch=True,
             keep_ratio=True,
         )
@@ -2542,22 +2568,42 @@ class CalculatorHousingScreen(BaseScreen):
         # MANUAL LOCATION / BRMA OVERRIDE (COLLAPSIBLE)
         # ---------------------------------------------------------
         self.housing_widgets["manual_section_expanded"] = False
-
-        manual_header = RoundedButton(
-            text="Manual Location/BRMA selection ▸",
+        
+        # Header container (clickable row)
+        manual_header = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
             size_hint=(1, None),
             height=50,
-            background_normal="",
-            background_color=(0, 0, 0, 0),
+            padding=(10, 0)
+        )
+        
+        # Label
+        manual_label = SafeLabel(
+            text="Manual Location/BRMA selection",
             font_size=18,
-            font_name="roboto",
-            color=get_color_from_hex("#FFFFFF"),
+            color=get_color_from_hex("#005EA5"),
             halign="left",
             valign="middle"
         )
-        manual_header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None)))
+        manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
+        # Chevron image (down by default)
+        manual_chevron = Image(
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
+            size_hint=(None, None),
+            size=(20, 20),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        
+        manual_header.add_widget(manual_label)
+        manual_header.add_widget(manual_chevron)
+        
+        # Add to layout
         layout.add_widget(manual_header)
-
+        
+        # Collapsible box
         self.housing_widgets["manual_box"] = BoxLayout(
             orientation="vertical",
             spacing=10,
@@ -2567,28 +2613,35 @@ class CalculatorHousingScreen(BaseScreen):
             minimum_height=self.housing_widgets["manual_box"].setter("height")
         )
         layout.add_widget(self.housing_widgets["manual_box"])
-
+        
         # Start collapsed
         box = self.housing_widgets["manual_box"]
         box.opacity = 0
         box.disabled = True
         box.height = 0
-
-        def toggle_manual_section(instance):
+        
+        # Toggle logic
+        def toggle_manual_section(instance, touch=None):
+            if touch and not instance.collide_point(*touch.pos):
+                return False
+        
             expanded = not self.housing_widgets["manual_section_expanded"]
             self.housing_widgets["manual_section_expanded"] = expanded
-
+        
             if expanded:
-                manual_header.text = "Manual Location/BRMA selection ▾"
+                manual_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
                 box.opacity = 1
                 box.disabled = False
             else:
-                manual_header.text = "Manual Location/BRMA selection"
+                manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 box.opacity = 0
                 box.disabled = True
                 box.height = 0
-
-        manual_header.bind(on_press=toggle_manual_section)
+        
+            return True
+        
+        # Make whole header clickable
+        manual_header.bind(on_touch_down=toggle_manual_section)
 
         # ---------------------------------------------------------
         # MANUAL OVERRIDE TOGGLE
@@ -2822,7 +2875,7 @@ class CalculatorHousingScreen(BaseScreen):
                     print("BRMA lookup finished")
                     self.hide_loading()
         
-            Clock.schedule_once(do_lookup, 0.1)
+            do_lookup(0)
 
         find_brma_btn.bind(on_press=on_find_brma)
 
@@ -2834,7 +2887,8 @@ class CalculatorHousingScreen(BaseScreen):
     def on_postcode_changed(self, instance, value):
         # Clear visible BRMA result when postcode changes
         if "brma_display" in self.housing_widgets:
-            self.housing_widgets["brma_display"].text = ""
+            if value.strip() == "":
+                self.housing_widgets["brma_display"].text = ""
             
         # Optional: also clear stored state
         data = self.calculator_state
@@ -2975,12 +3029,12 @@ class CalculatorHousingScreen(BaseScreen):
     # LOOKUP HELPERS (move your existing functions here)
     # ---------------------------------------------------------
     def lookup_brma(self, postcode):
-        self.load_brma_cache()
-        return self._postcode_to_brma.get(postcode, "BRMA not found")
-
+        app = App.get_running_app()
+        return app._postcode_to_brma.get(postcode, "BRMA not found")
+    
     def lookup_location_for_postcode(self, postcode):
-        self.load_brma_cache()
-        code = self._postcode_to_country.get(postcode)
+        app = App.get_running_app()
+        code = app._postcode_to_country.get(postcode)
         return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code)
 
     def lookup_lha_rate(self, brma, bedrooms, location):
@@ -3029,46 +3083,6 @@ class CalculatorHousingScreen(BaseScreen):
                 return weekly * 52 / 12
     
         return 0.0
-
-    # =========================================================
-    # BRMA CACHE LOADER (unchanged)
-    # =========================================================
-    def load_brma_cache(self):
-        if hasattr(self, "_brma_cache_loaded"):
-            return
-
-        self._brma_cache_loaded = True
-        self._brmas_by_country = {"England": set(), "Scotland": set(), "Wales": set()}
-        self._postcode_to_brma = {}
-        self._postcode_to_country = {}
-
-        csv_path = resource_find("data/pcode_brma_lookup.csv")
-        if not csv_path:
-            print("BRMA CSV not found")
-            return
-
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    brma = row.get("brma_name", "").strip()
-                    country_code = row.get("country", "").strip().upper()
-
-                    if country_code == "E":
-                        self._brmas_by_country["England"].add(brma)
-                    elif country_code == "S":
-                        self._brmas_by_country["Scotland"].add(brma)
-                    elif country_code == "W":
-                        self._brmas_by_country["Wales"].add(brma)
-
-                    for key in ("PCD", "PCD2", "PCDS"):
-                        p = row.get(key, "").strip().upper()
-                        if p:
-                            self._postcode_to_brma[p] = brma
-                            self._postcode_to_country[p] = country_code
-
-        except Exception as e:
-            print("Error loading BRMA cache:", e)
 
 
 class CalculatorChildrenScreen(BaseScreen):
@@ -3174,21 +3188,33 @@ class CalculatorChildrenScreen(BaseScreen):
         """
 
         # COLLAPSIBLE HEADER
-        header_btn = RoundedButton(
+        header_btn = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint=(1, None),
+            height=60,
+            padding=(10, 0)
+        )
+        
+        header_label = SafeLabel(
             text="New Child",
-            size_hint=(None, None),
-            size=(250, 60),
-            pos_hint={"center_x": 0.5},
-            background_color=(0, 0, 0, 0),
-            background_normal="",
-            color=get_color_from_hex("#005EA5"),
-            font_name="roboto",
             font_size=20,
-            text_size=(250, None),
+            color=get_color_from_hex("#005EA5"),
             halign="left",
             valign="middle"
         )
-        header_btn.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        header_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
+        header_chevron = Image(
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
+            size_hint=(None, None),
+            size=(20, 20),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        
+        header_btn.add_widget(header_label)
+        header_btn.add_widget(header_chevron)
 
         # CONTENT BOX (collapsed initially)
         content_box = BoxLayout(
@@ -3260,24 +3286,32 @@ class CalculatorChildrenScreen(BaseScreen):
             background_normal="",
             color=get_color_from_hex("#FFFFFF"),
             font_size=16,
+            halign="center",
+            valign="middle",
+            text_size=(200, None),
             on_press=lambda inst: self.remove_child_section(section)
         )
         content_box.add_widget(remove_btn)
 
         # COLLAPSE/EXPAND LOGIC
-        def toggle_section(instance):
+        def toggle_section(instance, touch=None):
+            if touch and not instance.collide_point(*touch.pos):
+                return False
+        
             if content_box.height == 0:
                 # Expand
                 content_box.height = content_box.minimum_height
                 content_box.opacity = 1
-                header_btn.text = f"▾ {self.get_child_header_text(section)}"
+                header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
             else:
                 # Collapse
                 content_box.height = 0
                 content_box.opacity = 0
-                header_btn.text = f"▸ {self.get_child_header_text(section)}"
-
-        header_btn.bind(on_press=toggle_section)
+                header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+        
+            return True
+        
+        header_btn.bind(on_touch_down=toggle_section)
 
         # STORE SECTION
         section = {
@@ -3292,6 +3326,13 @@ class CalculatorChildrenScreen(BaseScreen):
         }
 
         self.child_sections.append(section)
+
+        header_label.text = self.get_child_header_text(section)
+
+        def update_header_text(instance, value):
+            header_label.text = self.get_child_header_text(section)
+        
+        name_input.bind(text=update_header_text)
 
         # INSERT INTO LAYOUT ABOVE BUTTONS
         insert_index = len(self.children_layout.children) - 2
@@ -5199,6 +5240,46 @@ class BenefitBuddy(App):
         self.nav.go("instant")
         return self.sm
 
+    # =========================================================
+    # BRMA CACHE LOADER
+    # =========================================================
+    def load_brma_cache(self):
+        if hasattr(self, "_brma_cache_loaded"):
+            return
+
+        self._brma_cache_loaded = True
+        self._brmas_by_country = {"England": set(), "Scotland": set(), "Wales": set()}
+        self._postcode_to_brma = {}
+        self._postcode_to_country = {}
+
+        csv_path = resource_find("data/pcode_brma_lookup.csv")
+        if not csv_path:
+            print("BRMA CSV not found")
+            return
+
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    brma = row.get("brma_name", "").strip()
+                    country_code = row.get("country", "").strip().upper()
+
+                    if country_code == "E":
+                        self._brmas_by_country["England"].add(brma)
+                    elif country_code == "S":
+                        self._brmas_by_country["Scotland"].add(brma)
+                    elif country_code == "W":
+                        self._brmas_by_country["Wales"].add(brma)
+
+                    for key in ("PCD", "PCD2", "PCDS"):
+                        p = row.get(key, "").strip().upper()
+                        if p:
+                            self._postcode_to_brma[p] = brma
+                            self._postcode_to_country[p] = country_code
+
+        except Exception as e:
+            print("Error loading BRMA cache:", e)
+    
     def preload_lha_csvs(self):
         """
         Preload all LHA CSVs into memory so lookups are instant later.
@@ -5330,6 +5411,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
