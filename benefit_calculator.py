@@ -1402,6 +1402,16 @@ class GovUkIconSpinner(GovUkSpinner):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
 
+        # Background rectangle (GOV.UK white input background)
+        with self.canvas.before:
+            Color(*get_color_from_hex("#FFFFFF"))
+            self._bg = Rectangle(size=self.size, pos=self.pos)
+        
+        self.bind(
+            size=lambda inst, val: setattr(self._bg, "size", val),
+            pos=lambda inst, val: setattr(self._bg, "pos", val)
+        )
+
         # -----------------------------------------------------
         # Clear default spinner children (just visual content)
         # -----------------------------------------------------
@@ -1882,35 +1892,38 @@ class CalculatorNavBar(BoxLayout):
     def open_dropdown(self):
         if self.dropdown_open:
             return
-
+    
         self.dropdown_open = True
-
-        # Floating panel
+    
+        # Floating panel container
         self.dropdown = FloatLayout(size_hint=(1, None), height=400)
-        
-        # Convert navbar position to window coords so dropdown always appears BELOW it
+    
+        # Convert navbar position to window coordinates
         navbar_x, navbar_y = self.to_window(self.x, self.y)
-        
+    
+        # Convert the button position to window coordinates
+        btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
+    
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
             width=300,
             height=400,
-            pos=(self.current_btn.x, navbar_y - 400),   # ⭐ BELOW the navbar
+            pos=(btn_x, navbar_y - 400),   # always BELOW navbar
             padding=10,
             spacing=10,
         )
-
+    
         with panel.canvas.before:
             Color(1, 1, 1, 1)
             panel._bg = Rectangle(size=panel.size, pos=panel.pos)
-
+    
         panel.bind(
             size=lambda inst, val: setattr(panel._bg, "size", val),
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
-
-        # Add all screens
+    
+        # Add menu items
         for label, screen_name in self.screens:
             row = BoxLayout(
                 orientation="horizontal",
@@ -1918,13 +1931,13 @@ class CalculatorNavBar(BoxLayout):
                 size_hint=(1, None),
                 height=40,
             )
-
+    
             icon = Image(
                 source=self.icon_map[label],
                 size_hint=(None, None),
                 size=(20, 20),
             )
-
+    
             lbl = SafeLabel(
                 text=label,
                 font_size=14,
@@ -1933,17 +1946,17 @@ class CalculatorNavBar(BoxLayout):
                 color=get_color_from_hex("#005EA5"),
             )
             lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+    
             row.add_widget(icon)
             row.add_widget(lbl)
-
+    
             row.bind(
                 on_touch_down=lambda inst, touch, s=screen_name:
                     App.get_running_app().nav.go(s) if inst.collide_point(*touch.pos) else None
             )
-
+    
             panel.add_widget(row)
-
+    
         self.dropdown.add_widget(panel)
         self.parent.add_widget(self.dropdown)
 
@@ -3193,7 +3206,17 @@ class CalculatorChildrenScreen(BaseScreen):
             spacing=10,
             size_hint=(1, None),
             height=60,
-            padding=(10, 0)
+            padding=(15, 0)
+        )
+        
+        # Add background
+        with header_btn.canvas.before:
+            Color(*get_color_from_hex("#005EA5"))
+            header_btn._bg = Rectangle(size=header_btn.size, pos=header_btn.pos)
+        
+        header_btn.bind(
+            size=lambda inst, val: setattr(header_btn._bg, "size", val),
+            pos=lambda inst, val: setattr(header_btn._bg, "pos", val),
         )
         
         header_label = SafeLabel(
@@ -3225,6 +3248,11 @@ class CalculatorChildrenScreen(BaseScreen):
             height=0,
             opacity=0
         )
+
+        if not prefill:
+            content_box.height = content_box.minimum_height
+            content_box.opacity = 1
+            header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
 
         # CHILD NAME
         name_input = CustomTextInput(
@@ -3334,10 +3362,8 @@ class CalculatorChildrenScreen(BaseScreen):
         
         name_input.bind(text=update_header_text)
 
-        # INSERT INTO LAYOUT ABOVE BUTTONS
-        insert_index = len(self.children_layout.children) - 2
-        self.children_layout.add_widget(header_btn, index=insert_index)
-        self.children_layout.add_widget(content_box, index=insert_index)
+        self.children_layout.add_widget(header_btn)
+        self.children_layout.add_widget(content_box)
 
     # ---------------------------------------------------------
     # REMOVE CHILD SECTION
@@ -3760,8 +3786,8 @@ class CalculatorSanctionsScreen(BaseScreen):
         # ⭐ Main layout inside ScrollView
         layout = BoxLayout(
             orientation="vertical",
-            spacing=20,
-            padding=(20, 120, 20, 20),
+            spacing=30,
+            padding=(20, 20, 20, 20),
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
@@ -3829,16 +3855,6 @@ class CalculatorSanctionsScreen(BaseScreen):
         )
         layout.add_widget(w["duration"])
 
-        # ---------------------------------------------------------
-        # SPACERS / BUTTONS
-        # ---------------------------------------------------------
-        layout.add_widget(Widget(size_hint_y=0.05))
-
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        layout.add_widget(buttons_box)
-
-        layout.add_widget(Widget(size_hint_y=0.05))
-
     def save_state(self):
         w = self.sanctions_widgets
         data = self.calculator_state
@@ -3891,7 +3907,7 @@ class CalculatorSanctionsScreen(BaseScreen):
             w["duration"].text = "Select duration"
             
 
-class CalculatorAdvancePaymentsScreen(BaseScreen):
+class CalculatorAdvanceScreen(BaseScreen):
 
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
@@ -3903,17 +3919,21 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
         # ROOT layout (nav bar + scroll)
         root = BoxLayout(orientation="vertical")
 
-        # ⭐ Navigation bar at the top
-        root.add_widget(CalculatorNavBar(current="calculator_advance_payments"))
+        # Navigation bar
+        root.add_widget(CalculatorNavBar(current="calculator_advance"))
 
-        # ⭐ ScrollView for form content
-        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+        # ScrollView
+        scroll = ScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True
+        )
 
-        # ⭐ Main layout inside ScrollView
+        # Main content layout
         layout = BoxLayout(
             orientation="vertical",
-            spacing=20,
-            padding=(20, 120, 20, 20),
+            spacing=30,
+            padding=(20, 20, 20, 20),
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
@@ -3949,14 +3969,9 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
         amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(amount_label)
 
-        w["amount"] = TextInput(
-            hint_text="£0.00",
-            multiline=False,
-            font_size=18,
-            size_hint=(1, None),
-            height=50,
-            background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
+        w["amount"] = GovUkTextInput(
+            hint_text="Enter amount",
+            input_filter="float"
         )
         layout.add_widget(w["amount"])
 
@@ -3964,7 +3979,7 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
         # REPAYMENT PERIOD
         # ---------------------------------------------------------
         period_label = SafeLabel(
-            text="Repayment period",
+            text="Repayment period (months)",
             font_size=18,
             color=get_color_from_hex("#FFFFFF"),
             halign="left"
@@ -3972,20 +3987,11 @@ class CalculatorAdvancePaymentsScreen(BaseScreen):
         period_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(period_label)
 
-        w["period"] = GovUkIconSpinner(
-            text="Select repayment period",
-            values=["3 months", "6 months", "9 months", "12 months"],
-            icon_map={}
+        w["period"] = GovUkTextInput(
+            hint_text="Enter number of months",
+            input_filter="int"
         )
         layout.add_widget(w["period"])
-
-        # ---------------------------------------------------------
-        # SPACERS / BUTTONS
-        # ---------------------------------------------------------
-        layout.add_widget(Widget(size_hint_y=0.05))
-        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
-        layout.add_widget(buttons_box)
-        layout.add_widget(Widget(size_hint_y=0.05))
 
     # ---------------------------------------------------------
     # SAVE STATE
@@ -4441,8 +4447,10 @@ class DisclaimerScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        # ROOT: vertical layout
         root = BoxLayout(orientation="vertical")
 
+        # SCROLL AREA
         scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
@@ -4450,22 +4458,19 @@ class DisclaimerScreen(BaseScreen):
             bar_width=0
         )
 
+        # CONTAINER inside scroll
         container = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
             padding=20,
-            spacing=20,
+            spacing=30,
         )
-
-        # ⭐ REQUIRED for centering — you were missing this
         container.bind(minimum_height=container.setter("height"))
 
-        # ⭐ Correct centering rule
-        scroll.bind(height=lambda inst, val: setattr(container, "minimum_height", val))
-
+        # MAIN CONTENT
         content = BoxLayout(
             orientation="vertical",
-            spacing=20,
+            spacing=25,
             size_hint=(1, None),
         )
         content.bind(minimum_height=content.setter("height"))
@@ -4488,6 +4493,7 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(disclaimer_text)
 
+        # LOADING LABEL
         self.loading_label = SafeLabel(
             text="Loading data…",
             font_size=16,
@@ -4499,6 +4505,7 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.loading_label)
 
+        # LOADING BAR
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
             height=20,
@@ -4525,6 +4532,7 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         content.add_widget(self.loading_bar_bg)
 
+        # CONTINUE BUTTON
         self.continue_button = RoundedButton(
             text="Continue",
             size_hint=(None, None),
@@ -4542,12 +4550,13 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.continue_button)
 
+        # FOOTER
         build_footer(content)
 
-        # ⭐ Center content vertically when short
-        container.add_widget(Widget(size_hint_y=1))   # top spacer
+        # ⭐ Natural centering: one flexible spacer above and below
+        container.add_widget(Widget(size_hint_y=1))
         container.add_widget(content)
-        container.add_widget(Widget(size_hint_y=1))   # bottom spacer
+        container.add_widget(Widget(size_hint_y=1))
 
         scroll.add_widget(container)
         root.add_widget(scroll)
@@ -4570,12 +4579,10 @@ class DisclaimerScreen(BaseScreen):
 
     def _load_csv_thread(self):
         app = App.get_running_app()
-    
         try:
             app.preload_all_data()
         except Exception as e:
             print("Startup preload error:", e)
-    
         Clock.schedule_once(self._loading_complete, 0)
 
     def _loading_complete(self, dt):
@@ -5128,7 +5135,7 @@ class ScreenFactory:
             return CalculatorFinalScreen(
                 calculator_state=app.calculator_state,
                 save_callbacks=app.save_callbacks,
-                calculate_callback=app.calculate_entitlement,
+                calculate_callback=app.engine.calculate_entitlement,
                 go_to_breakdown_callback=lambda: (
                     app.nav.go("breakdown"),
                     app.nav.get("breakdown").populate_breakdown(app.calculator_state.breakdown)
@@ -5220,8 +5227,8 @@ class BenefitBuddy(App):
         self.sm = ScreenManager()
         self.nav = NavigationManager(self.sm)
 
-        # Shared calculator state
         self.calculator_state = CalculatorState()
+        self.engine = CalculatorEngine()
 
         # ---------------------------------------------------------
         # SAVE CALLBACKS FOR FINAL CALCULATION SCREEN
@@ -5411,6 +5418,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
