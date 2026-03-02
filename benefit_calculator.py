@@ -3848,54 +3848,148 @@ class CalculatorSanctionsScreen(BaseScreen):
             w["duration"].text = saved_duration
         else:
             w["duration"].text = "Select duration"
+            
 
-    def save_state(self):
+class CalculatorAdvancePaymentsScreen(BaseScreen):
+
+    def __init__(self, calculator_state, **kwargs):
+        super().__init__(**kwargs)
+        self.calculator_state = calculator_state
+        self.advance_widgets = {}
+        self.build_ui()
+
+    def build_ui(self):
+        # ROOT layout (nav bar + scroll)
+        root = BoxLayout(orientation="vertical")
+
+        # ⭐ Navigation bar at the top
+        root.add_widget(CalculatorNavBar(current="calculator_advance_payments"))
+
+        # ⭐ ScrollView for form content
+        scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+
+        # ⭐ Main layout inside ScrollView
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=(20, 120, 20, 20),
+            size_hint=(1, None)
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        scroll.add_widget(layout)
+        root.add_widget(scroll)
+        self.add_widget(root)
+
         w = self.advance_widgets
-        data = self.calculator_state
-    
+
+        # ---------------------------------------------------------
+        # INSTRUCTION LABEL
+        # ---------------------------------------------------------
+        instruction = SafeLabel(
+            text="Enter advance payment details:",
+            font_size=18,
+            halign="center",
+            valign="middle",
+            color=get_color_from_hex("#005EA5")
+        )
+        instruction.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(instruction)
+
         # ---------------------------------------------------------
         # ADVANCE AMOUNT
         # ---------------------------------------------------------
+        amount_label = SafeLabel(
+            text="Advance amount (£)",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(amount_label)
+
+        w["amount"] = TextInput(
+            hint_text="£0.00",
+            multiline=False,
+            font_size=18,
+            size_hint=(1, None),
+            height=50,
+            background_color=get_color_from_hex("#FFFFFF"),
+            foreground_color=get_color_from_hex("#005EA5")
+        )
+        layout.add_widget(w["amount"])
+
+        # ---------------------------------------------------------
+        # REPAYMENT PERIOD
+        # ---------------------------------------------------------
+        period_label = SafeLabel(
+            text="Repayment period",
+            font_size=18,
+            color=get_color_from_hex("#FFFFFF"),
+            halign="left"
+        )
+        period_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        layout.add_widget(period_label)
+
+        w["period"] = GovUkIconSpinner(
+            text="Select repayment period",
+            values=["3 months", "6 months", "9 months", "12 months"],
+            icon_map={}
+        )
+        layout.add_widget(w["period"])
+
+        # ---------------------------------------------------------
+        # SPACERS / BUTTONS
+        # ---------------------------------------------------------
+        layout.add_widget(Widget(size_hint_y=0.05))
+        buttons_box = BoxLayout(orientation="vertical", spacing=20, size_hint=(1, None))
+        layout.add_widget(buttons_box)
+        layout.add_widget(Widget(size_hint_y=0.05))
+
+    # ---------------------------------------------------------
+    # SAVE STATE
+    # ---------------------------------------------------------
+    def save_state(self):
+        w = self.advance_widgets
+        data = self.calculator_state
+
+        # ADVANCE AMOUNT
         raw_amount = w["amount"].text.strip()
         data.advance_amount_raw = raw_amount
-    
+
         try:
             data.advance_amount = float(raw_amount or 0)
         except:
             data.advance_amount = 0.0
-    
-        # ---------------------------------------------------------
+
         # REPAYMENT PERIOD
-        # ---------------------------------------------------------
         raw_period = w["period"].text.strip()
         data.repayment_period_raw = raw_period
-    
-        # Convert "6 months" → 6
+
         try:
             data.repayment_period = int(raw_period.split()[0])
         except:
             data.repayment_period = 0
-    
+
+    # ---------------------------------------------------------
+    # LOAD STATE
+    # ---------------------------------------------------------
     def load_state(self):
         w = self.advance_widgets
         data = self.calculator_state
-    
-        # ---------------------------------------------------------
+
         # ADVANCE AMOUNT
-        # ---------------------------------------------------------
         w["amount"].text = str(getattr(data, "advance_amount_raw", ""))
-    
-        # ---------------------------------------------------------
+
         # REPAYMENT PERIOD
-        # ---------------------------------------------------------
         saved_period = getattr(data, "repayment_period_raw", "")
         valid_periods = ["3 months", "6 months", "9 months", "12 months"]
-    
+
         if saved_period in valid_periods:
             w["period"].text = saved_period
         else:
             w["period"].text = "Select repayment period"
-
+            
             
 class CalculatorFinalScreen(BaseScreen):
 
@@ -3920,105 +4014,105 @@ class CalculatorFinalScreen(BaseScreen):
     # ---------------------------------------------------------
     # BUILD UI (converted from create_calculate_screen)
     # ---------------------------------------------------------
-def build_ui(self):
-    # ROOT layout (nav bar + outer content)
-    root = BoxLayout(orientation="vertical")
-
-    # ⭐ Navigation bar at the top
-    root.add_widget(CalculatorNavBar(current="calculator_final"))
-
-    # OUTER container (scrollable summary + fixed button bar)
-    outer = BoxLayout(
-        orientation="vertical",
-        spacing=0,
-        padding=0
-    )
-
-    # ============================
-    # TOP: SCROLLABLE SUMMARY AREA
-    # ============================
-    self.calculate_scroll = ScrollView(
-        size_hint=(1, 1),
-        do_scroll_x=False,
-        do_scroll_y=True
-    )
-
-    summary_layout = BoxLayout(
-        orientation="vertical",
-        spacing=30,
-        padding=20,
-        size_hint=(1, None)
-    )
-    summary_layout.bind(minimum_height=summary_layout.setter("height"))
-
-    # Title
-    summary_layout.add_widget(
-        wrapped_SafeLabel(
-            "Summary of your Universal Credit calculation:",
-            18,
-            30
+    def build_ui(self):
+        # ROOT layout (nav bar + outer content)
+        root = BoxLayout(orientation="vertical")
+    
+        # ⭐ Navigation bar at the top
+        root.add_widget(CalculatorNavBar(current="calculator_final"))
+    
+        # OUTER container (scrollable summary + fixed button bar)
+        outer = BoxLayout(
+            orientation="vertical",
+            spacing=0,
+            padding=0
         )
-    )
-
-    # Summary placeholder
-    self.summary_widgets["label"] = SafeLabel(
-        text="No calculation yet.",
-        font_size=16,
-        halign="left",
-        valign="top",
-        color=get_color_from_hex("#FFFFFF"),
-        size_hint_y=None
-    )
-    self.summary_widgets["label"].bind(
-        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
-        texture_size=lambda inst, val: setattr(inst, "height", val[1])
-    )
-    summary_layout.add_widget(self.summary_widgets["label"])
-
-    self.calculate_scroll.add_widget(summary_layout)
-    outer.add_widget(self.calculate_scroll)
-
-    # ============================
-    # BOTTOM: FIXED BUTTON BAR
-    # ============================
-    button_bar = BoxLayout(
-        size_hint=(1, None),
-        height=100,
-        padding=20,
-        spacing=20
-    )
-
-    run_btn = RoundedButton(
-        text="Run Calculation",
-        size_hint=(1, 1),
-        background_color=(0, 0, 0, 0),
-        background_normal="",
-        font_size=20,
-        font_name="roboto",
-        color=get_color_from_hex("#005EA5"),
-        halign="center",
-        valign="middle",
-        text_size=(250, None),
-        on_press=self.run_calculation
-    )
-    button_bar.add_widget(run_btn)
-
-    breakdown_btn = RoundedButton(
-        text="View Calculation Breakdown",
-        size_hint=(1, 1),
-        background_color=(0, 0, 0, 0),
-        font_size=20,
-        on_press=lambda inst: self.go_to_breakdown_callback()
-    )
-    button_bar.add_widget(breakdown_btn)
-
-    outer.add_widget(button_bar)
-
-    # Add outer container to root
-    root.add_widget(outer)
-
-    # Add root to screen
-    self.add_widget(root)
+    
+        # ============================
+        # TOP: SCROLLABLE SUMMARY AREA
+        # ============================
+        self.calculate_scroll = ScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True
+        )
+    
+        summary_layout = BoxLayout(
+            orientation="vertical",
+            spacing=30,
+            padding=20,
+            size_hint=(1, None)
+        )
+        summary_layout.bind(minimum_height=summary_layout.setter("height"))
+    
+        # Title
+        summary_layout.add_widget(
+            wrapped_SafeLabel(
+                "Summary of your Universal Credit calculation:",
+                18,
+                30
+            )
+        )
+    
+        # Summary placeholder
+        self.summary_widgets["label"] = SafeLabel(
+            text="No calculation yet.",
+            font_size=16,
+            halign="left",
+            valign="top",
+            color=get_color_from_hex("#FFFFFF"),
+            size_hint_y=None
+        )
+        self.summary_widgets["label"].bind(
+            width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+            texture_size=lambda inst, val: setattr(inst, "height", val[1])
+        )
+        summary_layout.add_widget(self.summary_widgets["label"])
+    
+        self.calculate_scroll.add_widget(summary_layout)
+        outer.add_widget(self.calculate_scroll)
+    
+        # ============================
+        # BOTTOM: FIXED BUTTON BAR
+        # ============================
+        button_bar = BoxLayout(
+            size_hint=(1, None),
+            height=100,
+            padding=20,
+            spacing=20
+        )
+    
+        run_btn = RoundedButton(
+            text="Run Calculation",
+            size_hint=(1, 1),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
+            on_press=self.run_calculation
+        )
+        button_bar.add_widget(run_btn)
+    
+        breakdown_btn = RoundedButton(
+            text="View Calculation Breakdown",
+            size_hint=(1, 1),
+            background_color=(0, 0, 0, 0),
+            font_size=20,
+            on_press=lambda inst: self.go_to_breakdown_callback()
+        )
+        button_bar.add_widget(breakdown_btn)
+    
+        outer.add_widget(button_bar)
+    
+        # Add outer container to root
+        root.add_widget(outer)
+    
+        # Add root to screen
+        self.add_widget(root)
 
     # ---------------------------------------------------------
     # RUN CALCULATION (converted from run_calculation)
@@ -5236,6 +5330,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
