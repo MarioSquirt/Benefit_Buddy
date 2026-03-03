@@ -4682,10 +4682,7 @@ class DisclaimerScreen(BaseScreen):
         # ---------------------------------------------------------
         # FOOTER (OUTSIDE SCROLL)
         # ---------------------------------------------------------
-        footer = build_footer(None)  # must return a widget
-        root.add_widget(footer)
-
-        self.add_widget(root)
+        build_footer(root)
 
         self._progress = 0.0
 
@@ -5547,6 +5544,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
