@@ -1402,14 +1402,15 @@ class GovUkIconSpinner(GovUkSpinner):
         self.icon_map = icon_map or {}
         super().__init__(**kwargs)
 
-        # Background rectangle (GOV.UK white input background)
+        # ⭐ Canvas background (GOV.UK yellow)
         with self.canvas.before:
-            Color(*get_color_from_hex("#FFFFFF"))
-            self._bg = Rectangle(size=self.size, pos=self.pos)
-        
+            self._bg_color = Color(*get_color_from_hex("#FFDD00"))  # normal yellow
+            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
+
+        # Keep rect in sync with widget size/pos
         self.bind(
-            size=lambda inst, val: setattr(self._bg, "size", val),
-            pos=lambda inst, val: setattr(self._bg, "pos", val)
+            size=lambda inst, val: setattr(self._bg_rect, "size", val),
+            pos=lambda inst, val: setattr(self._bg_rect, "pos", val),
         )
 
         # -----------------------------------------------------
@@ -1430,7 +1431,7 @@ class GovUkIconSpinner(GovUkSpinner):
         # Spinner label
         self.label = Label(
             text=self.text or "Select",
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#005EA5"),  # GOV.UK blue
             font_size=20,
             halign="left",
             valign="middle"
@@ -1459,15 +1460,15 @@ class GovUkIconSpinner(GovUkSpinner):
         self.active_bg = get_color_from_hex("#CCB000")
 
         def on_press(*_):
-            self.background_color = self.active_bg
+            self._bg_color.rgba = self.active_bg  # darker yellow
 
         def on_release(*_):
-            self.background_color = self.normal_bg
+            self._bg_color.rgba = self.normal_bg  # normal yellow
 
         self.bind(on_press=on_press, on_release=on_release)
 
         # Ensure we start with normal background
-        self.background_color = self.normal_bg
+        self._bg_color.rgba = self.normal_bg
 
     # ---------------------------------------------------------
     # Build dropdown manually (Android-safe)
@@ -1790,6 +1791,9 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
+        img.bind(
+            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
+        )
 
         lbl = SafeLabel(
             text=label,
@@ -1849,6 +1853,9 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
+        img.bind(
+            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
+        )
 
         lbl = SafeLabel(
             text=label,
@@ -1866,6 +1873,9 @@ class CalculatorNavBar(BoxLayout):
             size=(20, 20),
             allow_stretch=True,
             keep_ratio=True,
+        )
+        chevron.bind(
+            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
         )
 
         btn.add_widget(img)
@@ -1898,18 +1908,16 @@ class CalculatorNavBar(BoxLayout):
         # Floating panel container
         self.dropdown = FloatLayout(size_hint=(1, None), height=400)
     
-        # Convert navbar position to window coordinates
-        navbar_x, navbar_y = self.to_window(self.x, self.y)
-    
-        # Convert the button position to window coordinates
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
+        navbar_x, navbar_y = self.to_window(self.x, self.y)
+        
+        panel.pos = (btn_x, navbar_y - panel.height)
     
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
             width=300,
             height=400,
-            pos=(btn_x, navbar_y - 400),   # always BELOW navbar
             padding=10,
             spacing=10,
         )
@@ -2577,31 +2585,46 @@ class CalculatorHousingScreen(BaseScreen):
         )
         layout.add_widget(self.housing_widgets["brma_display"])
 
+        # Container for BRMA/LHA results (always visible)
+        self.housing_widgets["brma_results_box"] = BoxLayout(
+            orientation="vertical",
+            spacing=5,
+            size_hint_y=None
+        )
+        self.housing_widgets["brma_results_box"].bind(
+            minimum_height=self.housing_widgets["brma_results_box"].setter("height")
+        )
+        layout.add_widget(self.housing_widgets["brma_results_box"])
+
         # ---------------------------------------------------------
         # MANUAL LOCATION / BRMA OVERRIDE (COLLAPSIBLE)
         # ---------------------------------------------------------
         self.housing_widgets["manual_section_expanded"] = False
         
-        # Header container (clickable row)
-        manual_header = BoxLayout(
+        # Clickable header container
+        class ClickableBox(ButtonBehavior, BoxLayout):
+            pass
+        
+        manual_header = ClickableBox(
             orientation="horizontal",
             spacing=10,
+            padding=(15, 10),
             size_hint=(1, None),
-            height=50,
-            padding=(10, 0)
+            height=50
         )
         
         # Label
         manual_label = SafeLabel(
             text="Manual Location/BRMA selection",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#005EA5"),  # collapsed = blue text
             halign="left",
             valign="middle"
         )
         manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        manual_header.add_widget(manual_label)
         
-        # Chevron image (down by default)
+        # Chevron PNG
         manual_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
@@ -2609,14 +2632,21 @@ class CalculatorHousingScreen(BaseScreen):
             allow_stretch=True,
             keep_ratio=True
         )
-        
-        manual_header.add_widget(manual_label)
         manual_header.add_widget(manual_chevron)
         
-        # Add to layout
+        # Collapsed background = yellow
+        with manual_header.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))
+            manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+        
+        manual_header.bind(
+            size=lambda inst, val: setattr(manual_header._bg, "size", val),
+            pos=lambda inst, val: setattr(manual_header._bg, "pos", val)
+        )
+        
         layout.add_widget(manual_header)
         
-        # Collapsible box
+        # Collapsible content box
         self.housing_widgets["manual_box"] = BoxLayout(
             orientation="vertical",
             spacing=10,
@@ -2634,59 +2664,69 @@ class CalculatorHousingScreen(BaseScreen):
         box.height = 0
         
         # Toggle logic
-        def toggle_manual_section(instance, touch=None):
-            if touch and not instance.collide_point(*touch.pos):
-                return False
-        
+        def toggle_manual_section(instance):
             expanded = not self.housing_widgets["manual_section_expanded"]
             self.housing_widgets["manual_section_expanded"] = expanded
         
             if expanded:
+                # Expanded state
                 manual_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+                manual_label.color = get_color_from_hex("#FFFFFF")
+        
+                with manual_header.canvas.before:
+                    Color(*get_color_from_hex("#0B0C0C"))  # dark background
+                    manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+        
                 box.opacity = 1
                 box.disabled = False
+                box.height = box.minimum_height
+        
             else:
+                # Collapsed state
                 manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                manual_label.color = get_color_from_hex("#005EA5")
+        
+                with manual_header.canvas.before:
+                    Color(*get_color_from_hex("#FFDD00"))  # yellow background
+                    manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+        
                 box.opacity = 0
                 box.disabled = True
                 box.height = 0
         
-            return True
+        manual_header.bind(on_press=toggle_manual_section)
         
-        # Make whole header clickable
-        manual_header.bind(on_touch_down=toggle_manual_section)
-
         # ---------------------------------------------------------
         # MANUAL OVERRIDE TOGGLE
         # ---------------------------------------------------------
         toggle_row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
-
+        
         self.housing_widgets["manual_toggle"] = CheckBox(size_hint=(None, None), size=(40, 40))
-        manual_label = SafeLabel(
+        manual_toggle_label = SafeLabel(
             text="Enable manual Location/BRMA override",
             font_size=16,
             color=get_color_from_hex("#FFFFFF")
         )
-        manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+        manual_toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
         toggle_row.add_widget(self.housing_widgets["manual_toggle"])
-        toggle_row.add_widget(manual_label)
+        toggle_row.add_widget(manual_toggle_label)
         self.housing_widgets["manual_box"].add_widget(toggle_row)
-
+        
         # ---------------------------------------------------------
         # MANUAL MODE TOGGLE LOGIC
         # ---------------------------------------------------------
         def toggle_manual_mode(instance, value):
             self.housing_widgets["location"].disabled = not value
             self.housing_widgets["brma"].disabled = not value
-
+        
         self.housing_widgets["manual_toggle"].bind(active=toggle_manual_mode)
-
+        
         # ---------------------------------------------------------
         # LOCATION SPINNER
         # ---------------------------------------------------------
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-
+        
         self.housing_widgets["location"] = GovUkIconSpinner(
             text="Select Location",
             values=["England", "Scotland", "Wales"],
@@ -2694,14 +2734,14 @@ class CalculatorHousingScreen(BaseScreen):
         )
         location_anchor.add_widget(self.housing_widgets["location"])
         self.housing_widgets["manual_box"].add_widget(location_anchor)
-
+        
         self.housing_widgets["location"].disabled = True
-
+        
         # ---------------------------------------------------------
         # BRMA SPINNER
         # ---------------------------------------------------------
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-
+        
         self.housing_widgets["brma"] = GovUkIconSpinner(
             text="Select BRMA",
             values=["Select BRMA"],
@@ -2709,31 +2749,62 @@ class CalculatorHousingScreen(BaseScreen):
         )
         brma_anchor.add_widget(self.housing_widgets["brma"])
         self.housing_widgets["manual_box"].add_widget(brma_anchor)
-
+        
         self.housing_widgets["brma"].disabled = True
-
+        
         Clock.schedule_once(lambda dt: setattr(self.housing_widgets["brma"], "text", "Select BRMA"), 0)
 
         # ---------------------------------------------------------
         # SERVICE CHARGES (COLLAPSIBLE)
         # ---------------------------------------------------------
         self.housing_widgets["service_section_expanded"] = False
-
-        service_header = RoundedButton(
-            text="Eligible Service Charges (Social Rent Only) ▸",
+        
+        # Clickable header container
+        class ClickableBox(ButtonBehavior, BoxLayout):
+            pass
+        
+        service_header = ClickableBox(
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
             size_hint=(1, None),
-            height=50,
-            background_normal="",
-            background_color=(0, 0, 0, 0),
+            height=50
+        )
+        
+        # Label
+        service_label = SafeLabel(
+            text="Eligible Service Charges (Social Rent Only)",
             font_size=18,
-            font_name="roboto",
-            color=get_color_from_hex("#FFFFFF"),
+            color=get_color_from_hex("#005EA5"),  # collapsed = blue text
             halign="left",
             valign="middle"
         )
-        service_header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None)))
+        service_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        service_header.add_widget(service_label)
+        
+        # Chevron PNG
+        service_chevron = Image(
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
+            size_hint=(None, None),
+            size=(20, 20),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        service_header.add_widget(service_chevron)
+        
+        # Collapsed background = yellow
+        with service_header.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))
+            service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+        
+        service_header.bind(
+            size=lambda inst, val: setattr(service_header._bg, "size", val),
+            pos=lambda inst, val: setattr(service_header._bg, "pos", val)
+        )
+        
         layout.add_widget(service_header)
-
+        
+        # Collapsible content box
         self.housing_widgets["service_box"] = BoxLayout(
             orientation="vertical",
             spacing=10,
@@ -2743,18 +2814,19 @@ class CalculatorHousingScreen(BaseScreen):
             minimum_height=self.housing_widgets["service_box"].setter("height")
         )
         layout.add_widget(self.housing_widgets["service_box"])
-
+        
         # Start collapsed
         box2 = self.housing_widgets["service_box"]
         box2.opacity = 0
         box2.disabled = True
         box2.height = 0
-
+        
+        # Storage for service charge inputs
         self.housing_widgets["service_fields"] = {}
-
+        
         def add_service_charge_row(label_text, key):
             row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
-
+        
             lbl = SafeLabel(
                 text=label_text,
                 font_size=16,
@@ -2762,7 +2834,7 @@ class CalculatorHousingScreen(BaseScreen):
                 halign="left"
             )
             lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+        
             ti = TextInput(
                 hint_text="£0.00",
                 multiline=False,
@@ -2772,13 +2844,13 @@ class CalculatorHousingScreen(BaseScreen):
                 background_color=get_color_from_hex("#FFFFFF"),
                 foreground_color=get_color_from_hex("#005EA5")
             )
-
+        
             self.housing_widgets["service_fields"][key] = ti
-
+        
             row.add_widget(lbl)
             row.add_widget(ti)
             self.housing_widgets["service_box"].add_widget(row)
-
+        
         # Add all service charge fields
         add_service_charge_row("Cleaning", "cleaning")
         add_service_charge_row("Communal Cleaning", "communal_cleaning")
@@ -2791,42 +2863,63 @@ class CalculatorHousingScreen(BaseScreen):
         add_service_charge_row("Shared Facilities", "shared_facilities")
         add_service_charge_row("Communal Repairs", "communal_repairs")
         add_service_charge_row("Estate Services", "estate_services")
-
+        
+        # Toggle logic
         def toggle_service_section(instance):
-            if service_header.disabled:
-                return
-
             expanded = not self.housing_widgets["service_section_expanded"]
             self.housing_widgets["service_section_expanded"] = expanded
-
+        
             if expanded:
-                service_header.text = "Eligible Service Charges (Social Rent Only) ▾"
+                # Expanded state
+                service_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+                service_label.color = get_color_from_hex("#FFFFFF")
+        
+                with service_header.canvas.before:
+                    Color(*get_color_from_hex("#0B0C0C"))  # dark background
+                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+        
                 box2.opacity = 1
                 box2.disabled = False
+                box2.height = box2.minimum_height
+        
             else:
-                service_header.text = "Eligible Service Charges (Social Rent Only) ▸"
+                # Collapsed state
+                service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                service_label.color = get_color_from_hex("#005EA5")
+        
+                with service_header.canvas.before:
+                    Color(*get_color_from_hex("#FFDD00"))  # yellow background
+                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+        
                 box2.opacity = 0
                 box2.disabled = True
                 box2.height = 0
-
+        
         service_header.bind(on_press=toggle_service_section)
-
+        
+        # Disable if tenancy type is not social
         def toggle_service_charges(spinner, value):
             social = (value.lower() == "social")
-
+        
             service_header.disabled = not social
             service_header.opacity = 1 if social else 0.4
-
+        
             for ti in self.housing_widgets["service_fields"].values():
                 ti.disabled = not social
-
+        
             if not social:
                 self.housing_widgets["service_section_expanded"] = False
-                service_header.text = "Eligible Service Charges (Social Rent Only) ▸"
+                service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                service_label.color = get_color_from_hex("#005EA5")
+        
+                with service_header.canvas.before:
+                    Color(*get_color_from_hex("#FFDD00"))
+                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+        
                 box2.opacity = 0
                 box2.disabled = True
                 box2.height = 0
-
+        
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
         # ---------------------------------------------------------
@@ -2864,20 +2957,41 @@ class CalculatorHousingScreen(BaseScreen):
         
                     data = self.calculator_state
                     data.brma = brma_name
-
-                    #SHOW RESULT TO USER (outside manual override)
+        
+                    # Show BRMA name
                     self.housing_widgets["brma_display"].text = f"BRMA: {brma_name}"
         
+                    # Update manual override spinner
                     self.housing_widgets["brma"].values = [brma_name]
                     self.housing_widgets["brma"].text = brma_name
                     self.housing_widgets["brma"]._update_dropdown()
         
+                    # Lookup location
                     location = self.lookup_location_for_postcode(postcode)
                     print("Location result:", location)
         
                     if location:
                         data.location = location
                         self.housing_widgets["location"].text = location
+        
+                    # ---------------------------------------------------------
+                    # ⭐ Populate LHA results (always visible)
+                    # ---------------------------------------------------------
+                    results_box = self.housing_widgets["brma_results_box"]
+                    results_box.clear_widgets()
+        
+                    # Get LHA rates (your existing method)
+                    lha_rates = self.lookup_lha_rate(brma_name)
+        
+                    for label, amount in lha_rates.items():
+                        row = SafeLabel(
+                            text=f"{label}: £{amount}",
+                            font_size=16,
+                            color=get_color_from_hex("#005EA5"),
+                            size_hint_y=None,
+                            height=30
+                        )
+                        results_box.add_widget(row)
         
                 except Exception as e:
                     print("BRMA lookup error:", e)
@@ -2889,8 +3003,6 @@ class CalculatorHousingScreen(BaseScreen):
                     self.hide_loading()
         
             do_lookup(0)
-
-        find_brma_btn.bind(on_press=on_find_brma)
 
         # ---------------------------------------------------------
         # INITIAL STATE SYNC
@@ -4450,7 +4562,9 @@ class DisclaimerScreen(BaseScreen):
         # ROOT: vertical layout
         root = BoxLayout(orientation="vertical")
 
+        # ---------------------------------------------------------
         # SCROLL AREA
+        # ---------------------------------------------------------
         scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
@@ -4458,23 +4572,26 @@ class DisclaimerScreen(BaseScreen):
             bar_width=0
         )
 
-        # CONTAINER inside scroll
-        container = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            padding=20,
-            spacing=30,
-        )
-        container.bind(minimum_height=container.setter("height"))
-
-        # MAIN CONTENT
         content = BoxLayout(
             orientation="vertical",
-            spacing=25,
-            size_hint=(1, None),
+            spacing=30,
+            padding=(20, 20),
+            size_hint_y=None
         )
         content.bind(minimum_height=content.setter("height"))
 
+        scroll.add_widget(content)
+        root.add_widget(scroll)
+
+        # ---------------------------------------------------------
+        # TOP SPACER (expands only when there is extra space)
+        # ---------------------------------------------------------
+        top_spacer = Widget(size_hint_y=1)
+        content.add_widget(top_spacer)
+
+        # ---------------------------------------------------------
+        # DISCLAIMER TEXT
+        # ---------------------------------------------------------
         disclaimer_text = SafeLabel(
             text=(
                 "Disclaimer: This app is currently still in development and may not be fully accurate.\n\n"
@@ -4483,7 +4600,7 @@ class DisclaimerScreen(BaseScreen):
             ),
             font_size=18,
             halign="center",
-            valign="middle",
+            valign="top",
             color=get_color_from_hex("#FFFFFF"),
             size_hint_y=None
         )
@@ -4493,7 +4610,9 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(disclaimer_text)
 
+        # ---------------------------------------------------------
         # LOADING LABEL
+        # ---------------------------------------------------------
         self.loading_label = SafeLabel(
             text="Loading data…",
             font_size=16,
@@ -4505,7 +4624,9 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.loading_label)
 
+        # ---------------------------------------------------------
         # LOADING BAR
+        # ---------------------------------------------------------
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
             height=20,
@@ -4532,7 +4653,9 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         content.add_widget(self.loading_bar_bg)
 
+        # ---------------------------------------------------------
         # CONTINUE BUTTON
+        # ---------------------------------------------------------
         self.continue_button = RoundedButton(
             text="Continue",
             size_hint=(None, None),
@@ -4550,20 +4673,25 @@ class DisclaimerScreen(BaseScreen):
         )
         content.add_widget(self.continue_button)
 
-        # FOOTER
-        build_footer(content)
+        # ---------------------------------------------------------
+        # BOTTOM SPACER (expands only when there is extra space)
+        # ---------------------------------------------------------
+        bottom_spacer = Widget(size_hint_y=1)
+        content.add_widget(bottom_spacer)
 
-        # ⭐ Natural centering: one flexible spacer above and below
-        container.add_widget(Widget(size_hint_y=1))
-        container.add_widget(content)
-        container.add_widget(Widget(size_hint_y=1))
+        # ---------------------------------------------------------
+        # FOOTER (OUTSIDE SCROLL)
+        # ---------------------------------------------------------
+        footer = build_footer(None)  # must return a widget
+        root.add_widget(footer)
 
-        scroll.add_widget(container)
-        root.add_widget(scroll)
         self.add_widget(root)
 
         self._progress = 0.0
 
+    # ---------------------------------------------------------
+    # LOADING ANIMATION
+    # ---------------------------------------------------------
     def on_enter(self):
         Clock.schedule_interval(self._animate_progress, 0.05)
         Clock.schedule_once(self.start_csv_load, 1.0)
@@ -4590,6 +4718,7 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_fg.size_hint_x = 0
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
+        
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -5129,7 +5258,7 @@ class ScreenFactory:
             return CalculatorSanctionsScreen(app.calculator_state, name=name)
 
         if name == "calculator_advance":
-            return CalculatorAdvancePaymentsScreen(app.calculator_state, name=name)
+            return CalculatorAdvanceScreen(app.calculator_state, name=name)
 
         if name == "calculator_final":
             return CalculatorFinalScreen(
@@ -5418,6 +5547,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
