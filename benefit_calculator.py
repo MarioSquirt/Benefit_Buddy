@@ -4659,13 +4659,7 @@ class DisclaimerScreen(BaseScreen):
     # LOADING ANIMATION
     # ---------------------------------------------------------
     def on_enter(self):
-        Clock.schedule_interval(self._animate_progress, 0.05)
         Clock.schedule_once(self.start_csv_load, 1.0)
-
-    def _animate_progress(self, dt):
-        if self._progress < 0.9:
-            self._progress += 0.01
-            self.loading_bar_fg.size_hint_x = self._progress  # yellow grows left → right
 
     def start_csv_load(self, dt):
         import threading
@@ -4674,16 +4668,23 @@ class DisclaimerScreen(BaseScreen):
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
-            app.preload_all_data()
+            app.preload_all_data(self._update_progress)
         except Exception as e:
             print("Startup preload error:", e)
         Clock.schedule_once(self._loading_complete, 0)
 
     def _loading_complete(self, dt):
-        self._progress = 1.0
-        self.loading_bar_fg.size_hint_x = 1  # full yellow bar
+        self._set_progress(1.0)
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
+
+    def _update_progress(self, value):
+        # Called from background thread → schedule on main thread
+        Clock.schedule_once(lambda dt: self._set_progress(value))
+    
+    def _set_progress(self, value):
+        self._progress = value
+        self.loading_bar_fg.size_hint_x = value
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -5415,21 +5416,26 @@ class BenefitBuddy(App):
             except Exception as e:
                 print(f"Error loading {filename}:", e)
 
-    def preload_all_data(self):
+    def preload_all_data(self, progress_callback):
         """
-        Run all heavy startup loads once during the disclaimer screen.
+        Run all heavy startup loads once during the disclaimer screen,
+        reporting real progress back to the UI.
         """
-        print("Preloading BRMA CSV…")
-        self.load_brma_cache()
-        print("BRMA CSV loaded")
     
-        print("Preloading LHA CSVs…")
-        self.preload_lha_csvs()
-        print("LHA CSVs loaded")
+        steps = [
+            ("Preloading BRMA CSV…", self.load_brma_cache),
+            ("Preloading LHA CSVs…", self.preload_lha_csvs),
+        ]
     
-        # Future heavy tasks can be added here
-        # print("Preloading XYZ…")
-        # self.preload_xyz()
+        total = len(steps)
+    
+        for i, (label, func) in enumerate(steps):
+            print(label)
+            func()
+            progress = (i + 1) / total
+            progress_callback(progress)
+    
+        print("All preload tasks complete.")
 
     def on_start(self):
         # Switch away from InstantScreen after a moment
@@ -5512,6 +5518,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
