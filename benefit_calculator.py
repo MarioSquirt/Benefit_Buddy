@@ -4622,8 +4622,9 @@ class DisclaimerScreen(BaseScreen):
             size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
         )
-
-        self.loading_bar_fg = BoxLayout(size_hint=(1, 1))
+        
+        # Foreground bar MUST have explicit height
+        self.loading_bar_fg = BoxLayout(size_hint=(1, None), height=30)
         with self.loading_bar_fg.canvas.before:
             Color(*get_color_from_hex("#005EA5"))
             self._loading_fg_rect = Rectangle(size=self.loading_bar_fg.size, pos=self.loading_bar_fg.pos)
@@ -4631,7 +4632,7 @@ class DisclaimerScreen(BaseScreen):
             size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
-
+        
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         root.add_widget(self.loading_bar_bg)
 
@@ -5527,6 +5528,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
