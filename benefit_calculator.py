@@ -4559,29 +4559,17 @@ class DisclaimerScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # ROOT: vertical layout
-        root = BoxLayout(orientation="vertical")
+        from kivy.core.window import Window
+        from kivy.uix.widget import Widget
+
+        # ROOT LAYOUT
+        root = BoxLayout(orientation="vertical", padding=20, spacing=30)
 
         # ---------------------------------------------------------
-        # SCROLL AREA
+        # TOP SPACER (expands to center content)
         # ---------------------------------------------------------
-        scroll = ScrollView(
-            size_hint=(1, 1),
-            do_scroll_x=False,
-            do_scroll_y=True,
-            bar_width=0
-        )
-
-        content = BoxLayout(
-            orientation="vertical",
-            spacing=30,
-            padding=(20, 20),
-            size_hint_y=None
-        )
-        content.bind(minimum_height=content.setter("height"))
-
-        scroll.add_widget(content)
-        root.add_widget(scroll)
+        top_spacer = Widget(size_hint_y=1)
+        root.add_widget(top_spacer)
 
         # ---------------------------------------------------------
         # DISCLAIMER TEXT
@@ -4602,7 +4590,7 @@ class DisclaimerScreen(BaseScreen):
         disclaimer_text.bind(
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
-        content.add_widget(disclaimer_text)
+        root.add_widget(disclaimer_text)
 
         # ---------------------------------------------------------
         # LOADING LABEL
@@ -4616,14 +4604,14 @@ class DisclaimerScreen(BaseScreen):
             size_hint_y=None,
             height=40
         )
-        content.add_widget(self.loading_label)
+        root.add_widget(self.loading_label)
 
         # ---------------------------------------------------------
         # LOADING BAR
         # ---------------------------------------------------------
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
-            height=30,   # more visible
+            height=30,
             padding=0,
             spacing=0
         )
@@ -4645,7 +4633,7 @@ class DisclaimerScreen(BaseScreen):
         )
 
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
-        content.add_widget(self.loading_bar_bg)
+        root.add_widget(self.loading_bar_bg)
 
         # ---------------------------------------------------------
         # CONTINUE BUTTON
@@ -4665,21 +4653,19 @@ class DisclaimerScreen(BaseScreen):
             text_size=(250, None),
             on_press=lambda x: App.get_running_app().nav.go("main")
         )
-        content.add_widget(self.continue_button)
+        root.add_widget(self.continue_button)
 
         # ---------------------------------------------------------
-        # SPACERS (added AFTER content so they can expand)
+        # BOTTOM SPACER (expands to center content)
         # ---------------------------------------------------------
-        top_spacer = Widget(size_hint_y=1)
         bottom_spacer = Widget(size_hint_y=1)
-
-        content.add_widget(top_spacer)
-        content.add_widget(bottom_spacer)
+        root.add_widget(bottom_spacer)
 
         # ---------------------------------------------------------
-        # FOOTER (OUTSIDE SCROLL)
+        # FOOTER (fixed at bottom)
         # ---------------------------------------------------------
         build_footer(root)
+
         self.add_widget(root)
 
         self._progress = 0.0
@@ -5541,6 +5527,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
