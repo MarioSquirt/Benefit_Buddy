@@ -3,7 +3,7 @@ title = Benefit Buddy
 package.name = benefitbuddy
 package.domain = org.benefitbuddy.app
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,json,ttf,otf,csv
+source.include_exts = py,png,jpg,kv,atlas,json,ttf,otf,csv,db
 source.include_patterns = data/*.csv, font/*.ttf, images/*.png, images/*.jpg, images/*.gif, pcode_brma_lookup.csv
 version = 1.0.0
 requirements = python3,kivy,kivymd
@@ -19,6 +19,7 @@ android.enable_androidx = True
 
 icon.filename = %(source.dir)s/images/icon.png
 
+android.add_asset_ignore_pattern = *.db
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 34
 android.minapi = 23
