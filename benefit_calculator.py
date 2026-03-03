@@ -4607,24 +4607,8 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(self.loading_label)
 
         # ---------------------------------------------------------
-        # LOADING BAR (blue track + yellow progress)
+        # YELLOW LOADING BAR (no background track)
         # ---------------------------------------------------------
-        # Blue background track
-        self.loading_bar_bg = BoxLayout(
-            size_hint=(1, None),
-            height=30,
-            padding=0,
-            spacing=0
-        )
-        with self.loading_bar_bg.canvas.before:
-            Color(*get_color_from_hex("#005EA5"))  # blue track
-            self._loading_bg_rect = Rectangle(size=self.loading_bar_bg.size, pos=self.loading_bar_bg.pos)
-        self.loading_bar_bg.bind(
-            size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
-            pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
-        )
-
-        # Yellow progress bar (starts at width 0)
         self.loading_bar_fg = BoxLayout(size_hint=(0, None), height=30)
         with self.loading_bar_fg.canvas.before:
             Color(*get_color_from_hex("#FFDD00"))  # yellow progress
@@ -4634,8 +4618,7 @@ class DisclaimerScreen(BaseScreen):
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
 
-        self.loading_bar_bg.add_widget(self.loading_bar_fg)
-        root.add_widget(self.loading_bar_bg)
+        root.add_widget(self.loading_bar_fg)
 
         # ---------------------------------------------------------
         # CONTINUE BUTTON
@@ -5529,6 +5512,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
