@@ -3155,11 +3155,36 @@ class CalculatorHousingScreen(BaseScreen):
     # ---------------------------------------------------------
     def lookup_brma(self, postcode):
         app = App.get_running_app()
-        return app._postcode_to_brma.get(postcode, "BRMA not found")
+        cur = app.brma_cursor
+    
+        postcode = (postcode or "").strip().upper()
+        if not postcode:
+            return None
+    
+        cur.execute(
+            "SELECT brma FROM lookup WHERE postcode = ?",
+            (postcode,)
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
     
     def lookup_location_for_postcode(self, postcode):
         app = App.get_running_app()
-        code = app._postcode_to_country.get(postcode)
+        cur = app.brma_cursor
+    
+        postcode = (postcode or "").strip().upper()
+        if not postcode:
+            return None
+    
+        cur.execute(
+            "SELECT country FROM lookup WHERE postcode = ?",
+            (postcode,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+    
+        code = row[0]
         return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code)
 
     def lookup_lha_rate(self, brma, bedrooms, location):
@@ -5368,51 +5393,17 @@ class BenefitBuddy(App):
         self.nav.go("instant")
         return self.sm
 
-    def load_brma_cache(self, progress_callback, status_callback):
-        if hasattr(self, "_brma_cache_loaded"):
+    def load_brma_database(self):
+        import sqlite3
+        from kivy.resources import resource_find
+    
+        db_path = resource_find("data/brma_lookup.db")
+        if not db_path:
+            print("BRMA database not found!")
             return
     
-        self._brma_cache_loaded = True
-        self._brmas_by_country = {"England": set(), "Scotland": set(), "Wales": set()}
-        self._postcode_to_brma = {}
-        self._postcode_to_country = {}
-    
-        csv_path = resource_find("data/pcode_brma_lookup.csv")
-        if not csv_path:
-            print("BRMA CSV not found")
-            return
-    
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = list(csv.DictReader(f))
-                total = len(reader)
-    
-                for i, row in enumerate(reader):
-                    # Update status every 500 rows (prevents spam)
-                    if i % 500 == 0:
-                        status_callback(f"Loading BRMA… ({i}/{total})")
-    
-                    brma = row.get("brma_name", "").strip()
-                    country_code = row.get("country", "").strip().upper()
-    
-                    if country_code == "E":
-                        self._brmas_by_country["England"].add(brma)
-                    elif country_code == "S":
-                        self._brmas_by_country["Scotland"].add(brma)
-                    elif country_code == "W":
-                        self._brmas_by_country["Wales"].add(brma)
-    
-                    for key in ("PCD", "PCD2", "PCDS"):
-                        p = row.get(key, "").strip().upper()
-                        if p:
-                            self._postcode_to_brma[p] = brma
-                            self._postcode_to_country[p] = country_code
-    
-                    # Granular progress (0–30%)
-                    progress_callback((i + 1) / total * 0.3)
-    
-        except Exception as e:
-            print("Error loading BRMA cache:", e)
+        self.brma_db = sqlite3.connect(db_path)
+        self.brma_cursor = self.brma_db.cursor()
 
     def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
@@ -5440,26 +5431,24 @@ class BenefitBuddy(App):
                 print(f"LHA CSV missing: {filename}")
                 continue
     
-            try:
-                with open(path, newline="", encoding="utf-8") as f:
-                    reader = list(csv.DictReader(f))
-                    self._lha_data[key] = reader
+            with open(path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                self._lha_data[key] = list(reader)
     
-                print(f"Loaded {filename} ({len(self._lha_data[key])} rows)")
-    
-            except Exception as e:
-                print(f"Error loading {filename}:", e)
-    
-            # Granular progress (30–100%)
-            progress_callback(0.3 + ((i + 1) / total_files) * 0.7)
+            # Smooth progress from 10% → 100%
+            progress_callback(0.1 + ((i + 1) / total_files) * 0.9)
             
     def preload_all_data(self, progress_callback, status_callback):
-        status_callback("Loading BRMA…")
-        self.load_brma_cache(progress_callback, status_callback)
+        # Step 1 — Open SQLite DB (instant)
+        status_callback("Opening BRMA database…")
+        self.load_brma_database()
+        progress_callback(0.1)
     
+        # Step 2 — Load LHA CSVs (small, fast)
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
     
+        # Step 3 — Done
         progress_callback(1.0)
         status_callback("Ready")
 
@@ -5544,6 +5533,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
