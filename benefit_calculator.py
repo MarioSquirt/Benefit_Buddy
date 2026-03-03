@@ -1783,7 +1783,9 @@ class CalculatorNavBar(BoxLayout):
             size=(160, 80),
             padding=(0, 0),
         )
-
+        btn.size_hint_y = None
+        btn.height = 80
+    
         img = Image(
             source=icon,
             size_hint=(None, None),
@@ -1791,28 +1793,26 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
-        img.bind(
-            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
-        )
-
+    
         lbl = SafeLabel(
             text=label,
             font_size=18,
             halign="left",
             valign="middle",
             color=get_color_from_hex("#005EA5"),
-            size_hint=(1, 1),
+            size_hint=(1, None),
+            height=80,
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
-
-        btn.add_widget(img)
+    
+        btn.add_widget(self._center_icon(img))
         btn.add_widget(lbl)
-
+    
         btn.bind(
             on_touch_down=lambda inst, touch:
                 on_press(inst) if inst.collide_point(*touch.pos) else None
         )
-
+    
         return btn
 
     def make_text_button(self, label, enabled, on_press):
@@ -1842,10 +1842,12 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=8,
             size_hint=(None, None),
-            size=(300, 80),   # wider for long labels
+            size=(300, 80),
             padding=(0, 0),
         )
-
+        btn.size_hint_y = None
+        btn.height = 80
+    
         img = Image(
             source=icon,
             size_hint=(None, None),
@@ -1853,20 +1855,18 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
-        img.bind(
-            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
-        )
-
+    
         lbl = SafeLabel(
             text=label,
             font_size=18,
             halign="left",
             valign="middle",
             color=get_color_from_hex("#005EA5"),
-            size_hint=(1, 1),
+            size_hint=(1, None),
+            height=80,
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
-
+    
         chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
@@ -1874,20 +1874,43 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
-        chevron.bind(
-            texture_size=lambda inst, val: setattr(inst, "y", self.height/2 - inst.height/2)
-        )
-
-        btn.add_widget(img)
+    
+        btn.add_widget(self._center_icon(img))
         btn.add_widget(lbl)
-        btn.add_widget(chevron)
-
+        btn.add_widget(self._center_icon(chevron))
+    
         btn.bind(
             on_touch_down=lambda inst, touch:
                 on_press(inst) if inst.collide_point(*touch.pos) else None
         )
-
+    
         return btn
+
+    def _center_icon(self, img_widget):
+        wrapper = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, 1),
+            width=img_widget.width,
+            padding=0,
+            spacing=0,
+        )
+    
+        # top spacer
+        wrapper.add_widget(Widget(size_hint_y=1))
+    
+        # icon
+        wrapper.add_widget(img_widget)
+    
+        # bottom spacer
+        wrapper.add_widget(Widget(size_hint_y=1))
+    
+        # keep wrapper width synced to icon width
+        def sync_width(*args):
+            wrapper.width = img_widget.width
+        img_widget.bind(width=sync_width)
+        sync_width()
+    
+        return wrapper
 
     # =====================================================================
     # DROPDOWN MENU
@@ -5541,6 +5564,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
