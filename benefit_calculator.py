@@ -5402,8 +5402,16 @@ class BenefitBuddy(App):
             print("BRMA database not found!")
             return
     
-        self.brma_db = sqlite3.connect(db_path)
-        self.brma_cursor = self.brma_db.cursor()
+        # Open DB in read-only mode (recommended)
+        self.brma_db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    
+        # Performance tuning
+        cur = self.brma_db.cursor()
+        cur.execute("PRAGMA temp_store = MEMORY;")
+        cur.execute("PRAGMA mmap_size = 300000000;")
+    
+        # Keep cursor for lookups
+        self.brma_cursor = cur
 
     def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
@@ -5533,6 +5541,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
