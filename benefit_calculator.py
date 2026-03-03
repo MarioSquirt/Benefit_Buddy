@@ -4607,7 +4607,7 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(self.loading_label)
 
         # ---------------------------------------------------------
-        # YELLOW LOADING BAR (no background track)
+        # YELLOW LOADING BAR (smooth + accurate)
         # ---------------------------------------------------------
         self.loading_bar_fg = BoxLayout(size_hint=(0, None), height=30)
         with self.loading_bar_fg.canvas.before:
@@ -4653,14 +4653,33 @@ class DisclaimerScreen(BaseScreen):
 
         self.add_widget(root)
 
-        self._progress = 0.0
+        # REAL vs DISPLAYED PROGRESS
+        self._real_progress = 0.0
+        self._display_progress = 0.0
 
     # ---------------------------------------------------------
-    # LOADING ANIMATION
+    # LOADING START
     # ---------------------------------------------------------
     def on_enter(self):
-        Clock.schedule_once(self.start_csv_load, 1.0)
+        Clock.schedule_interval(self._smooth_progress, 0.02)
+        Clock.schedule_once(self.start_csv_load, 0.5)
 
+    # ---------------------------------------------------------
+    # SMOOTH ANIMATION TOWARD REAL PROGRESS
+    # ---------------------------------------------------------
+    def _smooth_progress(self, dt):
+        speed = 0.05  # lower = smoother, higher = faster
+
+        if self._display_progress < self._real_progress:
+            self._display_progress += speed
+            if self._display_progress > self._real_progress:
+                self._display_progress = self._real_progress
+
+        self.loading_bar_fg.size_hint_x = self._display_progress
+
+    # ---------------------------------------------------------
+    # BACKGROUND THREAD LOADING
+    # ---------------------------------------------------------
     def start_csv_load(self, dt):
         import threading
         threading.Thread(target=self._load_csv_thread).start()
@@ -4673,18 +4692,22 @@ class DisclaimerScreen(BaseScreen):
             print("Startup preload error:", e)
         Clock.schedule_once(self._loading_complete, 0)
 
+    # ---------------------------------------------------------
+    # RECEIVE REAL PROGRESS FROM LOADER
+    # ---------------------------------------------------------
+    def _update_progress(self, value):
+        Clock.schedule_once(lambda dt: self._set_real_progress(value))
+
+    def _set_real_progress(self, value):
+        self._real_progress = value
+
+    # ---------------------------------------------------------
+    # FINISH LOADING
+    # ---------------------------------------------------------
     def _loading_complete(self, dt):
-        self._set_progress(1.0)
+        self._set_real_progress(1.0)
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
-
-    def _update_progress(self, value):
-        # Called from background thread → schedule on main thread
-        Clock.schedule_once(lambda dt: self._set_progress(value))
-    
-    def _set_progress(self, value):
-        self._progress = value
-        self.loading_bar_fg.size_hint_x = value
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -5518,6 +5541,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
