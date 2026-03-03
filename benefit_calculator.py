@@ -2334,7 +2334,7 @@ class CalculatorFinancesScreen(BaseScreen):
             halign="left"
         ))
 
-        self.finances_widgets["income"] = TextInput(
+        self.finances_widgets["income"] = CustomTextInput(
             hint_text="Enter monthly income (£)",
             multiline=False,
             font_size=18,
@@ -2356,7 +2356,7 @@ class CalculatorFinancesScreen(BaseScreen):
             halign="left"
         ))
 
-        self.finances_widgets["savings"] = TextInput(
+        self.finances_widgets["savings"] = CustomTextInput(
             hint_text="Enter total savings (£)",
             multiline=False,
             font_size=18,
@@ -2378,7 +2378,7 @@ class CalculatorFinancesScreen(BaseScreen):
             halign="left"
         ))
 
-        self.finances_widgets["debts"] = TextInput(
+        self.finances_widgets["debts"] = CustomTextInput(
             hint_text="Enter total debts (£)",
             multiline=False,
             font_size=18,
@@ -2496,7 +2496,7 @@ class CalculatorHousingScreen(BaseScreen):
         # RENT / MORTGAGE / SHARED INPUTS
         # ---------------------------------------------------------
         def make_money_input(hint):
-            return TextInput(
+            return CustomTextInput(
                 hint_text=hint,
                 multiline=False,
                 font_size=18,
@@ -2545,7 +2545,7 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         # NON-DEPENDANTS
         # ---------------------------------------------------------
-        self.housing_widgets["non_dependants"] = TextInput(
+        self.housing_widgets["non_dependants"] = CustomTextInput(
             hint_text="Number of non-dependants (e.g. adult children)",
             multiline=False,
             font_size=18,
@@ -2559,7 +2559,7 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         # POSTCODE
         # ---------------------------------------------------------
-        self.housing_widgets["postcode"] = TextInput(
+        self.housing_widgets["postcode"] = CustomTextInput(
             hint_text="Enter postcode (e.g. SW1A 1AA)",
             multiline=False,
             font_size=18,
@@ -2835,7 +2835,7 @@ class CalculatorHousingScreen(BaseScreen):
             )
             lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         
-            ti = TextInput(
+            ti = CustomTextInput(
                 hint_text="£0.00",
                 multiline=False,
                 font_size=18,
@@ -3671,7 +3671,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         # ---------------------------------------------------------
         # CHILDCARE INPUT
         # ---------------------------------------------------------
-        w["childcare"] = TextInput(
+        w["childcare"] = CustomTextInput(
             hint_text="Monthly childcare costs (£)",
             multiline=False,
             font_size=18,
@@ -4081,7 +4081,7 @@ class CalculatorAdvanceScreen(BaseScreen):
         amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(amount_label)
 
-        w["amount"] = GovUkTextInput(
+        w["amount"] = CustomTextInput(
             hint_text="Enter amount",
             input_filter="float"
         )
@@ -4099,7 +4099,7 @@ class CalculatorAdvanceScreen(BaseScreen):
         period_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         layout.add_widget(period_label)
 
-        w["period"] = GovUkTextInput(
+        w["period"] = CustomTextInput(
             hint_text="Enter number of months",
             input_filter="int"
         )
@@ -4584,12 +4584,6 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(scroll)
 
         # ---------------------------------------------------------
-        # TOP SPACER (expands only when there is extra space)
-        # ---------------------------------------------------------
-        top_spacer = Widget(size_hint_y=1)
-        content.add_widget(top_spacer)
-
-        # ---------------------------------------------------------
         # DISCLAIMER TEXT
         # ---------------------------------------------------------
         disclaimer_text = SafeLabel(
@@ -4602,10 +4596,10 @@ class DisclaimerScreen(BaseScreen):
             halign="center",
             valign="top",
             color=get_color_from_hex("#FFFFFF"),
-            size_hint_y=None
+            size_hint_y=None,
+            text_size=(Window.width - 40, None)
         )
         disclaimer_text.bind(
-            width=lambda inst, val: setattr(inst, 'text_size', (val, None)),
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
         content.add_widget(disclaimer_text)
@@ -4629,7 +4623,7 @@ class DisclaimerScreen(BaseScreen):
         # ---------------------------------------------------------
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
-            height=20,
+            height=30,   # more visible
             padding=0,
             spacing=0
         )
@@ -4674,9 +4668,12 @@ class DisclaimerScreen(BaseScreen):
         content.add_widget(self.continue_button)
 
         # ---------------------------------------------------------
-        # BOTTOM SPACER (expands only when there is extra space)
+        # SPACERS (added AFTER content so they can expand)
         # ---------------------------------------------------------
+        top_spacer = Widget(size_hint_y=1)
         bottom_spacer = Widget(size_hint_y=1)
+
+        content.add_widget(top_spacer)
         content.add_widget(bottom_spacer)
 
         # ---------------------------------------------------------
@@ -4684,6 +4681,7 @@ class DisclaimerScreen(BaseScreen):
         # ---------------------------------------------------------
         build_footer(root)
         self.add_widget(root)
+
         self._progress = 0.0
 
     # ---------------------------------------------------------
@@ -4715,7 +4713,6 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_fg.size_hint_x = 0
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
-        
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -4919,7 +4916,7 @@ class MainScreenFullAccess(BaseScreen):
     def predict_payment(self, instance):
         content = BoxLayout(orientation="vertical", spacing=20, padding=20)
 
-        self.income_input = TextInput(
+        self.income_input = CustomTextInput(
             hint_text="Enter your income for this assessment period",
             font_size=18,
             background_color=get_color_from_hex(WHITE),
@@ -5544,6 +5541,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
