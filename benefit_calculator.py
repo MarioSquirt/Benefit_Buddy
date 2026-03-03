@@ -4687,7 +4687,7 @@ class DisclaimerScreen(BaseScreen):
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
-            app.preload_all_data(self._update_progress)
+            app.preload_all_data(self._update_progress, self._update_status)
         except Exception as e:
             print("Startup preload error:", e)
         Clock.schedule_once(self._loading_complete, 0)
@@ -4697,6 +4697,9 @@ class DisclaimerScreen(BaseScreen):
     # ---------------------------------------------------------
     def _update_progress(self, value):
         Clock.schedule_once(lambda dt: self._set_real_progress(value))
+
+    def _update_status(self, message):
+        Clock.schedule_once(lambda dt: setattr(self.loading_label, "text", message))
 
     def _set_real_progress(self, value):
         self._real_progress = value
@@ -5365,54 +5368,56 @@ class BenefitBuddy(App):
         self.nav.go("instant")
         return self.sm
 
-    # =========================================================
-    # BRMA CACHE LOADER
-    # =========================================================
-    def load_brma_cache(self):
+    def load_brma_cache(self, progress_callback, status_callback):
         if hasattr(self, "_brma_cache_loaded"):
             return
-
+    
         self._brma_cache_loaded = True
         self._brmas_by_country = {"England": set(), "Scotland": set(), "Wales": set()}
         self._postcode_to_brma = {}
         self._postcode_to_country = {}
-
+    
         csv_path = resource_find("data/pcode_brma_lookup.csv")
         if not csv_path:
             print("BRMA CSV not found")
             return
-
+    
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
+                reader = list(csv.DictReader(f))
+                total = len(reader)
+    
+                for i, row in enumerate(reader):
+                    # Update status every 500 rows (prevents spam)
+                    if i % 500 == 0:
+                        status_callback(f"Loading BRMA… ({i}/{total})")
+    
                     brma = row.get("brma_name", "").strip()
                     country_code = row.get("country", "").strip().upper()
-
+    
                     if country_code == "E":
                         self._brmas_by_country["England"].add(brma)
                     elif country_code == "S":
                         self._brmas_by_country["Scotland"].add(brma)
                     elif country_code == "W":
                         self._brmas_by_country["Wales"].add(brma)
-
+    
                     for key in ("PCD", "PCD2", "PCDS"):
                         p = row.get(key, "").strip().upper()
                         if p:
                             self._postcode_to_brma[p] = brma
                             self._postcode_to_country[p] = country_code
-
+    
+                    # Granular progress (0–30%)
+                    progress_callback((i + 1) / total * 0.3)
+    
         except Exception as e:
             print("Error loading BRMA cache:", e)
-    
-    def preload_lha_csvs(self):
-        """
-        Preload all LHA CSVs into memory so lookups are instant later.
-        """
+
+    def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
         from kivy.resources import resource_find
     
-        # Store preloaded LHA data here
         self._lha_data = {
             "england": [],
             "scotland": [],
@@ -5425,7 +5430,11 @@ class BenefitBuddy(App):
             "wales": "LHA-Wales.csv"
         }
     
-        for key, filename in files.items():
+        total_files = len(files)
+    
+        for i, (key, filename) in enumerate(files.items()):
+            status_callback(f"Loading LHA {key.capitalize()}…")
+    
             path = resource_find(filename)
             if not path:
                 print(f"LHA CSV missing: {filename}")
@@ -5433,32 +5442,26 @@ class BenefitBuddy(App):
     
             try:
                 with open(path, newline="", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    self._lha_data[key] = list(reader)
+                    reader = list(csv.DictReader(f))
+                    self._lha_data[key] = reader
+    
                 print(f"Loaded {filename} ({len(self._lha_data[key])} rows)")
+    
             except Exception as e:
                 print(f"Error loading {filename}:", e)
-
-    def preload_all_data(self, progress_callback):
-        """
-        Run all heavy startup loads once during the disclaimer screen,
-        reporting real progress back to the UI.
-        """
     
-        steps = [
-            ("Preloading BRMA CSV…", self.load_brma_cache),
-            ("Preloading LHA CSVs…", self.preload_lha_csvs),
-        ]
+            # Granular progress (30–100%)
+            progress_callback(0.3 + ((i + 1) / total_files) * 0.7)
+            
+    def preload_all_data(self, progress_callback, status_callback):
+        status_callback("Loading BRMA…")
+        self.load_brma_cache(progress_callback, status_callback)
     
-        total = len(steps)
+        status_callback("Loading LHA files…")
+        self.preload_lha_csvs(progress_callback, status_callback)
     
-        for i, (label, func) in enumerate(steps):
-            print(label)
-            func()
-            progress = (i + 1) / total
-            progress_callback(progress)
-    
-        print("All preload tasks complete.")
+        progress_callback(1.0)
+        status_callback("Ready")
 
     def on_start(self):
         # Switch away from InstantScreen after a moment
@@ -5541,6 +5544,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
