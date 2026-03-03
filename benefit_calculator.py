@@ -4607,8 +4607,9 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(self.loading_label)
 
         # ---------------------------------------------------------
-        # LOADING BAR
+        # LOADING BAR (blue track + yellow progress)
         # ---------------------------------------------------------
+        # Blue background track
         self.loading_bar_bg = BoxLayout(
             size_hint=(1, None),
             height=30,
@@ -4616,23 +4617,23 @@ class DisclaimerScreen(BaseScreen):
             spacing=0
         )
         with self.loading_bar_bg.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
+            Color(*get_color_from_hex("#005EA5"))  # blue track
             self._loading_bg_rect = Rectangle(size=self.loading_bar_bg.size, pos=self.loading_bar_bg.pos)
         self.loading_bar_bg.bind(
             size=lambda inst, val: setattr(self._loading_bg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_bg_rect, "pos", val)
         )
-        
-        # Foreground bar MUST have explicit height
-        self.loading_bar_fg = BoxLayout(size_hint=(1, None), height=30)
+
+        # Yellow progress bar (starts at width 0)
+        self.loading_bar_fg = BoxLayout(size_hint=(0, None), height=30)
         with self.loading_bar_fg.canvas.before:
-            Color(*get_color_from_hex("#005EA5"))
+            Color(*get_color_from_hex("#FFDD00"))  # yellow progress
             self._loading_fg_rect = Rectangle(size=self.loading_bar_fg.size, pos=self.loading_bar_fg.pos)
         self.loading_bar_fg.bind(
             size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
-        
+
         self.loading_bar_bg.add_widget(self.loading_bar_fg)
         root.add_widget(self.loading_bar_bg)
 
@@ -4681,7 +4682,7 @@ class DisclaimerScreen(BaseScreen):
     def _animate_progress(self, dt):
         if self._progress < 0.9:
             self._progress += 0.01
-            self.loading_bar_fg.size_hint_x = 1 - self._progress
+            self.loading_bar_fg.size_hint_x = self._progress  # yellow grows left → right
 
     def start_csv_load(self, dt):
         import threading
@@ -4697,7 +4698,7 @@ class DisclaimerScreen(BaseScreen):
 
     def _loading_complete(self, dt):
         self._progress = 1.0
-        self.loading_bar_fg.size_hint_x = 0
+        self.loading_bar_fg.size_hint_x = 1  # full yellow bar
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
 
@@ -5528,6 +5529,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
