@@ -2823,7 +2823,7 @@ class CalculatorHousingScreen(BaseScreen):
         # Keep background rectangle sized correctly
         service_header.bind(
             size=lambda inst, val: hasattr(service_header, "_bg") and setattr(service_header._bg, "size", val),
-            pos=lambda inst, val: hasattr(service_header._bg") and setattr(service_header._bg, "pos", val)
+            pos=lambda inst, val: hasattr(service_header._bg") and setattr(service_header._bg, pos, val)
         )
         
         # Default collapsed background (unset tenancy)
@@ -5693,4 +5693,5 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
