@@ -4749,7 +4749,20 @@ class DisclaimerScreen(BaseScreen):
             app.preload_all_data(self._update_progress, self._update_status)
         except Exception as e:
             print("Startup preload error:", e)
-        Clock.schedule_once(self._loading_complete, 0)
+        Clock.schedule_once(self._create_preloaded_screens, 0)
+
+    def _create_preloaded_screens(self, dt):
+        app = App.get_running_app()
+        nav = app.nav
+    
+        # nav.preloaded currently holds FACTORIES, not screens
+        for name, factory in list(nav.preloaded.items()):
+            screen = factory()  # SAFE: now on main thread
+            nav.preloaded[name] = screen
+            nav.sm.add_widget(screen)
+    
+        # Now finish loading normally
+        self._loading_complete(0)
 
     # ---------------------------------------------------------
     # RECEIVE REAL PROGRESS FROM LOADER
@@ -5361,12 +5374,8 @@ class NavigationManager:
         total = len(self.screen_factories)
         for i, (name, factory) in enumerate(self.screen_factories.items()):
             if name not in self.preloaded:
-                screen = factory()
-                # optional clarity:
-                screen.name = name
-    
-                self.preloaded[name] = screen
-                self.sm.add_widget(screen)
+                # Store the FACTORY for later creation on the main thread
+                self.preloaded[name] = factory
     
             progress_callback(0.1 + (i + 1) / total * 0.9)
 
@@ -5613,6 +5622,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
