@@ -5340,6 +5340,20 @@ class NavigationManager:
         # Screens created during navigation
         self.loaded = {}
 
+        self.screen_factories = {
+            name: (lambda n=name: ScreenFactory.create(n))
+            for name in [
+                "instant", "disclaimer", "settings", "main",
+                "create_account", "log_in",
+                "main_guest_access", "main_full_access",
+                "calculator_intro", "calculator_claimant_details",
+                "calculator_finances", "calculator_housing",
+                "calculator_children", "calculator_additional",
+                "calculator_sanctions", "calculator_advance",
+                "calculator_final", "breakdown"
+            ]
+        }
+
     # ---------------------------------------------------------
     # PRELOAD ALL SCREENS (called during Disclaimer loading)
     # ---------------------------------------------------------
@@ -5348,9 +5362,12 @@ class NavigationManager:
         for i, (name, factory) in enumerate(self.screen_factories.items()):
             if name not in self.preloaded:
                 screen = factory()
+                # optional clarity:
+                screen.name = name
+    
                 self.preloaded[name] = screen
                 self.sm.add_widget(screen)
-
+    
             progress_callback(0.1 + (i + 1) / total * 0.9)
 
     # ---------------------------------------------------------
@@ -5596,6 +5613,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
