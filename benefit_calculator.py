@@ -2809,15 +2809,22 @@ class CalculatorHousingScreen(BaseScreen):
         )
         service_header.add_widget(service_chevron)
         
-        # Collapsed background = yellow
-        with service_header.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
-            service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+        # Background helper
+        def set_header_background(color_hex=None):
+            service_header.canvas.before.clear()
+            if color_hex:
+                with service_header.canvas.before:
+                    Color(*get_color_from_hex(color_hex))
+                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
         
+        # Keep background rectangle sized correctly
         service_header.bind(
-            size=lambda inst, val: setattr(service_header._bg, "size", val),
-            pos=lambda inst, val: setattr(service_header._bg, "pos", val)
+            size=lambda inst, val: hasattr(service_header, "_bg") and setattr(service_header._bg, "size", val),
+            pos=lambda inst, val: hasattr(service_header, "_bg") and setattr(service_header._bg, "pos", val)
         )
+        
+        # Start with no background
+        set_header_background(None)
         
         layout.add_widget(service_header)
         
@@ -2881,7 +2888,9 @@ class CalculatorHousingScreen(BaseScreen):
         add_service_charge_row("Communal Repairs", "communal_repairs")
         add_service_charge_row("Estate Services", "estate_services")
         
-        # Toggle logic
+        # ---------------------------------------------------------
+        # COLLAPSE / EXPAND LOGIC
+        # ---------------------------------------------------------
         def toggle_service_section(instance):
             expanded = not self.housing_widgets["service_section_expanded"]
             self.housing_widgets["service_section_expanded"] = expanded
@@ -2890,10 +2899,7 @@ class CalculatorHousingScreen(BaseScreen):
                 # Expanded state
                 service_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
                 service_label.color = get_color_from_hex("#FFFFFF")
-        
-                with service_header.canvas.before:
-                    Color(*get_color_from_hex("#0B0C0C"))  # dark background
-                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+                set_header_background("#0B0C0C")  # dark background
         
                 box2.opacity = 1
                 box2.disabled = False
@@ -2903,10 +2909,7 @@ class CalculatorHousingScreen(BaseScreen):
                 # Collapsed state
                 service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 service_label.color = get_color_from_hex("#005EA5")
-        
-                with service_header.canvas.before:
-                    Color(*get_color_from_hex("#FFDD00"))  # yellow background
-                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+                set_header_background(None)  # no background when collapsed
         
                 box2.opacity = 0
                 box2.disabled = True
@@ -2914,7 +2917,9 @@ class CalculatorHousingScreen(BaseScreen):
         
         service_header.bind(on_press=toggle_service_section)
         
-        # Disable if tenancy type is not social
+        # ---------------------------------------------------------
+        # TENANCY TYPE LOGIC
+        # ---------------------------------------------------------
         def toggle_service_charges(spinner, value):
             social = (value.lower() == "social")
         
@@ -2925,17 +2930,24 @@ class CalculatorHousingScreen(BaseScreen):
                 ti.disabled = not social
         
             if not social:
+                # Collapse section
                 self.housing_widgets["service_section_expanded"] = False
                 service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 service_label.color = get_color_from_hex("#005EA5")
         
-                with service_header.canvas.before:
-                    Color(*get_color_from_hex("#FFDD00"))
-                    service_header._bg = Rectangle(size=service_header.size, pos=service_header.pos)
+                # Faded yellow bar ONLY when tenancy = private
+                set_header_background("#FFDD00")
         
                 box2.opacity = 0
                 box2.disabled = True
                 box2.height = 0
+        
+            else:
+                # Tenancy = social
+                if self.housing_widgets["service_section_expanded"]:
+                    set_header_background("#0B0C0C")  # expanded
+                else:
+                    set_header_background(None)  # collapsed
         
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
@@ -4597,10 +4609,9 @@ class DisclaimerScreen(BaseScreen):
         root = BoxLayout(orientation="vertical", padding=20, spacing=30)
 
         # ---------------------------------------------------------
-        # TOP SPACER (expands to center content)
+        # TOP SPACER
         # ---------------------------------------------------------
-        top_spacer = Widget(size_hint_y=1)
-        root.add_widget(top_spacer)
+        root.add_widget(Widget(size_hint_y=1))
 
         # ---------------------------------------------------------
         # DISCLAIMER TEXT
@@ -4638,7 +4649,7 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(self.loading_label)
 
         # ---------------------------------------------------------
-        # YELLOW LOADING BAR (smooth + accurate)
+        # LOADING BAR
         # ---------------------------------------------------------
         self.loading_bar_fg = BoxLayout(size_hint=(0, None), height=30)
         with self.loading_bar_fg.canvas.before:
@@ -4671,34 +4682,27 @@ class DisclaimerScreen(BaseScreen):
         root.add_widget(self.continue_button)
 
         # ---------------------------------------------------------
-        # BOTTOM SPACER (expands to center content)
+        # BOTTOM SPACER
         # ---------------------------------------------------------
-        bottom_spacer = Widget(size_hint_y=1)
-        root.add_widget(bottom_spacer)
+        root.add_widget(Widget(size_hint_y=1))
 
         # ---------------------------------------------------------
-        # FOOTER (fixed at bottom)
+        # FOOTER
         # ---------------------------------------------------------
         build_footer(root)
 
-        # IMPORTANT: do NOT add root yet — store it
+        # IMPORTANT: store layout, do NOT add yet
         self.root_layout = root
 
-        # REAL vs DISPLAYED PROGRESS
+        # PROGRESS VALUES
         self._real_progress = 0.0
         self._display_progress = 0.0
 
-        # Start invisible for fade-in
-        self.opacity = 0
-
     # ---------------------------------------------------------
-    # LOADING START
+    # ON ENTER — attach layout immediately (no fade)
     # ---------------------------------------------------------
     def on_enter(self):
-        # fade in the screen itself
-        Animation(opacity=1, duration=0.4).start(self)
-
-        # attach heavy layout AFTER first frame
+        # Attach layout immediately after first frame
         Clock.schedule_once(self._attach_layout, 0)
 
         Clock.schedule_interval(self._smooth_progress, 0.02)
@@ -4709,20 +4713,18 @@ class DisclaimerScreen(BaseScreen):
             self.add_widget(self.root_layout)
 
     # ---------------------------------------------------------
-    # SMOOTH ANIMATION TOWARD REAL PROGRESS
+    # SMOOTH PROGRESS
     # ---------------------------------------------------------
     def _smooth_progress(self, dt):
         speed = 0.05
-
         if self._display_progress < self._real_progress:
             self._display_progress += speed
             if self._display_progress > self._real_progress:
                 self._display_progress = self._real_progress
-
         self.loading_bar_fg.size_hint_x = self._display_progress
 
     # ---------------------------------------------------------
-    # BACKGROUND THREAD LOADING
+    # BACKGROUND LOADING
     # ---------------------------------------------------------
     def start_csv_load(self, dt):
         import threading
@@ -4735,7 +4737,6 @@ class DisclaimerScreen(BaseScreen):
         except Exception as e:
             print("Startup preload error:", e)
 
-        # create screens on main thread
         Clock.schedule_once(self._create_preloaded_screens, 0)
 
     def _create_preloaded_screens(self, dt):
@@ -4743,14 +4744,14 @@ class DisclaimerScreen(BaseScreen):
         nav = app.nav
 
         for name, factory in list(nav.preloaded.items()):
-            screen = factory()  # SAFE now
+            screen = factory()
             nav.preloaded[name] = screen
             nav.sm.add_widget(screen)
 
         self._loading_complete(0)
 
     # ---------------------------------------------------------
-    # RECEIVE REAL PROGRESS FROM LOADER
+    # PROGRESS UPDATES
     # ---------------------------------------------------------
     def _update_progress(self, value):
         Clock.schedule_once(lambda dt: self._set_real_progress(value))
@@ -5604,6 +5605,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
