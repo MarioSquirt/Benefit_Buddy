@@ -4698,34 +4698,33 @@ class DisclaimerScreen(BaseScreen):
         self._real_progress = 0.0
         self._display_progress = 0.0
 
-    # ---------------------------------------------------------
-    # ON ENTER — attach layout immediately (no fade)
-    # ---------------------------------------------------------
-    def on_enter(self):
-        # Attach layout immediately after first frame
-        Clock.schedule_once(self._attach_layout, 0)
 
+    def on_pre_enter(self):
+        self._attach_layout(0)
+    
+    def on_enter(self):
         Clock.schedule_interval(self._smooth_progress, 0.02)
-        Clock.schedule_once(self.start_csv_load, 0.5)
+        Clock.schedule_once(self.start_csv_load, 0.1)
 
     def _attach_layout(self, dt):
-        if not self.children:
+        # Always attach the layout immediately
+        if self.root_layout.parent is None:
             self.add_widget(self.root_layout)
 
-    # ---------------------------------------------------------
-    # SMOOTH PROGRESS
-    # ---------------------------------------------------------
     def _smooth_progress(self, dt):
-        speed = 0.05
-        if self._display_progress < self._real_progress:
-            self._display_progress += speed
-            if self._display_progress > self._real_progress:
-                self._display_progress = self._real_progress
+        speed = 0.05  # how fast we chase real progress
+    
+        # Gentle trickle at the start so it never looks frozen
+        if self._real_progress < 0.15 and self._display_progress < 0.15:
+            self._display_progress += 0.01
+        else:
+            if self._display_progress < self._real_progress:
+                self._display_progress += speed
+                if self._display_progress > self._real_progress:
+                    self._display_progress = self._real_progress
+    
         self.loading_bar_fg.size_hint_x = self._display_progress
 
-    # ---------------------------------------------------------
-    # BACKGROUND LOADING
-    # ---------------------------------------------------------
     def start_csv_load(self, dt):
         import threading
         threading.Thread(target=self._load_csv_thread).start()
@@ -4750,9 +4749,6 @@ class DisclaimerScreen(BaseScreen):
 
         self._loading_complete(0)
 
-    # ---------------------------------------------------------
-    # PROGRESS UPDATES
-    # ---------------------------------------------------------
     def _update_progress(self, value):
         Clock.schedule_once(lambda dt: self._set_real_progress(value))
 
@@ -4762,9 +4758,6 @@ class DisclaimerScreen(BaseScreen):
     def _set_real_progress(self, value):
         self._real_progress = value
 
-    # ---------------------------------------------------------
-    # FINISH LOADING
-    # ---------------------------------------------------------
     def _loading_complete(self, dt):
         self._set_real_progress(1.0)
         self.loading_label.text = "Ready"
@@ -5462,21 +5455,30 @@ class BenefitBuddy(App):
     def load_brma_database(self):
         import sqlite3
         from kivy.resources import resource_find
+        from kivy.clock import Clock
     
         db_path = resource_find("data/brma_lookup.db")
         if not db_path:
             print("BRMA database not found!")
             return
     
-        # Open DB in read-only mode (recommended)
+        # Yield before heavy DB open
+        Clock.sleep(0)
+    
+        # Open DB in read-only mode
         self.brma_db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    
+        # Yield again so UI can draw
+        Clock.sleep(0)
     
         # Performance tuning
         cur = self.brma_db.cursor()
         cur.execute("PRAGMA temp_store = MEMORY;")
         cur.execute("PRAGMA mmap_size = 300000000;")
     
-        # Keep cursor for lookups
+        # Yield after PRAGMAs
+        Clock.sleep(0)
+    
         self.brma_cursor = cur
 
     def preload_lha_csvs(self, progress_callback, status_callback):
@@ -5507,7 +5509,16 @@ class BenefitBuddy(App):
     
             with open(path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                self._lha_data[key] = list(reader)
+            
+                rows = []
+                for j, row in enumerate(reader):
+                    rows.append(row)
+            
+                    # Yield to UI every 200 rows so Android can draw frames
+                    if j % 200 == 0:
+                        Clock.sleep(0)
+            
+                self._lha_data[key] = rows
     
             # Smooth progress from 10% → 100%
             progress_callback(0.1 + ((i + 1) / total_files) * 0.9)
@@ -5605,36 +5616,3 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
