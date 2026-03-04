@@ -1323,8 +1323,6 @@ class RoundedButton(Button):
         # Always keep text_size tied to current width
         self.text_size = (self.width - 20, None)
 
-
-
 # ---------------------------------------------------------
 # ROW USED INSIDE DROPDOWN
 # ---------------------------------------------------------
@@ -1370,7 +1368,6 @@ class IconRow(ButtonBehavior, BoxLayout):
         self.bg.pos = self.pos
         self.bg.size = self.size
 
-
 # ---------------------------------------------------------
 # BASE GOV.UK SPINNER (styling only)
 # ---------------------------------------------------------
@@ -1392,7 +1389,6 @@ class GovUkSpinner(Spinner):
             pos_hint={"center_x": 0.5},
             **kwargs
         )
-
 
 # ---------------------------------------------------------
 # FINAL GOV.UK ICON SPINNER (FULLY SAFE & FEATURED)
@@ -1521,8 +1517,6 @@ class GovUkIconSpinner(GovUkSpinner):
             self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-32px.png"
         self.background_color = self.normal_bg
 
-
-
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
     def __init__(self, **kwargs):
@@ -1546,7 +1540,6 @@ class PNGSequenceAnimationWidget(Image):
             return
         self.source = self.frames[self.current_frame]
         self.current_frame = (self.current_frame + 1) % len(self.frames)
-
 
 class PulsingGlow(Widget):
     def __init__(self, **kwargs):
@@ -2007,10 +2000,8 @@ class CalculatorNavBar(BoxLayout):
         if self.dropdown and self.dropdown.parent:
             self.dropdown.parent.remove_widget(self.dropdown)
         self.dropdown = None
-
-        
+    
 class BaseScreen(Screen):
-
     # ---------------------------------------------------------
     # LIFECYCLE METHODS (KEEP THESE!)
     # ---------------------------------------------------------
@@ -2060,9 +2051,7 @@ class BaseScreen(Screen):
             self.remove_widget(self._loading_overlay)
             del self._loading_overlay
 
-
 class CalculatorIntroScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -2128,7 +2117,6 @@ class CalculatorIntroScreen(BaseScreen):
 
 
 class CalculatorClaimantDetailsScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -2463,10 +2451,8 @@ class CalculatorFinancesScreen(BaseScreen):
         w["income"].text = str(getattr(data, "income_raw", ""))
         w["savings"].text = str(getattr(data, "savings_raw", ""))
         w["debts"].text = str(getattr(data, "debts_raw", ""))
-
     
 class CalculatorHousingScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -3265,9 +3251,7 @@ class CalculatorHousingScreen(BaseScreen):
     
         return 0.0
 
-
 class CalculatorChildrenScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -3603,9 +3587,7 @@ class CalculatorChildrenScreen(BaseScreen):
             for child in saved_children:
                 self.add_child_section(prefill=child)
 
-    
 class CalculatorAdditionalElementsScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -3932,9 +3914,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
             sar_box.disabled = True
             sar_box.height = 0
 
-
 class CalculatorSanctionsScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -4074,9 +4054,7 @@ class CalculatorSanctionsScreen(BaseScreen):
         else:
             w["duration"].text = "Select duration"
             
-
 class CalculatorAdvanceScreen(BaseScreen):
-
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
@@ -4204,10 +4182,8 @@ class CalculatorAdvanceScreen(BaseScreen):
             w["period"].text = saved_period
         else:
             w["period"].text = "Select repayment period"
-            
-            
+                       
 class CalculatorFinalScreen(BaseScreen):
-
     def __init__(self, calculator_state, save_callbacks, calculate_callback, go_to_breakdown_callback, **kwargs):
         """
         calculator_state: shared CalculatorState object
@@ -4463,7 +4439,6 @@ class CalculatorFinalScreen(BaseScreen):
 
         Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
-
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -4618,8 +4593,8 @@ class DisclaimerScreen(BaseScreen):
         from kivy.core.window import Window
         from kivy.uix.widget import Widget
 
-        # ROOT LAYOUT
-        root = BoxLayout(orientation="vertical", padding=20, spacing=30, opacity = 0)
+        # ROOT LAYOUT (do NOT add yet)
+        root = BoxLayout(orientation="vertical", padding=20, spacing=30)
 
         # ---------------------------------------------------------
         # TOP SPACER (expands to center content)
@@ -4667,13 +4642,12 @@ class DisclaimerScreen(BaseScreen):
         # ---------------------------------------------------------
         self.loading_bar_fg = BoxLayout(size_hint=(0, None), height=30)
         with self.loading_bar_fg.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))  # yellow progress
+            Color(*get_color_from_hex("#FFDD00"))
             self._loading_fg_rect = Rectangle(size=self.loading_bar_fg.size, pos=self.loading_bar_fg.pos)
         self.loading_bar_fg.bind(
             size=lambda inst, val: setattr(self._loading_fg_rect, "size", val),
             pos=lambda inst, val: setattr(self._loading_fg_rect, "pos", val)
         )
-
         root.add_widget(self.loading_bar_fg)
 
         # ---------------------------------------------------------
@@ -4707,27 +4681,38 @@ class DisclaimerScreen(BaseScreen):
         # ---------------------------------------------------------
         build_footer(root)
 
-        self.add_widget(root)
+        # IMPORTANT: do NOT add root yet — store it
+        self.root_layout = root
 
         # REAL vs DISPLAYED PROGRESS
         self._real_progress = 0.0
         self._display_progress = 0.0
 
+        # Start invisible for fade-in
+        self.opacity = 0
+
     # ---------------------------------------------------------
     # LOADING START
     # ---------------------------------------------------------
     def on_enter(self):
-        # fade in
+        # fade in the screen itself
         Animation(opacity=1, duration=0.4).start(self)
-    
+
+        # attach heavy layout AFTER first frame
+        Clock.schedule_once(self._attach_layout, 0)
+
         Clock.schedule_interval(self._smooth_progress, 0.02)
         Clock.schedule_once(self.start_csv_load, 0.5)
+
+    def _attach_layout(self, dt):
+        if not self.children:
+            self.add_widget(self.root_layout)
 
     # ---------------------------------------------------------
     # SMOOTH ANIMATION TOWARD REAL PROGRESS
     # ---------------------------------------------------------
     def _smooth_progress(self, dt):
-        speed = 0.05  # lower = smoother, higher = faster
+        speed = 0.05
 
         if self._display_progress < self._real_progress:
             self._display_progress += speed
@@ -4749,19 +4734,19 @@ class DisclaimerScreen(BaseScreen):
             app.preload_all_data(self._update_progress, self._update_status)
         except Exception as e:
             print("Startup preload error:", e)
+
+        # create screens on main thread
         Clock.schedule_once(self._create_preloaded_screens, 0)
 
     def _create_preloaded_screens(self, dt):
         app = App.get_running_app()
         nav = app.nav
-    
-        # nav.preloaded currently holds FACTORIES, not screens
+
         for name, factory in list(nav.preloaded.items()):
-            screen = factory()  # SAFE: now on main thread
+            screen = factory()  # SAFE now
             nav.preloaded[name] = screen
             nav.sm.add_widget(screen)
-    
-        # Now finish loading normally
+
         self._loading_complete(0)
 
     # ---------------------------------------------------------
@@ -5619,6 +5604,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
