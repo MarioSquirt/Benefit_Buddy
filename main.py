@@ -16,6 +16,9 @@ from kivy.utils import platform as kivy_platform
 from kivy.resources import resource_find, resource_add_path
 from kivy.metrics import sp
 from kivy.properties import ObservableList
+from kivy.utils import get_color_from_hex
+Window.clearcolor = get_color_from_hex("#005EA5")
+
 
 # ===============================================================
 # 🛡️ SafeLabel wrapper
@@ -122,4 +125,5 @@ except ImportError:
 if __name__ == "__main__":
     Logger.info("BenefitBuddy: Starting application.")
     benefit_calculator.BenefitBuddy().run()   # ✅ run your main App class
+
 
