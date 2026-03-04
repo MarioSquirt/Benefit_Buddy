@@ -4619,7 +4619,7 @@ class DisclaimerScreen(BaseScreen):
         from kivy.uix.widget import Widget
 
         # ROOT LAYOUT
-        root = BoxLayout(orientation="vertical", padding=20, spacing=30, self.opacity = 0)
+        root = BoxLayout(orientation="vertical", padding=20, spacing=30, opacity = 0)
 
         # ---------------------------------------------------------
         # TOP SPACER (expands to center content)
@@ -5596,6 +5596,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
