@@ -2473,7 +2473,7 @@ class CalculatorHousingScreen(BaseScreen):
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=(20, 120, 20, 20),
+            padding=(20, 20, 20, 20),
             size_hint=(1, None)
         )
         layout.bind(minimum_height=layout.setter("height"))
@@ -2651,15 +2651,22 @@ class CalculatorHousingScreen(BaseScreen):
         )
         manual_header.add_widget(manual_chevron)
         
-        # Collapsed background = yellow
-        with manual_header.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
-            manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+        # Background helper
+        def set_manual_background(color_hex=None):
+            manual_header.canvas.before.clear()
+            if color_hex:
+                with manual_header.canvas.before:
+                    Color(*get_color_from_hex(color_hex))
+                    manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
         
+        # Keep background rectangle sized correctly
         manual_header.bind(
-            size=lambda inst, val: setattr(manual_header._bg, "size", val),
-            pos=lambda inst, val: setattr(manual_header._bg, "pos", val)
+            size=lambda inst, val: hasattr(manual_header, "_bg") and setattr(manual_header._bg, "size", val),
+            pos=lambda inst, val: hasattr(manual_header, "_bg") and setattr(manual_header._bg, "pos", val)
         )
+        
+        # Default collapsed background (neutral grey)
+        set_manual_background("#F3F2F1")
         
         layout.add_widget(manual_header)
         
@@ -2680,7 +2687,9 @@ class CalculatorHousingScreen(BaseScreen):
         box.disabled = True
         box.height = 0
         
-        # Toggle logic
+        # ---------------------------------------------------------
+        # COLLAPSE / EXPAND LOGIC
+        # ---------------------------------------------------------
         def toggle_manual_section(instance):
             expanded = not self.housing_widgets["manual_section_expanded"]
             self.housing_widgets["manual_section_expanded"] = expanded
@@ -2689,10 +2698,7 @@ class CalculatorHousingScreen(BaseScreen):
                 # Expanded state
                 manual_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
                 manual_label.color = get_color_from_hex("#FFFFFF")
-        
-                with manual_header.canvas.before:
-                    Color(*get_color_from_hex("#0B0C0C"))  # dark background
-                    manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+                set_manual_background("#0B0C0C")  # dark GOV.UK background
         
                 box.opacity = 1
                 box.disabled = False
@@ -2702,10 +2708,7 @@ class CalculatorHousingScreen(BaseScreen):
                 # Collapsed state
                 manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 manual_label.color = get_color_from_hex("#005EA5")
-        
-                with manual_header.canvas.before:
-                    Color(*get_color_from_hex("#FFDD00"))  # yellow background
-                    manual_header._bg = Rectangle(size=manual_header.size, pos=manual_header.pos)
+                set_manual_background("#F3F2F1")  # GOV.UK grey
         
                 box.opacity = 0
                 box.disabled = True
@@ -2820,11 +2823,11 @@ class CalculatorHousingScreen(BaseScreen):
         # Keep background rectangle sized correctly
         service_header.bind(
             size=lambda inst, val: hasattr(service_header, "_bg") and setattr(service_header._bg, "size", val),
-            pos=lambda inst, val: hasattr(service_header, "_bg") and setattr(service_header._bg, "pos", val)
+            pos=lambda inst, val: hasattr(service_header._bg") and setattr(service_header._bg, "pos", val)
         )
         
-        # Start with no background
-        set_header_background(None)
+        # Default collapsed background (unset tenancy)
+        set_header_background("#F3F2F1")  # GOV.UK light grey
         
         layout.add_widget(service_header)
         
@@ -2909,7 +2912,7 @@ class CalculatorHousingScreen(BaseScreen):
                 # Collapsed state
                 service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 service_label.color = get_color_from_hex("#005EA5")
-                set_header_background(None)  # no background when collapsed
+                set_header_background("#F3F2F1")  # GOV.UK grey
         
                 box2.opacity = 0
                 box2.disabled = True
@@ -2921,33 +2924,56 @@ class CalculatorHousingScreen(BaseScreen):
         # TENANCY TYPE LOGIC
         # ---------------------------------------------------------
         def toggle_service_charges(spinner, value):
-            social = (value.lower() == "social")
+            val = value.lower()
         
-            service_header.disabled = not social
-            service_header.opacity = 1 if social else 0.4
+            if val == "social":
+                mode = "social"
+            elif val == "private":
+                mode = "private"
+            else:
+                mode = "unset"
         
-            for ti in self.housing_widgets["service_fields"].values():
-                ti.disabled = not social
+            expanded = self.housing_widgets["service_section_expanded"]
         
-            if not social:
-                # Collapse section
+            # SOCIAL
+            if mode == "social":
+                service_header.disabled = False
+                service_header.opacity = 1
+        
+                for ti in self.housing_widgets["service_fields"].values():
+                    ti.disabled = False
+        
+                if expanded:
+                    set_header_background("#0B0C0C")
+                else:
+                    set_header_background("#F3F2F1")
+        
+            # PRIVATE
+            elif mode == "private":
+                service_header.disabled = True
+                service_header.opacity = 0.4
+        
+                for ti in self.housing_widgets["service_fields"].values():
+                    ti.disabled = True
+        
                 self.housing_widgets["service_section_expanded"] = False
                 service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
                 service_label.color = get_color_from_hex("#005EA5")
-        
-                # Faded yellow bar ONLY when tenancy = private
-                set_header_background("#FFDD00")
+                set_header_background("#FFDD00")  # faded yellow
         
                 box2.opacity = 0
                 box2.disabled = True
                 box2.height = 0
         
-            else:
-                # Tenancy = social
-                if self.housing_widgets["service_section_expanded"]:
-                    set_header_background("#0B0C0C")  # expanded
-                else:
-                    set_header_background(None)  # collapsed
+            # UNSET
+            elif mode == "unset":
+                service_header.disabled = True
+                service_header.opacity = 0.4
+        
+                for ti in self.housing_widgets["service_fields"].values():
+                    ti.disabled = True
+        
+                set_header_background("#F3F2F1")  # neutral grey
         
         self.housing_widgets["tenancy_type"].bind(text=toggle_service_charges)
 
@@ -3736,23 +3762,60 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         # SAR EXEMPTIONS (COLLAPSIBLE)
         # ---------------------------------------------------------
         w["sar_expanded"] = False
-
-        sar_header = RoundedButton(
-            text="Shared Accommodation Rate (SAR) Exemptions ▸",
+        
+        # Clickable header container
+        class ClickableBox(ButtonBehavior, BoxLayout):
+            pass
+        
+        sar_header = ClickableBox(
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
             size_hint=(1, None),
-            height=50,
-            background_color=(0, 0, 0, 0),
-            background_normal="",
-            font_size=20,
-            font_name="roboto",
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left",
-            valign="middle",
+            height=50
         )
-        w["sar_header"] = sar_header
-        sar_header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0] - 20, None)))
+        
+        # Label
+        sar_label = SafeLabel(
+            text="Shared Accommodation Rate (SAR) Exemptions",
+            font_size=18,
+            color=get_color_from_hex("#005EA5"),  # collapsed = blue text
+            halign="left",
+            valign="middle"
+        )
+        sar_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        sar_header.add_widget(sar_label)
+        
+        # Chevron
+        sar_chevron = Image(
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
+            size_hint=(None, None),
+            size=(20, 20),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        sar_header.add_widget(sar_chevron)
+        
+        # Background helper
+        def set_sar_background(color_hex=None):
+            sar_header.canvas.before.clear()
+            if color_hex:
+                with sar_header.canvas.before:
+                    Color(*get_color_from_hex(color_hex))
+                    sar_header._bg = Rectangle(size=sar_header.size, pos=sar_header.pos)
+        
+        # Keep background rectangle sized correctly
+        sar_header.bind(
+            size=lambda inst, val: hasattr(sar_header, "_bg") and setattr(sar_header._bg, "size", val),
+            pos=lambda inst, val: hasattr(sar_header, "_bg") and setattr(sar_header._bg, "pos", val)
+        )
+        
+        # Default collapsed background (GOV.UK grey)
+        set_sar_background("#F3F2F1")
+        
         layout.add_widget(sar_header)
-
+        
+        # Collapsible content box
         w["sar_box"] = BoxLayout(
             orientation="vertical",
             spacing=10,
@@ -3760,18 +3823,49 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         )
         w["sar_box"].bind(minimum_height=w["sar_box"].setter("height"))
         layout.add_widget(w["sar_box"])
-
+        
         # Start collapsed
-        w["sar_box"].opacity = 0
-        w["sar_box"].disabled = True
-        w["sar_box"].height = 0
-
-        # Helper to add SAR rows
+        sar_box = w["sar_box"]
+        sar_box.opacity = 0
+        sar_box.disabled = True
+        sar_box.height = 0
+        
+        # ---------------------------------------------------------
+        # COLLAPSE / EXPAND LOGIC
+        # ---------------------------------------------------------
+        def toggle_sar_section(instance):
+            expanded = not w["sar_expanded"]
+            w["sar_expanded"] = expanded
+        
+            if expanded:
+                sar_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+                sar_label.color = get_color_from_hex("#FFFFFF")
+                set_sar_background("#0B0C0C")  # dark GOV.UK background
+        
+                sar_box.opacity = 1
+                sar_box.disabled = False
+                sar_box.height = sar_box.minimum_height
+        
+            else:
+                sar_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                sar_label.color = get_color_from_hex("#005EA5")
+                set_sar_background("#F3F2F1")  # GOV.UK grey
+        
+                sar_box.opacity = 0
+                sar_box.disabled = True
+                sar_box.height = 0
+        
+        sar_header.bind(on_press=toggle_sar_section)
+        
+        # ---------------------------------------------------------
+        # SAR EXEMPTION OPTIONS
+        # ---------------------------------------------------------
         def add_sar_row(text, key):
-            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=40, spacing=10)
+            row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=40)
+        
             cb = CheckBox(size_hint=(None, None), size=(40, 40))
             w["sar_fields"][key] = cb
-
+        
             lbl = SafeLabel(
                 text=text,
                 font_size=16,
@@ -3779,11 +3873,11 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
                 halign="left"
             )
             lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+        
             row.add_widget(cb)
             row.add_widget(lbl)
             w["sar_box"].add_widget(row)
-
+        
         # Add all SAR fields
         add_sar_row("Care leaver (under 25)", "care_leaver")
         add_sar_row("Severe disability (LCWRA)", "severe_disability")
@@ -3796,23 +3890,6 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         add_sar_row("Temporary accommodation", "temporary_accommodation")
         add_sar_row("Victim of modern slavery", "modern_slavery")
         add_sar_row("Armed forces reservist returning to civilian life", "armed_forces")
-
-        # Toggle SAR section
-        def toggle_sar_section(instance):
-            expanded = not w["sar_expanded"]
-            w["sar_expanded"] = expanded
-
-            if expanded:
-                sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▾"
-                w["sar_box"].opacity = 1
-                w["sar_box"].disabled = False
-            else:
-                sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▸"
-                w["sar_box"].opacity = 0
-                w["sar_box"].disabled = True
-                w["sar_box"].height = 0
-
-        sar_header.bind(on_press=toggle_sar_section)
 
         # ---------------------------------------------------------
         # SPACERS / BUTTONS
@@ -5616,3 +5693,4 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
