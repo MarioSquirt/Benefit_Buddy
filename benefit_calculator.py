@@ -1937,7 +1937,7 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=10,
+            padding=(10, 20, 10, 10),   # left, top, right, bottom
             spacing=10,
         )
     
@@ -1955,12 +1955,11 @@ class CalculatorNavBar(BoxLayout):
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
         navbar_x, navbar_y = self.to_window(self.x, self.y)
     
-        # Compute navbar height in window coordinates
+        # Compute navbar bottom in window coordinates
         navbar_x, navbar_y = self.to_window(self.x, self.y)
-        navbar_height = self.height
         
-        # Position dropdown so its top sits BELOW the navbar
-        panel_y = navbar_y - navbar_height - panel.height
+        # Position dropdown so its TOP sits exactly at the navbar BOTTOM
+        panel_y = navbar_y - panel.height
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
@@ -5573,6 +5572,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
