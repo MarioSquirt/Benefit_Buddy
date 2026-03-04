@@ -4619,7 +4619,7 @@ class DisclaimerScreen(BaseScreen):
         from kivy.uix.widget import Widget
 
         # ROOT LAYOUT
-        root = BoxLayout(orientation="vertical", padding=20, spacing=30)
+        root = BoxLayout(orientation="vertical", padding=20, spacing=30, self.opacity = 0)
 
         # ---------------------------------------------------------
         # TOP SPACER (expands to center content)
@@ -4717,6 +4717,9 @@ class DisclaimerScreen(BaseScreen):
     # LOADING START
     # ---------------------------------------------------------
     def on_enter(self):
+        # fade in
+        Animation(opacity=1, duration=0.4).start(self)
+    
         Clock.schedule_interval(self._smooth_progress, 0.02)
         Clock.schedule_once(self.start_csv_load, 0.5)
 
@@ -5330,11 +5333,39 @@ class NavigationManager:
 
     def __init__(self, screen_manager):
         self.sm = screen_manager
+
+        # Screens created during preload
+        self.preloaded = {}
+
+        # Screens created during navigation
         self.loaded = {}
 
-    def get(self, name):
-        return self.loaded.get(name)
+    # ---------------------------------------------------------
+    # PRELOAD ALL SCREENS (called during Disclaimer loading)
+    # ---------------------------------------------------------
+    def preload_all_screens(self, progress_callback):
+        total = len(self.screen_factories)
+        for i, (name, factory) in enumerate(self.screen_factories.items()):
+            if name not in self.preloaded:
+                screen = factory()
+                self.preloaded[name] = screen
+                self.sm.add_widget(screen)
 
+            progress_callback(0.1 + (i + 1) / total * 0.9)
+
+    # ---------------------------------------------------------
+    # GET SCREEN (preloaded or loaded)
+    # ---------------------------------------------------------
+    def get(self, name):
+        if name in self.loaded:
+            return self.loaded[name]
+        if name in self.preloaded:
+            return self.preloaded[name]
+        return None
+
+    # ---------------------------------------------------------
+    # NAVIGATION
+    # ---------------------------------------------------------
     def go(self, name):
         print("DEBUG: go() called with:", name)
 
@@ -5342,24 +5373,19 @@ class NavigationManager:
             print("ERROR: NavigationManager.go() received invalid screen name:", name)
             return
 
-        print("DEBUG: before destroy: sm.current =", self.sm.current,
-              "loaded keys =", list(self.loaded.keys()))
-
         # ---------------------------------------------------------
-        # SAVE + DESTROY CURRENT SCREEN
+        # DESTROY CURRENT SCREEN (only if it was dynamically created)
         # ---------------------------------------------------------
         current = self.sm.current
         if current and current in self.loaded:
             old = self.loaded[current]
 
-            # ⭐ Save state before leaving
             if hasattr(old, "save_state"):
                 try:
                     old.save_state()
                 except Exception as e:
                     print("ERROR in save_state():", e)
 
-            # Normal teardown
             try:
                 old.on_pre_leave()
             except Exception as e:
@@ -5373,29 +5399,26 @@ class NavigationManager:
             self.sm.remove_widget(old)
             del self.loaded[current]
 
+        # ---------------------------------------------------------
+        # SELECT NEW SCREEN
+        # ---------------------------------------------------------
+        if name in self.preloaded:
+            new = self.preloaded[name]
         else:
-            print("DEBUG: skip destroy, current not in loaded or is None")
+            new = ScreenFactory.create(name)
+            self.loaded[name] = new
+            self.sm.add_widget(new)
 
-        # ---------------------------------------------------------
-        # CREATE NEW SCREEN
-        # ---------------------------------------------------------
-        new = ScreenFactory.create(name)
-        self.loaded[name] = new
-        self.sm.add_widget(new)
         self.sm.current = name
 
         # ---------------------------------------------------------
-        # LOAD STATE AFTER ENTERING
+        # LOAD STATE
         # ---------------------------------------------------------
         if hasattr(new, "load_state"):
             try:
                 new.load_state()
             except Exception as e:
                 print("ERROR in load_state():", e)
-
-        print("DEBUG: after go: sm.current =", self.sm.current,
-              "loaded keys =", list(self.loaded.keys()))
-
 
 # Define the main application class
 class BenefitBuddy(App):
@@ -5478,16 +5501,17 @@ class BenefitBuddy(App):
             progress_callback(0.1 + ((i + 1) / total_files) * 0.9)
             
     def preload_all_data(self, progress_callback, status_callback):
-        # Step 1 — Open SQLite DB (instant)
+
         status_callback("Opening BRMA database…")
         self.load_brma_database()
         progress_callback(0.1)
     
-        # Step 2 — Load LHA CSVs (small, fast)
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
-    
-        # Step 3 — Done
+
+        status_callback("Preparing screens…")
+        self.nav.preload_all_screens(progress_callback)
+
         progress_callback(1.0)
         status_callback("Ready")
 
@@ -5572,6 +5596,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
