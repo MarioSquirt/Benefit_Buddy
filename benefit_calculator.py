@@ -1931,11 +1931,7 @@ class CalculatorNavBar(BoxLayout):
         # Floating panel container
         self.dropdown = FloatLayout(size_hint=(1, None), height=400)
     
-        btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        navbar_x, navbar_y = self.to_window(self.x, self.y)
-        
-        panel.pos = (btn_x, navbar_y - panel.height)
-    
+        # Create the panel FIRST
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -1945,6 +1941,7 @@ class CalculatorNavBar(BoxLayout):
             spacing=10,
         )
     
+        # Background
         with panel.canvas.before:
             Color(1, 1, 1, 1)
             panel._bg = Rectangle(size=panel.size, pos=panel.pos)
@@ -1953,6 +1950,12 @@ class CalculatorNavBar(BoxLayout):
             size=lambda inst, val: setattr(panel._bg, "size", val),
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
+    
+        # Now compute position safely
+        btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
+        navbar_x, navbar_y = self.to_window(self.x, self.y)
+    
+        panel.pos = (btn_x, navbar_y - panel.height)
     
         # Add menu items
         for label, screen_name in self.screens:
@@ -5564,6 +5567,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
