@@ -5470,7 +5470,7 @@ class BenefitBuddy(App):
         }
 
         # Start at Instant screen
-        self.nav.go("instant")
+        self.nav.go("disclaimer")
         return self.sm
 
     def load_brma_database(self):
@@ -5542,9 +5542,6 @@ class BenefitBuddy(App):
         status_callback("Ready")
 
     def on_start(self):
-        # Switch away from InstantScreen after a moment
-        Clock.schedule_once(self.go_to_disclaimer, 0)
-
         # Run diagnostics after everything exists
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
 
@@ -5622,6 +5619,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
