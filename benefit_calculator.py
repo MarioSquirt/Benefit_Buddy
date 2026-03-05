@@ -5649,17 +5649,11 @@ class BenefitBuddy(App):
             print("BRMA database not found at any known path!")
             return
     
-        Clock.sleep(0)
-    
         self.brma_db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    
-        Clock.sleep(0)
     
         cur = self.brma_db.cursor()
         cur.execute("PRAGMA temp_store = MEMORY;")
         cur.execute("PRAGMA mmap_size = 300000000;")
-    
-        Clock.sleep(0)
     
         self.brma_cursor = cur
         print("DEBUG: brma_cursor initialised")
@@ -5698,9 +5692,6 @@ class BenefitBuddy(App):
                 rows = []
                 for j, row in enumerate(reader):
                     rows.append(row)
-    
-                    if j % 200 == 0:
-                        Clock.sleep(0)
     
                 self._lha_data[key] = rows
     
@@ -5814,6 +5805,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
