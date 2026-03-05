@@ -3043,24 +3043,18 @@ class CalculatorHousingScreen(BaseScreen):
             )
             if not postcode:
                 return
-
+        
             self.show_loading("Finding BRMA...")
-
+        
             def do_lookup(dt):
                 try:
                     app = App.get_running_app()
-                    cur = getattr(app, "brma_cursor", None)
-                    if cur is None:
-                        print("BRMA lookup error: brma_cursor not initialised")
-                        self.hide_loading()
-                        return
-                    
-                    brma_name = self.lookup_brma(cur, postcode)
-                    if not brma_name:
-                        brma_name = "Not found"
-
-                    location = self.lookup_location_for_postcode(cur, postcode)
-
+        
+                    brma_name = self.lookup_brma(postcode)
+                    location = self.lookup_location_for_postcode(postcode)
+        
+                    print(f"DEBUG: postcode={postcode}, brma={brma_name}, location={location}")
+        
                     # Update labels + state
                     if brma_name:
                         w["brma_display"].text = f"BRMA: {brma_name}"
@@ -3068,31 +3062,25 @@ class CalculatorHousingScreen(BaseScreen):
                     else:
                         w["brma_display"].text = "BRMA: Not found"
                         self.calculator_state.brma = ""
-
+        
                     if location:
                         w["location_display"].text = f"Location: {location}"
                         self.calculator_state.location = location
                     else:
                         w["location_display"].text = ""
                         self.calculator_state.location = ""
-
-                    # Populate manual BRMA spinner
-                    w["brma"].values = [brma_name]
-                    w["brma"].text = brma_name
-                    if hasattr(w["brma"], "_update_dropdown"):
-                        w["brma"]._update_dropdown()
-
+        
                     # LHA results
                     results_box = w["brma_results_box"]
                     results_box.clear_widgets()
-
+        
                     bedrooms = self.get_bedroom_entitlement()
                     loc_norm = location.lower() if location else None
                     lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
-
+        
                     rows = [
                         f"Location: {location}" if location else "Location: Not found",
-                        f"BRMA: {brma_name}",
+                        f"BRMA: {brma_name or 'Not found'}",
                         f"Bedroom entitlement: {bedrooms}",
                         f"LHA monthly rate: £{lha_monthly:.2f}",
                     ]
@@ -3110,9 +3098,9 @@ class CalculatorHousingScreen(BaseScreen):
                     print("BRMA lookup error:", e)
                 finally:
                     self.hide_loading()
-
+        
             Clock.schedule_once(do_lookup, 0)
-
+        
         find_brma_btn.bind(on_press=on_find_brma)
 
         # ---------------------------------------------------------
@@ -3273,35 +3261,15 @@ class CalculatorHousingScreen(BaseScreen):
         state = app.calculator_state
         return engine.calculate_bedroom_entitlement(state)
 
-    def lookup_brma(self, cur, postcode):
+    def lookup_brma(self, postcode):
+        app = App.get_running_app()
         postcode = (postcode or "").strip().replace(" ", "").upper()
-        if not postcode:
-            return None
-    
-        # DEBUG: print table schema
-        try:
-            cur.execute("PRAGMA table_info(lookup)")
-            print("DEBUG: lookup table schema:", cur.fetchall())
-        except Exception as e:
-            print("DEBUG: schema check failed:", e)
+        return app.postcode_to_brma.get(postcode)
 
-        cur.execute("SELECT postcode FROM lookup WHERE postcode LIKE 'DN34%'")
-        print("DEBUG: DN34 matches:", cur.fetchall())
-
-        cur.execute("SELECT brma FROM lookup WHERE postcode = ?", (postcode,))
-        row = cur.fetchone()
-        return row[0] if row else None
-
-    def lookup_location_for_postcode(self, cur, postcode):
-        postcode = (postcode or "").strip().upper()
-        if not postcode:
-            return None
-        cur.execute("SELECT country FROM lookup WHERE postcode = ?", (postcode,))
-        row = cur.fetchone()
-        if not row:
-            return None
-        code = row[0]
-        return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code)
+    def lookup_location_for_postcode(self, postcode):
+        app = App.get_running_app()
+        postcode = (postcode or "").strip().replace(" ", "").upper()
+        return app.postcode_to_country.get(postcode)
 
     def lookup_lha_rate(self, brma, bedrooms, location):
         if not brma:
@@ -4942,8 +4910,15 @@ class DisclaimerScreen(BaseScreen):
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
+            # Load postcode→BRMA CSV
+            app.preload_postcode_brma_csv()
+    
+            # Load LHA CSVs
             app.preload_lha_csvs(self._update_progress, self._update_status)
+    
+            # Preload screens
             app.nav.preload_all_screens(self._update_progress)
+    
         except Exception as e:
             print("Startup preload error:", e)
     
@@ -5655,6 +5630,33 @@ class BenefitBuddy(App):
         self.nav.go("disclaimer")
         return self.sm
 
+    def preload_postcode_brma_csv(self):
+        import csv
+        from kivy.resources import resource_find
+    
+        path = resource_find("data/pcode_brma_lookup.csv")
+        if not path:
+            print("ERROR: pcode_brma_lookup.csv not found!")
+            self.postcode_to_brma = {}
+            self.postcode_to_country = {}
+            return
+    
+        self.postcode_to_brma = {}
+        self.postcode_to_country = {}
+    
+        with open(path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                pc = row.get("postcode", "").replace(" ", "").upper()
+                brma = row.get("brma", "").strip()
+                country = row.get("country", "").strip()
+    
+                if pc:
+                    self.postcode_to_brma[pc] = brma
+                    self.postcode_to_country[pc] = country
+    
+        print(f"Loaded {len(self.postcode_to_brma)} postcode→BRMA rows")
+
     def load_brma_database(self):
         import sqlite3
         from kivy.resources import resource_find
@@ -5827,5 +5829,6 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
