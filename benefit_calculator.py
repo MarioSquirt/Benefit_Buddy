@@ -4924,18 +4924,8 @@ class DisclaimerScreen(BaseScreen):
         except Exception as e:
             print("Startup preload error:", e)
 
-        Clock.schedule_once(self._create_preloaded_screens, 0)
+        Clock.schedule_once(self._loading_complete, 0)
 
-    def _create_preloaded_screens(self, dt):
-        app = App.get_running_app()
-        nav = app.nav
-
-        for name, factory in list(nav.preloaded.items()):
-            screen = factory()
-            nav.preloaded[name] = screen
-            nav.sm.add_widget(screen)
-
-        self._loading_complete(0)
 
     def _update_progress(self, value):
         Clock.schedule_once(lambda dt: self._set_real_progress(value))
@@ -5820,6 +5810,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
