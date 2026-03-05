@@ -5640,27 +5640,29 @@ class BenefitBuddy(App):
     
         db_path = resource_find("data/brma_lookup.db")
         if not db_path:
-            print("BRMA database not found!")
+            # Fallback: maybe it’s packaged at root
+            db_path = resource_find("brma_lookup.db")
+    
+        print("DEBUG: brma_lookup db_path =", db_path)
+    
+        if not db_path:
+            print("BRMA database not found at any known path!")
             return
     
-        # Yield before heavy DB open
         Clock.sleep(0)
     
-        # Open DB in read-only mode
         self.brma_db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     
-        # Yield again so UI can draw
         Clock.sleep(0)
     
-        # Performance tuning
         cur = self.brma_db.cursor()
         cur.execute("PRAGMA temp_store = MEMORY;")
         cur.execute("PRAGMA mmap_size = 300000000;")
     
-        # Yield after PRAGMAs
         Clock.sleep(0)
     
         self.brma_cursor = cur
+        print("DEBUG: brma_cursor initialised")
 
     def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
@@ -5673,9 +5675,9 @@ class BenefitBuddy(App):
         }
     
         files = {
-            "england": "LHA-England.csv",
-            "scotland": "LHA-Scotland.csv",
-            "wales": "LHA-Wales.csv"
+            "england": "data/LHA-England.csv",
+            "scotland": "data/LHA-Scotland.csv",
+            "wales": "data/LHA-Wales.csv"
         }
     
         total_files = len(files)
@@ -5684,6 +5686,8 @@ class BenefitBuddy(App):
             status_callback(f"Loading LHA {key.capitalize()}…")
     
             path = resource_find(filename)
+            print("DEBUG: LHA path for", filename, "=", path)
+            
             if not path:
                 print(f"LHA CSV missing: {filename}")
                 continue
@@ -5810,6 +5814,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
