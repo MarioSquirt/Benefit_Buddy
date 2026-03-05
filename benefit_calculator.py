@@ -4914,18 +4914,24 @@ class DisclaimerScreen(BaseScreen):
         self.loading_bar_fg.size_hint_x = self._display_progress
 
     def start_csv_load(self, dt):
+        app = App.get_running_app()
+    
+        # Load DB on main thread
+        app.load_brma_database()
+    
+        # Load CSVs in background thread
         import threading
         threading.Thread(target=self._load_csv_thread).start()
 
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
-            app.preload_all_data(self._update_progress, self._update_status)
+            app.preload_lha_csvs(self._update_progress, self._update_status)
+            app.nav.preload_all_screens(self._update_progress)
         except Exception as e:
             print("Startup preload error:", e)
-
+    
         Clock.schedule_once(self._loading_complete, 0)
-
 
     def _update_progress(self, value):
         Clock.schedule_once(lambda dt: self._set_real_progress(value))
@@ -5714,9 +5720,9 @@ class BenefitBuddy(App):
             
     def preload_all_data(self, progress_callback, status_callback):
 
-        status_callback("Opening BRMA database…")
-        self.load_brma_database()
-        progress_callback(0.1)
+        #status_callback("Opening BRMA database…")
+        #self.load_brma_database()
+        #progress_callback(0.1)
     
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
@@ -5805,14 +5811,3 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
-
-
-
-
-
-
-
-
-
-
-
