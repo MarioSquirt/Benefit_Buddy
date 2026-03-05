@@ -2767,7 +2767,8 @@ class CalculatorHousingScreen(BaseScreen):
         def on_manual_location_change(spinner, value):
             loc = (value or "").lower()
             app = App.get_running_app()
-            brmas = app.brma_by_location.get(loc, [])
+            brma_by_location = getattr(app, "brma_by_location", {}) or {}
+            brmas = brma_by_location.get(loc, [])
             w["brma"].values = brmas or ["Select BRMA"]
             w["brma"].text = "Select BRMA"
 
@@ -3043,8 +3044,12 @@ class CalculatorHousingScreen(BaseScreen):
             def do_lookup(dt):
                 try:
                     app = App.get_running_app()
-                    cur = app.brma_db.cursor()
-
+                    cur = getattr(app, "brma_cursor", None)
+                    if cur is None:
+                        print("BRMA lookup error: brma_cursor not initialised")
+                        self.hide_loading()
+                        return
+                    
                     brma_name = self.lookup_brma(cur, postcode)
                     if not brma_name:
                         brma_name = "Not found"
@@ -5812,6 +5817,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
