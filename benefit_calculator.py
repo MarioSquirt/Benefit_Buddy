@@ -3254,20 +3254,6 @@ class CalculatorHousingScreen(BaseScreen):
         for widget in w["service_fields"].values():
             widget.disabled = not social
 
-        # Update collapsible headers/boxes based on tenancy
-        from functools import partial
-
-        def _sync_after_layout(dt):
-            # Manual
-            mode_manual = "applicable"
-            apply_manual_header = None
-            apply_manual_box = None
-            # We re-use the same logic by triggering tenancy callbacks
-            if "tenancy_type" in w and hasattr(w["tenancy_type"], "text"):
-                w["tenancy_type"].dispatch("on_text", w["tenancy_type"].text)
-
-        Clock.schedule_once(_sync_after_layout, 0)
-
     # ---------------------------------------------------------
     # LOOKUP HELPERS
     # ---------------------------------------------------------
@@ -5826,6 +5812,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
