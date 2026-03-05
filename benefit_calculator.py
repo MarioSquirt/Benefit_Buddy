@@ -4903,9 +4903,6 @@ class DisclaimerScreen(BaseScreen):
     def start_csv_load(self, dt):
         app = App.get_running_app()
     
-        # Load DB on main thread
-        app.load_brma_database()
-    
         # Load CSVs in background thread
         import threading
         threading.Thread(target=self._load_csv_thread).start()
@@ -4913,9 +4910,6 @@ class DisclaimerScreen(BaseScreen):
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
-            # Load postcode→BRMA CSV
-            app.preload_postcode_brma_csv(self._update_progress, self._update_status)
-    
             # Load LHA CSVs
             app.preload_lha_csvs(self._update_progress, self._update_status)
     
@@ -5734,10 +5728,6 @@ class BenefitBuddy(App):
                     self.brma_by_location[location].append(brma)
             
     def preload_all_data(self, progress_callback, status_callback):
-
-        #status_callback("Opening BRMA database…")
-        #self.load_brma_database()
-        #progress_callback(0.1)
     
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
@@ -5826,6 +5816,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
