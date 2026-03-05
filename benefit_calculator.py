@@ -3284,7 +3284,10 @@ class CalculatorHousingScreen(BaseScreen):
             print("DEBUG: lookup table schema:", cur.fetchall())
         except Exception as e:
             print("DEBUG: schema check failed:", e)
-    
+
+        cur.execute("SELECT postcode FROM lookup WHERE postcode LIKE 'DN34%'")
+        print("DEBUG: DN34 matches:", cur.fetchall())
+
         cur.execute("SELECT brma FROM lookup WHERE postcode = ?", (postcode,))
         row = cur.fetchone()
         return row[0] if row else None
@@ -5824,4 +5827,5 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
