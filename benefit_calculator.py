@@ -3050,6 +3050,9 @@ class CalculatorHousingScreen(BaseScreen):
                 try:
                     app = App.get_running_app()
         
+                    # Load CSV on demand
+                    app.ensure_postcode_csv_loaded()
+        
                     brma_name = self.lookup_brma(postcode)
                     location = self.lookup_location_for_postcode(postcode)
         
@@ -3265,7 +3268,7 @@ class CalculatorHousingScreen(BaseScreen):
         app = App.get_running_app()
         postcode = (postcode or "").strip().replace(" ", "").upper()
         return app.postcode_to_brma.get(postcode)
-
+    
     def lookup_location_for_postcode(self, postcode):
         app = App.get_running_app()
         postcode = (postcode or "").strip().replace(" ", "").upper()
@@ -4911,7 +4914,7 @@ class DisclaimerScreen(BaseScreen):
         app = App.get_running_app()
         try:
             # Load postcode→BRMA CSV
-            app.preload_postcode_brma_csv()
+            app.preload_postcode_brma_csv(self._update_progress, self._update_status)
     
             # Load LHA CSVs
             app.preload_lha_csvs(self._update_progress, self._update_status)
@@ -5626,61 +5629,55 @@ class BenefitBuddy(App):
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
 
+        self.postcode_csv_loaded = False
+
         # Start at Disclaimer
         self.nav.go("disclaimer")
         return self.sm
 
-    def preload_postcode_brma_csv(self):
+    def ensure_postcode_csv_loaded(self):
+        if self.postcode_csv_loaded:
+            return
+    
         import csv
         from kivy.resources import resource_find
     
         path = resource_find("data/pcode_brma_lookup.csv")
+        print("DEBUG: CSV path =", path)
+    
         if not path:
             print("ERROR: pcode_brma_lookup.csv not found!")
             self.postcode_to_brma = {}
             self.postcode_to_country = {}
+            self.postcode_csv_loaded = True
             return
     
         self.postcode_to_brma = {}
         self.postcode_to_country = {}
     
+        country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+    
         with open(path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            print("DEBUG row keys:", reader.fieldnames)
+    
             for row in reader:
-                pc = row.get("postcode", "").replace(" ", "").upper()
-                brma = row.get("brma", "").strip()
-                country = row.get("country", "").strip()
+                # Correct postcode column
+                pc = row.get("PCDS", "").replace(" ", "").upper()
+    
+                # Correct BRMA name column
+                brma = row.get("brma_name", "").strip()
+    
+                # Correct country mapping
+                country_code = row.get("country", "").strip().upper()
+                country = country_map.get(country_code, "")
     
                 if pc:
                     self.postcode_to_brma[pc] = brma
                     self.postcode_to_country[pc] = country
     
         print(f"Loaded {len(self.postcode_to_brma)} postcode→BRMA rows")
-
-    def load_brma_database(self):
-        import sqlite3
-        from kivy.resources import resource_find
-        from kivy.clock import Clock
-    
-        db_path = resource_find("data/brma_lookup.db")
-        if not db_path:
-            # Fallback: maybe it’s packaged at root
-            db_path = resource_find("brma_lookup.db")
-    
-        print("DEBUG: brma_lookup db_path =", db_path)
-    
-        if not db_path:
-            print("BRMA database not found at any known path!")
-            return
-    
-        self.brma_db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    
-        cur = self.brma_db.cursor()
-        cur.execute("PRAGMA temp_store = MEMORY;")
-        cur.execute("PRAGMA mmap_size = 300000000;")
-    
-        self.brma_cursor = cur
-        print("DEBUG: brma_cursor initialised")
+        self.postcode_csv_loaded = True
 
     def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
@@ -5829,6 +5826,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
