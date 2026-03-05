@@ -5596,7 +5596,10 @@ class NavigationManager:
         # SELECT NEW SCREEN
         # ---------------------------------------------------------
         if name in self.preloaded:
-            new = self.preloaded[name]
+            factory = self.preloaded[name]
+            new = factory()                     # ← CREATE THE SCREEN HERE
+            self.loaded[name] = new
+            self.sm.add_widget(new)
         else:
             new = ScreenFactory.create(name)
             self.loaded[name] = new
@@ -5636,7 +5639,7 @@ class BenefitBuddy(App):
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
 
-        # Start at Instant screen
+        # Start at Disclaimer
         self.nav.go("disclaimer")
         return self.sm
 
@@ -5817,6 +5820,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
