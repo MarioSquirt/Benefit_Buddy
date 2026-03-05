@@ -3035,7 +3035,12 @@ class CalculatorHousingScreen(BaseScreen):
         layout.add_widget(find_brma_btn)
 
         def on_find_brma(instance):
-            postcode = w["postcode"].text.strip().upper()
+            postcode = (
+                w["postcode"].text
+                .strip()
+                .replace(" ", "")
+                .upper()
+            )
             if not postcode:
                 return
 
@@ -3269,9 +3274,17 @@ class CalculatorHousingScreen(BaseScreen):
         return engine.calculate_bedroom_entitlement(state)
 
     def lookup_brma(self, cur, postcode):
-        postcode = (postcode or "").strip().upper()
+        postcode = (postcode or "").strip().replace(" ", "").upper()
         if not postcode:
             return None
+    
+        # DEBUG: print table schema
+        try:
+            cur.execute("PRAGMA table_info(lookup)")
+            print("DEBUG: lookup table schema:", cur.fetchall())
+        except Exception as e:
+            print("DEBUG: schema check failed:", e)
+    
         cur.execute("SELECT brma FROM lookup WHERE postcode = ?", (postcode,))
         row = cur.fetchone()
         return row[0] if row else None
@@ -5811,3 +5824,4 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
