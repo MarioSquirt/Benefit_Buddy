@@ -2458,60 +2458,40 @@ class CalculatorHousingScreen(BaseScreen):
         self.calculator_state = calculator_state
         self.housing_widgets = {}
         self.build_ui()
+        self.load_state()
 
     def build_ui(self):
-        # ROOT layout (nav bar + scroll)
-        root = BoxLayout(orientation="vertical")
+        w = self.housing_widgets
 
-        # ⭐ Navigation bar at the top
+        # ROOT
+        root = BoxLayout(orientation="vertical")
         root.add_widget(CalculatorNavBar(current="calculator_housing"))
 
-        # ⭐ ScrollView for form content
         scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
-
-        # ⭐ Main layout inside ScrollView
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
             padding=(20, 20, 20, 20),
-            size_hint=(1, None)
+            size_hint=(1, None),
         )
         layout.bind(minimum_height=layout.setter("height"))
-
         scroll.add_widget(layout)
         root.add_widget(scroll)
         self.add_widget(root)
 
         # ---------------------------------------------------------
-        # HOUSING TYPE SPINNER
+        # HOUSING TYPE
         # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-
-        self.housing_widgets["housing_type"] = GovUkIconSpinner(
+        w["housing_type"] = GovUkIconSpinner(
             text="Housing Type",
             values=["Rent", "Own", "Shared Accommodation"],
-            icon_map={}
+            icon_map={},
         )
-        housing_anchor.add_widget(self.housing_widgets["housing_type"])
+        housing_anchor.add_widget(w["housing_type"])
         layout.add_widget(housing_anchor)
+        Clock.schedule_once(lambda dt: setattr(w["housing_type"], "text", "Housing Type"), 0)
 
-        Clock.schedule_once(lambda dt: setattr(self.housing_widgets["housing_type"], "text", "Housing Type"), 0)
-
-        # ---------------------------------------------------------
-        # TENANCY TYPE SPINNER
-        # ---------------------------------------------------------
-        tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        
-        self.housing_widgets["tenancy_type"] = GovUkIconSpinner(
-            text="Select tenancy type",
-            values=["private", "social"],
-        )
-        tenancy_anchor.add_widget(self.housing_widgets["tenancy_type"])
-        layout.add_widget(tenancy_anchor)
-
-        # ---------------------------------------------------------
-        # RENT / MORTGAGE / SHARED INPUTS
-        # ---------------------------------------------------------
         def make_money_input(hint):
             return CustomTextInput(
                 hint_text=hint,
@@ -2520,36 +2500,34 @@ class CalculatorHousingScreen(BaseScreen):
                 size_hint=(1, None),
                 height=50,
                 background_color=get_color_from_hex("#FFFFFF"),
-                foreground_color=get_color_from_hex("#005EA5")
+                foreground_color=get_color_from_hex("#005EA5"),
             )
 
-        self.housing_widgets["rent"] = make_money_input("Enter monthly rent amount (£)")
-        self.housing_widgets["mortgage"] = make_money_input("Enter monthly mortgage amount (£)")
-        self.housing_widgets["shared"] = make_money_input("Enter shared accommodation contribution (£)")
+        w["rent"] = make_money_input("Enter monthly rent amount (£)")
+        w["mortgage"] = make_money_input("Enter monthly mortgage amount (£)")
+        w["shared"] = make_money_input("Enter shared accommodation contribution (£)")
 
         for key in ("rent", "mortgage", "shared"):
-            w = self.housing_widgets[key]
-            layout.add_widget(w)
-            w.opacity = 0
-            w.disabled = True
-            w.height = 0
+            field = w[key]
+            layout.add_widget(field)
+            field.opacity = 0
+            field.disabled = True
+            field.height = 0
 
-        # Show/hide logic
         def _show_amount_widget(value_text):
-            # Hide all
             for key in ("rent", "mortgage", "shared"):
-                w = self.housing_widgets[key]
-                w.opacity = 0
-                w.disabled = True
-                w.height = 0
+                field = w[key]
+                field.opacity = 0
+                field.disabled = True
+                field.height = 0
 
             text = (value_text or "").lower()
             if "rent" in text:
-                target = self.housing_widgets["rent"]
+                target = w["rent"]
             elif "own" in text:
-                target = self.housing_widgets["mortgage"]
+                target = w["mortgage"]
             elif "shared" in text:
-                target = self.housing_widgets["shared"]
+                target = w["shared"]
             else:
                 return
 
@@ -2557,107 +2535,128 @@ class CalculatorHousingScreen(BaseScreen):
             target.disabled = False
             target.height = 50
 
-        self.housing_widgets["housing_type"].bind(text=lambda spinner, value: _show_amount_widget(value))
+        w["housing_type"].bind(text=lambda spinner, value: _show_amount_widget(value))
+
+        # ---------------------------------------------------------
+        # TENANCY TYPE
+        # ---------------------------------------------------------
+        tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
+        w["tenancy_type"] = GovUkIconSpinner(
+            text="Select tenancy type",
+            values=["private", "social"],
+        )
+        tenancy_anchor.add_widget(w["tenancy_type"])
+        layout.add_widget(tenancy_anchor)
 
         # ---------------------------------------------------------
         # NON-DEPENDANTS
         # ---------------------------------------------------------
-        self.housing_widgets["non_dependants"] = CustomTextInput(
+        w["non_dependants"] = CustomTextInput(
             hint_text="Number of non-dependants (e.g. adult children)",
             multiline=False,
             font_size=18,
             size_hint=(1, None),
             height=50,
             background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
+            foreground_color=get_color_from_hex("#005EA5"),
         )
-        layout.add_widget(self.housing_widgets["non_dependants"])
+        layout.add_widget(w["non_dependants"])
 
         # ---------------------------------------------------------
         # POSTCODE
         # ---------------------------------------------------------
-        self.housing_widgets["postcode"] = CustomTextInput(
+        w["postcode"] = CustomTextInput(
             hint_text="Enter postcode (e.g. SW1A 1AA)",
             multiline=False,
             font_size=18,
             size_hint=(1, None),
             height=50,
             background_color=get_color_from_hex("#FFFFFF"),
-            foreground_color=get_color_from_hex("#005EA5")
+            foreground_color=get_color_from_hex("#005EA5"),
         )
-        layout.add_widget(self.housing_widgets["postcode"])
+        layout.add_widget(w["postcode"])
 
         # ---------------------------------------------------------
-        # BRMA DISPLAY
+        # BRMA / LOCATION DISPLAYS
         # ---------------------------------------------------------
-        self.housing_widgets["location_display"] = SafeLabel(
+        w["location_display"] = SafeLabel(
             text="",
             font_size=16,
             color=get_color_from_hex("#005EA5"),
             size_hint_y=None,
-            height=30
+            height=30,
         )
-        layout.add_widget(self.housing_widgets["location_display"])
-        
-        self.housing_widgets["brma_display"] = SafeLabel(
+        layout.add_widget(w["location_display"])
+
+        w["brma_display"] = SafeLabel(
             text="",
             font_size=16,
             color=get_color_from_hex("#005EA5"),
             size_hint_y=None,
-            height=30
+            height=30,
         )
-        layout.add_widget(self.housing_widgets["brma_display"])
+        layout.add_widget(w["brma_display"])
 
-        # Container for BRMA/LHA results (always visible)
-        self.housing_widgets["brma_results_box"] = BoxLayout(
+        # BRMA/LHA results box (always visible, but may be empty)
+        w["brma_results_box"] = BoxLayout(
             orientation="vertical",
             spacing=5,
-            size_hint_y=None
+            size_hint_y=None,
         )
-        self.housing_widgets["brma_results_box"].bind(
-            minimum_height=self.housing_widgets["brma_results_box"].setter("height")
+        w["brma_results_box"].bind(
+            minimum_height=w["brma_results_box"].setter("height")
         )
-        layout.add_widget(self.housing_widgets["brma_results_box"])
+        layout.add_widget(w["brma_results_box"])
+
+        # ---------------------------------------------------------
+        # TENANCY MODE HELPERS
+        # ---------------------------------------------------------
+        def get_manual_mode(value):
+            return "applicable"
+
+        def get_service_mode(value):
+            val = (value or "").lower()
+            if val == "social":
+                return "applicable"
+            elif val == "private":
+                return "not_applicable"
+            return "unset"
 
         # ---------------------------------------------------------
         # MANUAL LOCATION / BRMA OVERRIDE (COLLAPSIBLE)
         # ---------------------------------------------------------
-        self.housing_widgets["manual_section_expanded"] = False
-        
-        # Clickable header container
-        class ClickableBox(ButtonBehavior, BoxLayout):
+        w["manual_section_expanded"] = False
+
+        class ManualClickableBox(ButtonBehavior, BoxLayout):
             pass
-        
-        manual_header = ClickableBox(
+
+        manual_header = ManualClickableBox(
             orientation="horizontal",
             spacing=10,
             padding=(15, 10),
             size_hint=(1, None),
-            height=50
+            height=50,
         )
-        
-        # Label
+
         manual_label = SafeLabel(
             text="Manual Location/BRMA selection",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),  # collapsed = blue text
+            color=get_color_from_hex("#005EA5"),
             halign="left",
-            valign="middle"
+            valign="middle",
         )
         manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         manual_header.add_widget(manual_label)
-        
-        # Chevron
+
         manual_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(20, 20),
             allow_stretch=True,
-            keep_ratio=True
+            keep_ratio=True,
         )
         manual_header.add_widget(manual_chevron)
-        
-        # Background helper
+
         def set_manual_background(widget, color_hex, alpha=1.0):
             widget.canvas.before.clear()
             if color_hex:
@@ -2665,49 +2664,30 @@ class CalculatorHousingScreen(BaseScreen):
                 with widget.canvas.before:
                     Color(r, g, b, alpha)
                     widget._bg = Rectangle(size=widget.size, pos=widget.pos)
-        
+
             def update_bg(inst, val):
                 if hasattr(widget, "_bg"):
                     widget._bg.size = widget.size
                     widget._bg.pos = widget.pos
-        
+
             widget.bind(size=update_bg, pos=update_bg)
-        
-        # Default collapsed background = faded yellow (unset)
+
         set_manual_background(manual_header, "#FFDD00", 0.4)
-        
         layout.add_widget(manual_header)
-        
-        # Collapsible content box
+
         manual_box = BoxLayout(
             orientation="vertical",
             spacing=10,
-            size_hint=(1, None)
+            size_hint=(1, None),
         )
         manual_box.bind(minimum_height=manual_box.setter("height"))
         layout.add_widget(manual_box)
-        self.housing_widgets["manual_box"] = manual_box
-        
-        # Start collapsed
+        w["manual_box"] = manual_box
+
         manual_box.opacity = 0
         manual_box.disabled = True
         manual_box.height = 0
-        
-        # ---------------------------------------------------------
-        # DETERMINE TENANCY MODE
-        # ---------------------------------------------------------
-        def get_tenancy_mode(value):
-            val = value.lower()
-            if val == "social":
-                return "applicable"
-            elif val == "private":
-                return "not_applicable"
-            else:
-                return "unset"
-        
-        # ---------------------------------------------------------
-        # APPLY HEADER VISUAL STATE
-        # ---------------------------------------------------------
+
         def apply_manual_header(mode, expanded):
             if expanded:
                 manual_label.color = get_color_from_hex("#FFFFFF")
@@ -2716,30 +2696,15 @@ class CalculatorHousingScreen(BaseScreen):
                 manual_header.opacity = 1
                 manual_header.disabled = False
                 return
-        
+
             manual_label.color = get_color_from_hex("#005EA5")
             manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-        
-            if mode == "applicable":
-                set_manual_background(manual_header, "#FFDD00", 1.0)
-                manual_header.opacity = 1
-                manual_header.disabled = False
-        
-            elif mode == "not_applicable":
-                set_manual_background(manual_header, "#FFDD00", 0.4)
-                manual_header.opacity = 0.4
-                manual_header.disabled = True
-        
-            elif mode == "unset":
-                set_manual_background(manual_header, "#FFDD00", 0.4)
-                manual_header.opacity = 0.4
-                manual_header.disabled = True
-        
-        # ---------------------------------------------------------
-        # APPLY BOX STATE
-        # ---------------------------------------------------------
+            set_manual_background(manual_header, "#FFDD00", 1.0)
+            manual_header.opacity = 1
+            manual_header.disabled = False
+
         def apply_manual_box(mode, expanded):
-            if expanded and mode == "applicable":
+            if expanded:
                 manual_box.opacity = 1
                 manual_box.disabled = False
                 manual_box.height = manual_box.minimum_height
@@ -2747,158 +2712,91 @@ class CalculatorHousingScreen(BaseScreen):
                 manual_box.opacity = 0
                 manual_box.disabled = True
                 manual_box.height = 0
-        
-        # ---------------------------------------------------------
-        # EXPAND / COLLAPSE TOGGLE
-        # ---------------------------------------------------------
+
         def toggle_manual_section(instance):
-            expanded = not self.housing_widgets["manual_section_expanded"]
-            self.housing_widgets["manual_section_expanded"] = expanded
-        
-            mode = get_tenancy_mode(self.housing_widgets["tenancy_type"].text)
-        
+            expanded = not w["manual_section_expanded"]
+            w["manual_section_expanded"] = expanded
+            mode = get_manual_mode(w["tenancy_type"].text)
             apply_manual_header(mode, expanded)
             apply_manual_box(mode, expanded)
-        
+
         manual_header.bind(on_press=toggle_manual_section)
-        
-        # ---------------------------------------------------------
-        # MANUAL OVERRIDE TOGGLE
-        # ---------------------------------------------------------
-        toggle_row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=50)
-        
-        self.housing_widgets["manual_toggle"] = CheckBox(size_hint=(None, None), size=(40, 40))
+
+        # Manual override toggle row
+        toggle_row = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint_y=None,
+            height=50,
+        )
+        w["manual_toggle"] = CheckBox(size_hint=(None, None), size=(40, 40))
         manual_toggle_label = SafeLabel(
             text="Enable manual Location/BRMA override",
             font_size=16,
-            color=get_color_from_hex("#FFFFFF")
+            color=get_color_from_hex("#FFFFFF"),
         )
         manual_toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-        toggle_row.add_widget(self.housing_widgets["manual_toggle"])
+        toggle_row.add_widget(w["manual_toggle"])
         toggle_row.add_widget(manual_toggle_label)
         manual_box.add_widget(toggle_row)
-        
-        # ---------------------------------------------------------
-        # MANUAL MODE TOGGLE LOGIC
-        # ---------------------------------------------------------
-        def toggle_manual_mode(instance, value):
-            if value:
-                # Manual mode ON
-                w["location_display"].opacity = 0
-                w["brma_display"].opacity = 0
-        
-                w["location"].opacity = 1
-                w["location"].disabled = False
-        
-                w["brma"].opacity = 1
-                w["brma"].disabled = False
-        
-                # Restore saved manual values
-                w["location"].text = self.calculator_state.location or "Select Location"
-                on_manual_location_change(w["location"], w["location"].text)
-                w["brma"].text = self.calculator_state.brma or "Select BRMA"
-        
-            else:
-                # Manual mode OFF
-                w["location_display"].opacity = 1
-                w["brma_display"].opacity = 1
-        
-                w["location"].opacity = 0
-                w["location"].disabled = True
-        
-                w["brma"].opacity = 0
-                w["brma"].disabled = True
-        
-        # ---------------------------------------------------------
-        # TENANCY SPINNER CALLBACK
-        # ---------------------------------------------------------
-        def on_tenancy_change_manual(spinner, value):
-            mode = get_tenancy_mode(value)
-            expanded = self.housing_widgets["manual_section_expanded"]
-        
-            apply_manual_header(mode, expanded)
-            apply_manual_box(mode, expanded)
-        
-        self.housing_widgets["tenancy_type"].bind(text=on_tenancy_change_manual)
-        
-        # ---------------------------------------------------------
-        # LOCATION SPINNER
-        # ---------------------------------------------------------
+
+        # LOCATION SPINNER (manual)
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        
-        self.housing_widgets["location"] = GovUkIconSpinner(
+        w["location"] = GovUkIconSpinner(
             text="Select Location",
             values=["England", "Scotland", "Wales"],
-            icon_map={}
+            icon_map={},
         )
-        location_anchor.add_widget(self.housing_widgets["location"])
-        self.housing_widgets["manual_box"].add_widget(location_anchor)
-        
-        self.housing_widgets["location"].disabled = True
+        location_anchor.add_widget(w["location"])
+        manual_box.add_widget(location_anchor)
+        w["location"].disabled = True
 
-        # ---------------------------------------------------------
-        # FILTER BRMA SPINNER WHEN LOCATION CHANGES
-        # ---------------------------------------------------------
-        def on_manual_location_change(spinner, value):
-            loc = value.lower()
-            app = App.get_running_app()
-            brmas = app.brma_by_location.get(loc, [])
-        
-            w = self.housing_widgets
-            w["brma"].values = brmas
-            w["brma"].text = "Select BRMA"
-        
-        # Bind it
-        self.housing_widgets["location"].bind(text=on_manual_location_change)
-        
-        # ---------------------------------------------------------
-        # BRMA SPINNER
-        # ---------------------------------------------------------
+        # BRMA SPINNER (manual)
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        
-        self.housing_widgets["brma"] = GovUkIconSpinner(
+        w["brma"] = GovUkIconSpinner(
             text="Select BRMA",
             values=["Select BRMA"],
-            icon_map={}
+            icon_map={},
         )
-        brma_anchor.add_widget(self.housing_widgets["brma"])
-        self.housing_widgets["manual_box"].add_widget(brma_anchor)
-        
-        self.housing_widgets["brma"].disabled = True
-        
-        Clock.schedule_once(lambda dt: setattr(self.housing_widgets["brma"], "text", "Select BRMA"), 0)
+        brma_anchor.add_widget(w["brma"])
+        manual_box.add_widget(brma_anchor)
+        w["brma"].disabled = True
+        Clock.schedule_once(lambda dt: setattr(w["brma"], "text", "Select BRMA"), 0)
 
-        # ---------------------------------------------------------
-        # Update LHA results when BRMA changes in manual mode
-        # ---------------------------------------------------------
+        # Manual location change → filter BRMAs
+        def on_manual_location_change(spinner, value):
+            loc = (value or "").lower()
+            app = App.get_running_app()
+            brmas = app.brma_by_location.get(loc, [])
+            w["brma"].values = brmas or ["Select BRMA"]
+            w["brma"].text = "Select BRMA"
+
+        w["location"].bind(text=on_manual_location_change)
+
+        # Manual BRMA change → update LHA results (only if manual override active)
         def on_manual_brma_change(spinner, value):
-            # Only update if manual override is active
-            if not self.housing_widgets["manual_toggle"].active:
+            if not w["manual_toggle"].active:
                 return
-        
+
             brma = value
-            location = self.housing_widgets["location"].text
+            location = w["location"].text
+            if not location or location == "Select Location":
+                loc_norm = None
+            else:
+                loc_norm = location.lower()
+
             bedrooms = self.get_bedroom_entitlement()
-        
-            # Compute LHA monthly rate
-            lha_monthly = self.lookup_lha_rate(
-                brma,
-                bedrooms,
-                location.lower()
-            )
-        
-            # Update results box
-            results_box = self.housing_widgets["brma_results_box"]
+            lha_monthly = self.lookup_lha_rate(brma, bedrooms, loc_norm)
+
+            results_box = w["brma_results_box"]
             results_box.clear_widgets()
-        
+
             rows = [
-                f"Location: {location}",
+                f"Location: {location}" if location else "Location: Not found",
                 f"BRMA: {brma}",
                 f"Bedroom entitlement: {bedrooms}",
-                f"LHA monthly rate: £{lha_monthly:.2f}"
+                f"LHA monthly rate: £{lha_monthly:.2f}",
             ]
-        
             for text in rows:
                 results_box.add_widget(
                     SafeLabel(
@@ -2906,52 +2804,78 @@ class CalculatorHousingScreen(BaseScreen):
                         font_size=16,
                         color=get_color_from_hex("#005EA5"),
                         size_hint_y=None,
-                        height=30
+                        height=30,
                     )
                 )
-        
-        # Bind the callback
-        self.housing_widgets["brma"].bind(text=on_manual_brma_change)
+
+        w["brma"].bind(text=on_manual_brma_change)
+
+        # Manual mode toggle logic
+        def toggle_manual_mode(instance, value):
+            w_local = self.housing_widgets
+            if value:
+                # Manual ON
+                w_local["location_display"].opacity = 0
+                w_local["brma_display"].opacity = 0
+
+                w_local["location"].opacity = 1
+                w_local["location"].disabled = False
+
+                w_local["brma"].opacity = 1
+                w_local["brma"].disabled = False
+
+                # Restore saved manual values
+                w_local["location"].text = self.calculator_state.location or "Select Location"
+                on_manual_location_change(w_local["location"], w_local["location"].text)
+                w_local["brma"].text = self.calculator_state.brma or "Select BRMA"
+            else:
+                # Manual OFF
+                w_local["location_display"].opacity = 1
+                w_local["brma_display"].opacity = 1
+
+                w_local["location"].opacity = 0
+                w_local["location"].disabled = True
+
+                w_local["brma"].opacity = 0
+                w_local["brma"].disabled = True
+
+        w["manual_toggle"].bind(active=toggle_manual_mode)
 
         # ---------------------------------------------------------
         # SERVICE CHARGES (COLLAPSIBLE)
         # ---------------------------------------------------------
-        self.housing_widgets["service_section_expanded"] = False
-        
-        # Clickable header container
-        class ClickableBox(ButtonBehavior, BoxLayout):
+        w["service_section_expanded"] = False
+
+        class ServiceClickableBox(ButtonBehavior, BoxLayout):
             pass
-        
-        service_header = ClickableBox(
+
+        service_header = ServiceClickableBox(
             orientation="horizontal",
             spacing=10,
             padding=(15, 10),
             size_hint=(1, None),
-            height=50
+            height=50,
         )
-        
-        # Label
+
         service_label = SafeLabel(
             text="Eligible Service Charges (Social Rent Only)",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),  # collapsed = blue text
+            color=get_color_from_hex("#005EA5"),
             halign="left",
-            valign="middle"
+            valign="middle",
         )
         service_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         service_header.add_widget(service_label)
-        
-        # Chevron
+
         service_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(20, 20),
             allow_stretch=True,
-            keep_ratio=True
+            keep_ratio=True,
         )
         service_header.add_widget(service_chevron)
-        
-        # Background helper
+
         def set_header_background(widget, color_hex, alpha=1.0):
             widget.canvas.before.clear()
             if color_hex:
@@ -2959,83 +2883,51 @@ class CalculatorHousingScreen(BaseScreen):
                 with widget.canvas.before:
                     Color(r, g, b, alpha)
                     widget._bg = Rectangle(size=widget.size, pos=widget.pos)
-        
+
             def update_bg(inst, val):
                 if hasattr(widget, "_bg"):
                     widget._bg.size = widget.size
                     widget._bg.pos = widget.pos
-        
+
             widget.bind(size=update_bg, pos=update_bg)
-        
-        # Default collapsed background = faded yellow (unset)
+
         set_header_background(service_header, "#FFDD00", 0.4)
-        
         layout.add_widget(service_header)
-        
-        # Collapsible content box
+
         service_box = BoxLayout(
             orientation="vertical",
             spacing=10,
-            size_hint=(1, None)
+            size_hint=(1, None),
         )
         service_box.bind(minimum_height=service_box.setter("height"))
         layout.add_widget(service_box)
-        
-        # Start collapsed
+        w["service_box"] = service_box
+
         service_box.opacity = 0
         service_box.disabled = True
         service_box.height = 0
-        
-        # ---------------------------------------------------------
-        # DETERMINE TENANCY MODE
-        # ---------------------------------------------------------
-        def get_tenancy_mode(value):
-            val = value.lower()
-            if val == "social":
-                return "applicable"
-            elif val == "private":
-                return "not_applicable"
-            else:
-                return "unset"
-        
-        # ---------------------------------------------------------
-        # APPLY HEADER VISUAL STATE
-        # ---------------------------------------------------------
+
         def apply_service_header(mode, expanded):
             if expanded:
-                # Expanded = white text + dark GOV.UK black
                 service_label.color = get_color_from_hex("#FFFFFF")
                 service_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
                 set_header_background(service_header, "#0B0C0C", 1.0)
                 service_header.opacity = 1
                 service_header.disabled = False
                 return
-        
-            # Collapsed states
-            service_label.color = get_color_from_hex("#005EA5")  # blue text
+
+            service_label.color = get_color_from_hex("#005EA5")
             service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-        
+
             if mode == "applicable":
-                # Collapsed + applicable = bright yellow
                 set_header_background(service_header, "#FFDD00", 1.0)
                 service_header.opacity = 1
                 service_header.disabled = False
-        
-            elif mode == "not_applicable":
-                # Collapsed + NOT applicable = faded yellow
+            else:
                 set_header_background(service_header, "#FFDD00", 0.4)
                 service_header.opacity = 0.4
                 service_header.disabled = True
-        
-            elif mode == "unset":
-                # Before tenancy selected = faded yellow
-                set_header_background(service_header, "#FFDD00", 0.4)
-                service_header.opacity = 0.4
-                service_header.disabled = True
-        
-        # ---------------------------------------------------------
-        # APPLY BOX STATE
-        # ---------------------------------------------------------
+
         def apply_service_box(mode, expanded):
             if expanded and mode == "applicable":
                 service_box.opacity = 1
@@ -3045,32 +2937,82 @@ class CalculatorHousingScreen(BaseScreen):
                 service_box.opacity = 0
                 service_box.disabled = True
                 service_box.height = 0
-        
-        # ---------------------------------------------------------
-        # EXPAND / COLLAPSE TOGGLE
-        # ---------------------------------------------------------
+
         def toggle_service_section(instance):
-            expanded = not self.housing_widgets["service_section_expanded"]
-            self.housing_widgets["service_section_expanded"] = expanded
-        
-            mode = get_tenancy_mode(self.housing_widgets["tenancy_type"].text)
-        
+            expanded = not w["service_section_expanded"]
+            w["service_section_expanded"] = expanded
+            mode = get_service_mode(w["tenancy_type"].text)
             apply_service_header(mode, expanded)
             apply_service_box(mode, expanded)
-        
+
         service_header.bind(on_press=toggle_service_section)
-        
-        # ---------------------------------------------------------
-        # TENANCY SPINNER CALLBACK
-        # ---------------------------------------------------------
-        def on_tenancy_change(spinner, value):
-            mode = get_tenancy_mode(value)
-            expanded = self.housing_widgets["service_section_expanded"]
-        
+
+        # SERVICE CHARGE FIELDS
+        def make_service_input(label_text):
+            box = BoxLayout(orientation="vertical", size_hint_y=None, height=70)
+            lbl = SafeLabel(
+                text=label_text,
+                font_size=16,
+                color=get_color_from_hex("#005EA5"),
+                size_hint_y=None,
+                height=20,
+            )
+            inp = CustomTextInput(
+                hint_text="£ per month",
+                multiline=False,
+                font_size=18,
+                size_hint=(1, None),
+                height=50,
+                background_color=get_color_from_hex("#FFFFFF"),
+                foreground_color=get_color_from_hex("#005EA5"),
+            )
+            box.add_widget(lbl)
+            box.add_widget(inp)
+            return box, inp
+
+        service_fields = {}
+        service_order = [
+            ("cleaning", "Cleaning"),
+            ("communal_cleaning", "Communal cleaning"),
+            ("lighting", "Lighting"),
+            ("communal_lighting", "Communal lighting"),
+            ("grounds", "Grounds"),
+            ("grounds_maintenance", "Grounds maintenance"),
+            ("lift_maintenance", "Lift maintenance"),
+            ("fire_safety", "Fire safety"),
+            ("door_entry", "Door entry system"),
+            ("shared_facilities", "Shared facilities"),
+            ("communal_repairs", "Communal repairs"),
+            ("estate_services", "Estate services"),
+        ]
+
+        for key, label_text in service_order:
+            row, inp = make_service_input(label_text)
+            service_box.add_widget(row)
+            service_fields[key] = inp
+
+        w["service_fields"] = service_fields
+
+        # TENANCY SPINNER CALLBACKS
+        def on_tenancy_change_manual(spinner, value):
+            mode = get_manual_mode(value)
+            expanded = w["manual_section_expanded"]
+            apply_manual_header(mode, expanded)
+            apply_manual_box(mode, expanded)
+
+        def on_tenancy_change_service(spinner, value):
+            mode = get_service_mode(value)
+            expanded = w["service_section_expanded"]
             apply_service_header(mode, expanded)
             apply_service_box(mode, expanded)
-        
-        self.housing_widgets["tenancy_type"].bind(text=on_tenancy_change)
+
+            # Enable/disable service fields based on tenancy
+            social = (value or "").strip().lower() == "social"
+            for field in w["service_fields"].values():
+                field.disabled = not social
+
+        w["tenancy_type"].bind(text=on_tenancy_change_manual)
+        w["tenancy_type"].bind(text=on_tenancy_change_service)
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
@@ -3087,72 +3029,63 @@ class CalculatorHousingScreen(BaseScreen):
             halign="center",
             valign="middle",
             text_size=(250, None),
-            pos_hint={"center_x": 0.5}
+            pos_hint={"center_x": 0.5},
         )
         layout.add_widget(find_brma_btn)
 
         def on_find_brma(instance):
-            postcode = self.housing_widgets["postcode"].text.strip().upper()
+            postcode = w["postcode"].text.strip().upper()
             if not postcode:
                 return
-        
+
             self.show_loading("Finding BRMA...")
-        
+
             def do_lookup(dt):
                 try:
                     app = App.get_running_app()
                     cur = app.brma_db.cursor()
-        
-                    # BRMA lookup
+
                     brma_name = self.lookup_brma(cur, postcode)
                     if not brma_name:
                         brma_name = "Not found"
-        
-                    # Location lookup
+
                     location = self.lookup_location_for_postcode(cur, postcode)
-        
-                    # Update BRMA label
-                    self.housing_widgets["brma_display"].text = f"BRMA: {brma_name}"
-                    self.calculator_state.brma = brma_name
-                    
-                    # Update Location label
+
+                    # Update labels + state
+                    if brma_name:
+                        w["brma_display"].text = f"BRMA: {brma_name}"
+                        self.calculator_state.brma = brma_name
+                    else:
+                        w["brma_display"].text = "BRMA: Not found"
+                        self.calculator_state.brma = ""
+
                     if location:
-                        self.housing_widgets["location_display"].text = f"Location: {location}"
+                        w["location_display"].text = f"Location: {location}"
                         self.calculator_state.location = location
                     else:
-                        self.housing_widgets["location_display"].text = ""
+                        w["location_display"].text = ""
                         self.calculator_state.location = ""
-        
-                    # Populate BRMA spinner (manual override)
-                    self.housing_widgets["brma"].values = [brma_name]
-                    self.housing_widgets["brma"].text = brma_name
-                    self.housing_widgets["brma"]._update_dropdown()
-        
-                    # ---------------------------------------------------------
-                    # ⭐ Populate LHA results (full GOV.UK-style block)
-                    # ---------------------------------------------------------
-                    results_box = self.housing_widgets["brma_results_box"]
+
+                    # Populate manual BRMA spinner
+                    w["brma"].values = [brma_name]
+                    w["brma"].text = brma_name
+                    if hasattr(w["brma"], "_update_dropdown"):
+                        w["brma"]._update_dropdown()
+
+                    # LHA results
+                    results_box = w["brma_results_box"]
                     results_box.clear_widgets()
-                    
-                    # Bedroom entitlement from your UC engine
+
                     bedrooms = self.get_bedroom_entitlement()
-                    
-                    # Compute LHA monthly rate
-                    lha_monthly = self.lookup_lha_rate(
-                        brma_name,
-                        bedrooms,
-                        data.location.lower()
-                    )
-                    
-                    # Build rows
+                    loc_norm = location.lower() if location else None
+                    lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
+
                     rows = [
                         f"Location: {location}" if location else "Location: Not found",
                         f"BRMA: {brma_name}",
                         f"Bedroom entitlement: {bedrooms}",
-                        f"LHA monthly rate: £{lha_monthly:.2f}"
+                        f"LHA monthly rate: £{lha_monthly:.2f}",
                     ]
-                    
-                    # Add rows to UI
                     for text in rows:
                         results_box.add_widget(
                             SafeLabel(
@@ -3160,152 +3093,109 @@ class CalculatorHousingScreen(BaseScreen):
                                 font_size=16,
                                 color=get_color_from_hex("#005EA5"),
                                 size_hint_y=None,
-                                height=30
+                                height=30,
                             )
                         )
-        
                 except Exception as e:
                     print("BRMA lookup error:", e)
-        
                 finally:
                     self.hide_loading()
-        
+
             Clock.schedule_once(do_lookup, 0)
+
+        find_brma_btn.bind(on_press=on_find_brma)
 
         # ---------------------------------------------------------
         # INITIAL STATE SYNC
         # ---------------------------------------------------------
-        _show_amount_widget(self.housing_widgets["housing_type"].text)
+        _show_amount_widget(w["housing_type"].text)
 
-    def _update_brma_and_location(self, brma_name, location):
-        # Update BRMA label
-        if brma_name:
-            self.housing_widgets["brma_display"].text = f"BRMA: {brma_name}"
-            self.calculator_state.brma = brma_name
-        else:
-            self.housing_widgets["brma_display"].text = "BRMA: Not found"
-            self.calculator_state.brma = ""
-    
-        # Update location label (we will add a display label in Patch 3)
-        if location:
-            self.calculator_state.location = location
-        else:
-            self.calculator_state.location = ""
-
+    # ---------------------------------------------------------
+    # STATE SAVE / LOAD
+    # ---------------------------------------------------------
     def save_state(self):
         w = self.housing_widgets
         data = self.calculator_state
-    
-        # BASIC FIELDS
-        data.housing_type = w["housing_type"].text.strip().lower()
-        data.tenancy_type = w["tenancy_type"].text.strip().lower()
-    
-        # raw strings (for re-populating inputs)
-        data.rent_raw = w["rent"].text.strip()
-        data.mortgage_raw = w["mortgage"].text.strip()
-        data.shared_raw = w["shared"].text.strip()
-        data.non_dependants_raw = w["non_dependants"].text.strip()
-    
-        data.postcode = w["postcode"].text.strip()
-    
-        # ---------------------------------------------------------
-        # LOCATION + BRMA (automatic vs manual)
-        # ---------------------------------------------------------
+
+        data.housing_type = (w["housing_type"].text or "").strip().lower()
+        data.tenancy_type = (w["tenancy_type"].text or "").strip().lower()
+
+        data.rent_raw = (w["rent"].text or "").strip()
+        data.mortgage_raw = (w["mortgage"].text or "").strip()
+        data.shared_raw = (w["shared"].text or "").strip()
+        data.non_dependants_raw = (w["non_dependants"].text or "").strip()
+        data.postcode = (w["postcode"].text or "").strip()
+
+        # Manual vs automatic location/BRMA
+        data.manual_location = bool(w["manual_toggle"].active)
         if w["manual_toggle"].active:
-            # Manual override mode
             data.location = w["location"].text
             data.brma = w["brma"].text
         else:
-            # Automatic mode (use the read-only labels)
-            data.location = self.housing_widgets["location_display"].text.replace("Location: ", "")
-            data.brma = self.housing_widgets["brma_display"].text.replace("BRMA: ", "")
-    
-        # SERVICE CHARGES
+            data.location = w["location_display"].text.replace("Location: ", "")
+            data.brma = w["brma_display"].text.replace("BRMA: ", "")
+
+        # Service charges
         charges = {}
-    
+
         def parse_charge(widget):
             try:
                 return float(widget.text or 0)
             except Exception:
                 return 0.0
-    
+
         for key, widget in w["service_fields"].items():
             charges[key] = parse_charge(widget)
-    
+
         data.service_charges = charges
-    
-        # PARSED NUMERIC VALUES
+
+        # Parsed numeric values
         try:
             data.non_dependants = int(w["non_dependants"].text or 0)
         except Exception:
             data.non_dependants = 0
-    
+
         try:
             data.rent = float(w["rent"].text or 0)
         except Exception:
             data.rent = 0.0
-    
+
         try:
             data.mortgage = float(w["mortgage"].text or 0)
         except Exception:
             data.mortgage = 0.0
-    
+
         try:
             data.shared = float(w["shared"].text or 0)
         except Exception:
             data.shared = 0.0
-    
+
     def load_state(self):
         w = self.housing_widgets
         data = self.calculator_state
-    
+
         # BASIC FIELDS
-        w["housing_type"].text = (data.housing_type or "rent").capitalize()
+        if data.housing_type:
+            w["housing_type"].text = data.housing_type.capitalize()
+        else:
+            w["housing_type"].text = "Rent"
+
         w["tenancy_type"].text = data.tenancy_type or "Select tenancy type"
-    
+
         w["rent"].text = getattr(data, "rent_raw", "") or ""
         w["mortgage"].text = getattr(data, "mortgage_raw", "") or ""
         w["shared"].text = getattr(data, "shared_raw", "") or ""
         w["non_dependants"].text = getattr(data, "non_dependants_raw", "") or ""
         w["postcode"].text = data.postcode or ""
-    
-        # ---------------------------------------------------------
-        # MANUAL OVERRIDE
-        # ---------------------------------------------------------
-        if data.manual_location:
-            # Manual mode ON
-            w["manual_toggle"].active = True
-        
-            # Enable spinners
-            w["location"].disabled = False
-            w["brma"].disabled = False
-        
-            # Restore manual values
-            w["location"].text = data.location or "Select Location"
-            on_manual_location_change(w["location"], data.location)
-            w["brma"].text = data.brma or "Select BRMA"
-        
-        else:
-            # Manual mode OFF
-            w["manual_toggle"].active = False
-        
-            # Disable spinners
-            w["location"].disabled = True
-            w["brma"].disabled = True
-        
-            # Restore automatic labels
-            w["location_display"].text = f"Location: {data.location}" if data.location else ""
-            w["brma_display"].text = f"BRMA: {data.brma}" if data.brma else ""
-    
+
         # SHOW CORRECT RENT/MORTGAGE/SHARED FIELD
-        text = w["housing_type"].text.lower()
-    
+        text = (w["housing_type"].text or "").lower()
         for key in ("rent", "mortgage", "shared"):
             field = w[key]
             field.opacity = 0
             field.disabled = True
             field.height = 0
-    
+
         if "rent" in text:
             target = w["rent"]
         elif "own" in text:
@@ -3314,69 +3204,106 @@ class CalculatorHousingScreen(BaseScreen):
             target = w["shared"]
         else:
             target = None
-    
+
         if target:
             target.opacity = 1
             target.disabled = False
             target.height = 50
-    
+
+        # MANUAL OVERRIDE
+        if getattr(data, "manual_location", False):
+            w["manual_toggle"].active = True
+            w["location"].disabled = False
+            w["brma"].disabled = False
+
+            w["location"].opacity = 1
+            w["brma"].opacity = 1
+
+            w["location"].text = data.location or "Select Location"
+            # Re-filter BRMAs based on location
+            app = App.get_running_app()
+            loc = (w["location"].text or "").lower()
+            brmas = app.brma_by_location.get(loc, [])
+            w["brma"].values = brmas or ["Select BRMA"]
+            w["brma"].text = data.brma or "Select BRMA"
+
+            # Hide automatic labels
+            w["location_display"].opacity = 0
+            w["brma_display"].opacity = 0
+        else:
+            w["manual_toggle"].active = False
+            w["location"].disabled = True
+            w["brma"].disabled = True
+            w["location"].opacity = 0
+            w["brma"].opacity = 0
+
+            w["location_display"].text = f"Location: {data.location}" if data.location else ""
+            w["brma_display"].text = f"BRMA: {data.brma}" if data.brma else ""
+            w["location_display"].opacity = 1
+            w["brma_display"].opacity = 1
+
         # SERVICE CHARGES
         charges = data.service_charges or {}
         for key, widget in w["service_fields"].items():
-            widget.text = str(charges.get(key, ""))
-    
+            val = charges.get(key, "")
+            widget.text = "" if val in (None, "") else str(val)
+
         # TENANCY-DEPENDENT SERVICE CHARGE ENABLE/DISABLE
-        tenancy = w["tenancy_type"].text.strip().lower()
+        tenancy = (w["tenancy_type"].text or "").strip().lower()
         social = (tenancy == "social")
         for widget in w["service_fields"].values():
             widget.disabled = not social
 
+        # Update collapsible headers/boxes based on tenancy
+        from functools import partial
+
+        def _sync_after_layout(dt):
+            # Manual
+            mode_manual = "applicable"
+            apply_manual_header = None
+            apply_manual_box = None
+            # We re-use the same logic by triggering tenancy callbacks
+            if "tenancy_type" in w and hasattr(w["tenancy_type"], "text"):
+                w["tenancy_type"].dispatch("on_text", w["tenancy_type"].text)
+
+        Clock.schedule_once(_sync_after_layout, 0)
+
     # ---------------------------------------------------------
-    # LOOKUP HELPERS (move your existing functions here)
+    # LOOKUP HELPERS
     # ---------------------------------------------------------
     def get_bedroom_entitlement(self):
         app = App.get_running_app()
         engine = app.engine
         state = app.calculator_state
         return engine.calculate_bedroom_entitlement(state)
-        
+
     def lookup_brma(self, cur, postcode):
         postcode = (postcode or "").strip().upper()
         if not postcode:
             return None
-    
         cur.execute("SELECT brma FROM lookup WHERE postcode = ?", (postcode,))
         row = cur.fetchone()
         return row[0] if row else None
-    
-    
+
     def lookup_location_for_postcode(self, cur, postcode):
         postcode = (postcode or "").strip().upper()
         if not postcode:
             return None
-    
         cur.execute("SELECT country FROM lookup WHERE postcode = ?", (postcode,))
         row = cur.fetchone()
         if not row:
             return None
-    
         code = row[0]
         return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code)
-    
+
     def lookup_lha_rate(self, brma, bedrooms, location):
-        """
-        Looks up the LHA rate using preloaded CSV data.
-        """
-    
         if not brma:
             return 0.0
-    
-        # Normalise location
+
         location = (location or "").strip().lower()
         if location not in ("england", "scotland", "wales"):
             return 0.0
-    
-        # Map bedroom entitlement to column name
+
         if bedrooms == "shared":
             col = "SAR"
         elif bedrooms == 1:
@@ -3389,14 +3316,12 @@ class CalculatorHousingScreen(BaseScreen):
             col = "4 Bed"
         else:
             return 0.0
-    
-        # Get preloaded LHA data
+
         from kivy.app import App
         data = App.get_running_app()._lha_data.get(location)
         if not data:
             return 0.0
-    
-        # Search for BRMA row
+
         brma_lower = brma.lower()
         for row in data:
             if row.get("BRMA", "").strip().lower() == brma_lower:
@@ -3404,11 +3329,42 @@ class CalculatorHousingScreen(BaseScreen):
                     weekly = float(row.get(col, 0) or 0)
                 except Exception:
                     weekly = 0.0
-    
-                # Convert weekly → monthly
                 return weekly * 52 / 12
-    
+
         return 0.0
+
+    # ============================================================
+    # ELIGIBLE SERVICE CHARGES (SOCIAL RENT)
+    # ============================================================
+    def calculate_eligible_service_charges(self, data):
+        eligible_keys = {
+            "cleaning",
+            "communal_cleaning",
+            "lighting",
+            "communal_lighting",
+            "grounds",
+            "grounds_maintenance",
+            "lift_maintenance",
+            "fire_safety",
+            "door_entry",
+            "shared_facilities",
+            "communal_repairs",
+            "estate_services",
+        }
+
+        charges = data.service_charges
+        if not isinstance(charges, dict):
+            return 0.0
+
+        total = 0.0
+        for key, value in charges.items():
+            if key.lower().strip() in eligible_keys:
+                try:
+                    total += float(value)
+                except Exception:
+                    pass
+
+        return total
 
 class CalculatorChildrenScreen(BaseScreen):
     def __init__(self, calculator_state, **kwargs):
@@ -3951,18 +3907,6 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         sar_box.opacity = 0
         sar_box.disabled = True
         sar_box.height = 0
-        
-        # ---------------------------------------------------------
-        # DETERMINE TENANCY MODE
-        # ---------------------------------------------------------
-        def get_tenancy_mode(value):
-            val = value.lower()
-            if val == "social":
-                return "applicable"
-            elif val == "private":
-                return "not_applicable"
-            else:
-                return "unset"
         
         # ---------------------------------------------------------
         # APPLY HEADER VISUAL STATE
@@ -5882,6 +5826,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
