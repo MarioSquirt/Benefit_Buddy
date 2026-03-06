@@ -2797,10 +2797,6 @@ class CalculatorHousingScreen(BaseScreen):
                 if not w_local["manual_section_expanded"]:
                     toggle_manual_section(None)
         
-                # Hide auto results labels
-                w_local["location_display"].opacity = 0
-                w_local["brma_display"].opacity = 0
-        
                 # Show manual controls
                 w_local["location"].opacity = 1
                 w_local["location"].disabled = False
@@ -2831,10 +2827,6 @@ class CalculatorHousingScreen(BaseScreen):
                 # Fully collapse manual box regardless of state
                 apply_manual_box(False)
                 w_local["manual_section_expanded"] = False
-        
-                # Show auto results labels again
-                w_local["location_display"].opacity = 1
-                w_local["brma_display"].opacity = 1
         
                 # Hide manual controls
                 w_local["location"].opacity = 0
@@ -5903,6 +5895,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
