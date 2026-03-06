@@ -2783,54 +2783,76 @@ class CalculatorHousingScreen(BaseScreen):
                     )
                 )
 
+            show_results_box()
+
         w["brma"].bind(text=on_manual_brma_change)
 
         # Manual mode toggle logic
         def toggle_manual_mode(instance, value):
             w_local = self.housing_widgets
-
+        
             if value:
                 # Hide Find BRMA button
                 w_local["find_brma_btn"].opacity = 0
                 w_local["find_brma_btn"].disabled = True
-
+        
+                # Show manual header
+                manual_header.opacity = 1
+                manual_header.height = 50
+                manual_header.disabled = False
+        
                 # Auto-expand the manual override section if it's currently collapsed
                 if not w_local["manual_section_expanded"]:
                     toggle_manual_section(None)
-
+        
                 # Manual ON
                 w_local["location_display"].opacity = 0
                 w_local["brma_display"].opacity = 0
-
+        
                 w_local["location"].opacity = 1
                 w_local["location"].disabled = False
-
+        
                 w_local["brma"].opacity = 1
                 w_local["brma"].disabled = False
-
+        
+                # Always show results box
+                w_local["brma_results_box"].opacity = 1
+                w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
+                w_local["brma_results_box"].size_hint_y = None
+        
                 # Restore saved manual values
                 w_local["location"].text = self.calculator_state.location or "Select Location"
                 on_manual_location_change(w_local["location"], w_local["location"].text)
                 w_local["brma"].text = self.calculator_state.brma or "Select BRMA"
-
+        
             else:
                 # Show Find BRMA button again
                 w_local["find_brma_btn"].opacity = 1
                 w_local["find_brma_btn"].disabled = False
-
-                # Auto-collapse the manual override section if it's currently expanded
-                if w_local["manual_section_expanded"]:
-                    toggle_manual_section(None)
-
+        
+                # Hide manual header
+                manual_header.opacity = 0
+                manual_header.height = 0
+                manual_header.disabled = True
+        
+                # Fully collapse manual box regardless of state
+                apply_manual_box(False)
+                w_local["manual_section_expanded"] = False
+        
                 # Manual OFF
                 w_local["location_display"].opacity = 1
                 w_local["brma_display"].opacity = 1
-
+        
                 w_local["location"].opacity = 0
                 w_local["location"].disabled = True
-
+        
                 w_local["brma"].opacity = 0
                 w_local["brma"].disabled = True
+        
+                # Always show results box
+                w_local["brma_results_box"].opacity = 1
+                w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
+                w_local["brma_results_box"].size_hint_y = None
 
         w["manual_toggle"].bind(active=toggle_manual_mode)
 
@@ -3049,7 +3071,6 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         # BRMA / LOCATION RESULTS DISPLAYS
         # ---------------------------------------------------------
-        # These appear directly under the button, no extra spacing
         w["location_display"] = SafeLabel(
             text="",
             font_size=16,
@@ -3058,7 +3079,7 @@ class CalculatorHousingScreen(BaseScreen):
             height=30,
         )
         layout.add_widget(w["location_display"])
-
+        
         w["brma_display"] = SafeLabel(
             text="",
             font_size=16,
@@ -3068,6 +3089,11 @@ class CalculatorHousingScreen(BaseScreen):
         )
         layout.add_widget(w["brma_display"])
 
+        def show_results_box():
+            box = w["brma_results_box"]
+            box.opacity = 1
+            box.height = box.minimum_height
+        
         # ---------------------------------------------------------
         # BRMA/LHA RESULTS BOX (yellow GOV.UK box)
         # ---------------------------------------------------------
@@ -3075,17 +3101,19 @@ class CalculatorHousingScreen(BaseScreen):
             orientation="vertical",
             spacing=5,
             size_hint_y=None,
+            height=0,            # start collapsed
+            opacity=0,           # start invisible
         )
         w["brma_results_box"].bind(
             minimum_height=w["brma_results_box"].setter("height")
         )
         layout.add_widget(w["brma_results_box"])
-
+        
         # Yellow border
         with w["brma_results_box"].canvas.before:
             Color(1, 0.87, 0, 1)
             w["brma_results_box"]._border = Line(rectangle=(0, 0, 0, 0), width=2)
-
+        
         def update_border(inst, val):
             w["brma_results_box"]._border.rectangle = (
                 w["brma_results_box"].x,
@@ -3093,7 +3121,7 @@ class CalculatorHousingScreen(BaseScreen):
                 w["brma_results_box"].width,
                 w["brma_results_box"].height,
             )
-
+        
         w["brma_results_box"].bind(size=update_border, pos=update_border)
 
         # ---------------------------------------------------------
@@ -3145,6 +3173,8 @@ class CalculatorHousingScreen(BaseScreen):
                                 height=30,
                             )
                         )
+
+                    show_results_box()
 
                     # Scroll to results AFTER they exist
                     scroll = w.get("scroll_view")
@@ -5865,6 +5895,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
