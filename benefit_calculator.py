@@ -2617,7 +2617,7 @@ class CalculatorHousingScreen(BaseScreen):
         manual_toggle_label = SafeLabel(
             text="Enable manual Location/BRMA override",
             font_size=16,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
         )
         manual_toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         toggle_row.add_widget(w["manual_toggle"])
@@ -2642,7 +2642,7 @@ class CalculatorHousingScreen(BaseScreen):
         manual_label = SafeLabel(
             text="Manual Location/BRMA selection",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
             halign="left",
             valign="middle",
         )
@@ -2693,13 +2693,13 @@ class CalculatorHousingScreen(BaseScreen):
 
         def apply_manual_header(expanded):
             if expanded:
-                manual_label.color = get_color_from_hex("#FFFFFF")
+                manual_label.color = get_color_from_hex("#005EA5")
                 manual_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-                set_manual_background(manual_header, "#0B0C0C", 1.0)
+                set_manual_background(manual_header, "#FFDD00", 1.0)
             else:
                 manual_label.color = get_color_from_hex("#005EA5")
                 manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-                set_manual_background(manual_header, "#FFDD00", 1.0)
+                set_manual_background(manual_header, "#", 1.0)
 
         def apply_manual_box(expanded):
             if expanded:
@@ -3062,28 +3062,6 @@ class CalculatorHousingScreen(BaseScreen):
         layout.add_widget(find_brma_btn)
         w["find_brma_btn"] = find_brma_btn
 
-        # ---------------------------------------------------------
-        # BRMA / LOCATION RESULTS DISPLAYS
-        # ---------------------------------------------------------
-        w["location_display"] = SafeLabel(
-            text="",
-            font_size=16,
-            color=(1, 1, 1, 1),   # white
-            size_hint_y=None,
-            height=30,
-        )
-        layout.add_widget(w["location_display"])
-        
-        w["brma_display"] = SafeLabel(
-            text="",
-            font_size=16,
-            color=(1, 1, 1, 1),   # white
-            size_hint_y=None,
-            height=30,
-        )
-        layout.add_widget(w["brma_display"])
-        
-        
         # Helper to show the results box
         def show_results_box():
             box = w["brma_results_box"]
@@ -3187,10 +3165,6 @@ class CalculatorHousingScreen(BaseScreen):
 
                     print(f"DEBUG: postcode={postcode}, brma={brma_name}, location={location}")
 
-                    # Update labels
-                    w["brma_display"].text = f"BRMA: {brma_name or 'Not found'}"
-                    w["location_display"].text = f"Location: {location or ''}"
-
                     # Fill results box
                     results_box = w["brma_results_box"]
                     results_box.clear_widgets()
@@ -3198,6 +3172,9 @@ class CalculatorHousingScreen(BaseScreen):
                     bedrooms = self.get_bedroom_entitlement()
                     loc_norm = location.lower() if location else None
                     lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
+
+                    results_box.opacity = 0
+                    results_box.height = 0
                     
                     # NEW: Add rows using the GOV.UK-style helper
                     add_result_row("Location:", location or "Not found")
@@ -5926,6 +5903,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
