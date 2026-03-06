@@ -2634,6 +2634,10 @@ class CalculatorHousingScreen(BaseScreen):
             size_hint=(1, None),
             height=50,
         )
+        manual_header.opacity = 0
+        manual_header.height = 0
+        manual_header.disabled = True
+
 
         manual_label = SafeLabel(
             text="Manual Location/BRMA selection",
@@ -2765,24 +2769,12 @@ class CalculatorHousingScreen(BaseScreen):
 
             results_box = w["brma_results_box"]
             results_box.clear_widgets()
-
-            rows = [
-                f"Location: {location}" if location else "Location: Not found",
-                f"BRMA: {brma}",
-                f"Bedroom entitlement: {bedrooms}",
-                f"LHA monthly rate: £{lha_monthly:.2f}",
-            ]
-            for text in rows:
-                results_box.add_widget(
-                    SafeLabel(
-                        text=text,
-                        font_size=16,
-                        color=get_color_from_hex("#005EA5"),
-                        size_hint_y=None,
-                        height=30,
-                    )
-                )
-
+            
+            add_result_row("Location:", location or "Not found")
+            add_result_row("BRMA:", brma)
+            add_result_row("Bedroom entitlement:", str(bedrooms))
+            add_result_row("LHA monthly rate:", f"£{lha_monthly:.2f}")
+            
             show_results_box()
 
         w["brma"].bind(text=on_manual_brma_change)
@@ -2801,32 +2793,33 @@ class CalculatorHousingScreen(BaseScreen):
                 manual_header.height = 50
                 manual_header.disabled = False
         
-                # Auto-expand the manual override section if it's currently collapsed
+                # Expand manual section if needed
                 if not w_local["manual_section_expanded"]:
                     toggle_manual_section(None)
         
-                # Manual ON
+                # Hide auto results labels
                 w_local["location_display"].opacity = 0
                 w_local["brma_display"].opacity = 0
         
+                # Show manual controls
                 w_local["location"].opacity = 1
                 w_local["location"].disabled = False
         
                 w_local["brma"].opacity = 1
                 w_local["brma"].disabled = False
         
-                # Always show results box
+                # Ensure results box stays visible
                 w_local["brma_results_box"].opacity = 1
                 w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
                 w_local["brma_results_box"].size_hint_y = None
         
-                # Restore saved manual values
+                # Restore saved values
                 w_local["location"].text = self.calculator_state.location or "Select Location"
                 on_manual_location_change(w_local["location"], w_local["location"].text)
                 w_local["brma"].text = self.calculator_state.brma or "Select BRMA"
         
             else:
-                # Show Find BRMA button again
+                # Show Find BRMA button
                 w_local["find_brma_btn"].opacity = 1
                 w_local["find_brma_btn"].disabled = False
         
@@ -2839,17 +2832,18 @@ class CalculatorHousingScreen(BaseScreen):
                 apply_manual_box(False)
                 w_local["manual_section_expanded"] = False
         
-                # Manual OFF
+                # Show auto results labels again
                 w_local["location_display"].opacity = 1
                 w_local["brma_display"].opacity = 1
         
+                # Hide manual controls
                 w_local["location"].opacity = 0
                 w_local["location"].disabled = True
         
                 w_local["brma"].opacity = 0
                 w_local["brma"].disabled = True
         
-                # Always show results box
+                # Keep results box visible
                 w_local["brma_results_box"].opacity = 1
                 w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
                 w_local["brma_results_box"].size_hint_y = None
@@ -3074,7 +3068,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["location_display"] = SafeLabel(
             text="",
             font_size=16,
-            color=get_color_from_hex("#005EA5"),
+            color=(1, 1, 1, 1),   # white
             size_hint_y=None,
             height=30,
         )
@@ -3083,38 +3077,56 @@ class CalculatorHousingScreen(BaseScreen):
         w["brma_display"] = SafeLabel(
             text="",
             font_size=16,
-            color=get_color_from_hex("#005EA5"),
+            color=(1, 1, 1, 1),   # white
             size_hint_y=None,
             height=30,
         )
         layout.add_widget(w["brma_display"])
-
+        
+        
+        # Helper to show the results box
         def show_results_box():
             box = w["brma_results_box"]
             box.opacity = 1
             box.height = box.minimum_height
+        
         
         # ---------------------------------------------------------
         # BRMA/LHA RESULTS BOX (yellow GOV.UK box)
         # ---------------------------------------------------------
         w["brma_results_box"] = BoxLayout(
             orientation="vertical",
-            spacing=5,
+            spacing=8,
+            padding=[10, 10, 10, 10],
             size_hint_y=None,
-            height=0,            # start collapsed
-            opacity=0,           # start invisible
+            height=0,      # start collapsed
+            opacity=0,     # start invisible
         )
+        
         w["brma_results_box"].bind(
             minimum_height=w["brma_results_box"].setter("height")
         )
+        
         layout.add_widget(w["brma_results_box"])
         
-        # Yellow border
+        
+        # Yellow background + border
         with w["brma_results_box"].canvas.before:
+            # Pale yellow background
+            Color(1, 0.87, 0, 0.25)
+            w["brma_results_box"]._bg = Rectangle(pos=(0, 0), size=(0, 0))
+        
+            # Strong yellow border
             Color(1, 0.87, 0, 1)
             w["brma_results_box"]._border = Line(rectangle=(0, 0, 0, 0), width=2)
         
+        
         def update_border(inst, val):
+            # Update background rectangle
+            w["brma_results_box"]._bg.pos = w["brma_results_box"].pos
+            w["brma_results_box"]._bg.size = w["brma_results_box"].size
+        
+            # Update border rectangle
             w["brma_results_box"]._border.rectangle = (
                 w["brma_results_box"].x,
                 w["brma_results_box"].y,
@@ -3122,7 +3134,38 @@ class CalculatorHousingScreen(BaseScreen):
                 w["brma_results_box"].height,
             )
         
+        
         w["brma_results_box"].bind(size=update_border, pos=update_border)
+
+        def add_result_row(category, value):
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=30)
+        
+            # Bold category label
+            row.add_widget(
+                SafeLabel(
+                    text=f"[b]{category}[/b]",
+                    markup=True,
+                    font_size=16,
+                    color=(1, 1, 1, 1),   # white
+                    size_hint_x=0.45,
+                    size_hint_y=None,
+                    height=30,
+                )
+            )
+        
+            # Normal value label
+            row.add_widget(
+                SafeLabel(
+                    text=value,
+                    font_size=16,
+                    color=(1, 1, 1, 1),   # white
+                    size_hint_x=0.55,
+                    size_hint_y=None,
+                    height=30,
+                )
+            )
+        
+            w["brma_results_box"].add_widget(row)
 
         # ---------------------------------------------------------
         # FIND BRMA LOGIC
@@ -3151,29 +3194,17 @@ class CalculatorHousingScreen(BaseScreen):
                     # Fill results box
                     results_box = w["brma_results_box"]
                     results_box.clear_widgets()
-
+                    
                     bedrooms = self.get_bedroom_entitlement()
                     loc_norm = location.lower() if location else None
                     lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
-
-                    rows = [
-                        f"Location: {location or 'Not found'}",
-                        f"BRMA: {brma_name or 'Not found'}",
-                        f"Bedroom entitlement: {bedrooms}",
-                        f"LHA monthly rate: £{lha_monthly:.2f}",
-                    ]
-
-                    for text in rows:
-                        results_box.add_widget(
-                            SafeLabel(
-                                text=text,
-                                font_size=16,
-                                color=get_color_from_hex("#005EA5"),
-                                size_hint_y=None,
-                                height=30,
-                            )
-                        )
-
+                    
+                    # NEW: Add rows using the GOV.UK-style helper
+                    add_result_row("Location:", location or "Not found")
+                    add_result_row("BRMA:", brma_name or "Not found")
+                    add_result_row("Bedroom entitlement:", str(bedrooms))
+                    add_result_row("LHA monthly rate:", f"£{lha_monthly:.2f}")
+                    
                     show_results_box()
 
                     # Scroll to results AFTER they exist
@@ -5895,6 +5926,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
