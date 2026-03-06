@@ -2488,7 +2488,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["housing_type"] = GovUkIconSpinner(
             text="Select Housing Type:",
             values=["Rent", "Own", "Shared Accommodation"],
-            icon_map={},   # chevron is built-in
+            icon_map={"default": "images/icons/ChevronDown-icon/ChevronDown-16px.png"}
         )
         
         housing_anchor.add_widget(w["housing_type"])
@@ -2550,7 +2550,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["tenancy_type"] = GovUkIconSpinner(
             text="Select Tenancy Type:",
             values=["Private", "Social"],
-            icon_map={},   # chevron is built-in
+            icon_map={"default": "images/icons/ChevronDown-icon/ChevronDown-16px.png"}
         )
         
         tenancy_anchor.add_widget(w["tenancy_type"])
@@ -2604,9 +2604,7 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         # MANUAL LOCATION / BRMA OVERRIDE
         # ---------------------------------------------------------
-        w["manual_section_expanded"] = False
-
-        # Manual override toggle row (OUTSIDE the collapsible box)
+        # Manual override toggle row
         toggle_row = BoxLayout(
             orientation="horizontal",
             spacing=10,
@@ -2623,105 +2621,7 @@ class CalculatorHousingScreen(BaseScreen):
         toggle_row.add_widget(w["manual_toggle"])
         toggle_row.add_widget(manual_toggle_label)
         layout.add_widget(toggle_row)
-
-        class ManualClickableBox(ButtonBehavior, BoxLayout):
-            pass
-
-        manual_header = ManualClickableBox(
-            orientation="horizontal",
-            spacing=10,
-            padding=(15, 10),
-            size_hint=(1, None),
-            height=50,
-        )
-        manual_header.size_hint_y = None
-        manual_header.height = 0
-        manual_header.opacity = 0
-        manual_header.disabled = True
-
-
-        manual_label = SafeLabel(
-            text="Manual Location/BRMA selection",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left",
-            valign="middle",
-        )
-        manual_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        manual_header.add_widget(manual_label)
-
-        manual_chevron = Image(
-            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
-            size_hint=(None, None),
-            size=(20, 20),
-            allow_stretch=True,
-            keep_ratio=True,
-        )
-        manual_header.add_widget(manual_chevron)
-
-        def set_manual_background(widget, color_hex, alpha=1.0):
-            widget.canvas.before.clear()
-            if color_hex:
-                r, g, b = get_color_from_hex(color_hex)[:3]
-                with widget.canvas.before:
-                    Color(r, g, b, alpha)
-                    widget._bg = Rectangle(size=widget.size, pos=widget.pos)
-
-            def update_bg(inst, val):
-                if hasattr(widget, "_bg"):
-                    widget._bg.size = widget.size
-                    widget._bg.pos = widget.pos
-
-            widget.bind(size=update_bg, pos=update_bg)
-
-        set_manual_background(manual_header, "#FFDD00", 1.0)
-        layout.add_widget(manual_header)
-
-        manual_box = BoxLayout(
-            orientation="vertical",
-            spacing=10,
-            size_hint=(1, None),
-        )
-        manual_box.bind(minimum_height=manual_box.setter("height"))
-        layout.add_widget(manual_box)
-        w["manual_box"] = manual_box
-
-        # Start fully collapsed (zero space)
-        manual_box.opacity = 0
-        manual_box.disabled = True
-        manual_box.height = 0
-        manual_box.spacing = 0
-
-        def apply_manual_header(expanded):
-            if expanded:
-                manual_label.color = get_color_from_hex("#005EA5")
-                manual_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-                set_manual_background(manual_header, "#FFDD00", 1.0)
-            else:
-                manual_label.color = get_color_from_hex("#005EA5")
-                manual_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-                set_manual_background(manual_header, "#", 1.0)
-
-        def apply_manual_box(expanded):
-            if expanded:
-                manual_box.opacity = 1
-                manual_box.disabled = False
-                manual_box.spacing = 10
-                manual_box.height = manual_box.minimum_height
-            else:
-                manual_box.opacity = 0
-                manual_box.disabled = True
-                manual_box.spacing = 0
-                manual_box.height = 0
-
-        def toggle_manual_section(instance):
-            expanded = not w["manual_section_expanded"]
-            w["manual_section_expanded"] = expanded
-            apply_manual_header(expanded)
-            apply_manual_box(expanded)
-
-        manual_header.bind(on_press=toggle_manual_section)
-
+        
         # LOCATION SPINNER (manual)
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         w["location"] = GovUkIconSpinner(
@@ -2730,9 +2630,11 @@ class CalculatorHousingScreen(BaseScreen):
             icon_map={},
         )
         location_anchor.add_widget(w["location"])
-        manual_box.add_widget(location_anchor)
+        layout.add_widget(location_anchor)
         w["location"].disabled = True
-
+        w["location"].opacity = 0
+        w["location"].height = 0
+        
         # BRMA SPINNER (manual)
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         w["brma"] = GovUkIconSpinner(
@@ -2741,10 +2643,12 @@ class CalculatorHousingScreen(BaseScreen):
             icon_map={},
         )
         brma_anchor.add_widget(w["brma"])
-        manual_box.add_widget(brma_anchor)
+        layout.add_widget(brma_anchor)
         w["brma"].disabled = True
+        w["brma"].opacity = 0
+        w["brma"].height = 0
         Clock.schedule_once(lambda dt: setattr(w["brma"], "text", "Select BRMA"), 0)
-
+        
         # Manual location change → filter BRMAs
         def on_manual_location_change(spinner, value):
             loc = (value or "").lower()
@@ -2753,34 +2657,34 @@ class CalculatorHousingScreen(BaseScreen):
             brmas = brma_by_location.get(loc, [])
             w["brma"].values = brmas or ["Select BRMA"]
             w["brma"].text = "Select BRMA"
-
+        
         w["location"].bind(text=on_manual_location_change)
-
+        
         # Manual BRMA change → update results
         def on_manual_brma_change(spinner, value):
             if not w["manual_toggle"].active:
                 return
-
+        
             brma = value
             location = w["location"].text
             loc_norm = location.lower() if location and location != "Select Location" else None
-
+        
             bedrooms = self.get_bedroom_entitlement()
             lha_monthly = self.lookup_lha_rate(brma, bedrooms, loc_norm)
-
+        
             results_box = w["brma_results_box"]
             results_box.clear_widgets()
-            
+        
             add_result_row("Location:", location or "Not found")
             add_result_row("BRMA:", brma)
             add_result_row("Bedroom entitlement:", str(bedrooms))
             add_result_row("LHA monthly rate:", f"£{lha_monthly:.2f}")
-            
+        
             show_results_box()
-
+        
         w["brma"].bind(text=on_manual_brma_change)
-
-        # Manual mode toggle logic
+        
+        # Manual mode toggle logic (clean + simple)
         def toggle_manual_mode(instance, value):
             w_local = self.housing_widgets
         
@@ -2789,27 +2693,14 @@ class CalculatorHousingScreen(BaseScreen):
                 w_local["find_brma_btn"].opacity = 0
                 w_local["find_brma_btn"].disabled = True
         
-                # Show manual header
-                manual_header.opacity = 1
-                manual_header.height = 50
-                manual_header.disabled = False
-                manual_header.size_hint_y = None   # keeps fixed height
-        
-                # Expand manual section if needed
-                if not w_local["manual_section_expanded"]:
-                    toggle_manual_section(None)
-        
                 # Show manual controls
                 w_local["location"].opacity = 1
                 w_local["location"].disabled = False
+                w_local["location"].height = 50
         
                 w_local["brma"].opacity = 1
                 w_local["brma"].disabled = False
-        
-                # Ensure results box stays visible
-                w_local["brma_results_box"].opacity = 1
-                w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
-                w_local["brma_results_box"].size_hint_y = None
+                w_local["brma"].height = 50
         
                 # Restore saved values
                 w_local["location"].text = self.calculator_state.location or "Select Location"
@@ -2821,28 +2712,15 @@ class CalculatorHousingScreen(BaseScreen):
                 w_local["find_brma_btn"].opacity = 1
                 w_local["find_brma_btn"].disabled = False
         
-                # Hide manual header
-                manual_header.opacity = 0
-                manual_header.height = 0
-                manual_header.disabled = True
-                manual_header.size_hint_y = None   # ensures it collapses fully
-        
-                # Fully collapse manual box regardless of state
-                apply_manual_box(False)
-                w_local["manual_section_expanded"] = False
-        
                 # Hide manual controls
                 w_local["location"].opacity = 0
                 w_local["location"].disabled = True
+                w_local["location"].height = 0
         
                 w_local["brma"].opacity = 0
                 w_local["brma"].disabled = True
+                w_local["brma"].height = 0
         
-                # Keep results box visible
-                w_local["brma_results_box"].opacity = 1
-                w_local["brma_results_box"].height = w_local["brma_results_box"].minimum_height
-                w_local["brma_results_box"].size_hint_y = None
-
         w["manual_toggle"].bind(active=toggle_manual_mode)
 
         # ---------------------------------------------------------
@@ -3082,7 +2960,6 @@ class CalculatorHousingScreen(BaseScreen):
         
         layout.add_widget(w["brma_results_box"])
         
-        
         # Yellow background + border
         with w["brma_results_box"].canvas.before:
             # Pale yellow background
@@ -3092,7 +2969,6 @@ class CalculatorHousingScreen(BaseScreen):
             # Strong yellow border
             Color(1, 0.87, 0, 1)
             w["brma_results_box"]._border = Line(rectangle=(0, 0, 0, 0), width=2)
-        
         
         def update_border(inst, val):
             # Update background rectangle
@@ -3106,7 +2982,6 @@ class CalculatorHousingScreen(BaseScreen):
                 w["brma_results_box"].width,
                 w["brma_results_box"].height,
             )
-        
         
         w["brma_results_box"].bind(size=update_border, pos=update_border)
 
@@ -3211,13 +3086,9 @@ class CalculatorHousingScreen(BaseScreen):
     
         # Manual vs automatic location/BRMA
         data.manual_location = bool(w["manual_toggle"].active)
-        if w["manual_toggle"].active:
+        if data.manual_location:
             data.location = w["location"].text
             data.brma = w["brma"].text
-        else:
-            # Automatic mode: store the last known values
-            data.location = data.location or ""
-            data.brma = data.brma or ""
     
         # Service charges
         charges = {}
@@ -3253,7 +3124,7 @@ class CalculatorHousingScreen(BaseScreen):
             data.shared = float(w["shared"].text or 0)
         except Exception:
             data.shared = 0.0
-    
+        
     def load_state(self):
         w = self.housing_widgets
         data = self.calculator_state
@@ -3299,9 +3170,12 @@ class CalculatorHousingScreen(BaseScreen):
             w["manual_toggle"].active = True
     
             w["location"].disabled = False
-            w["brma"].disabled = False
             w["location"].opacity = 1
+            w["location"].height = 50
+    
+            w["brma"].disabled = False
             w["brma"].opacity = 1
+            w["brma"].height = 50
     
             # Restore manual values
             w["location"].text = data.location or "Select Location"
@@ -3317,13 +3191,12 @@ class CalculatorHousingScreen(BaseScreen):
             w["manual_toggle"].active = False
     
             w["location"].disabled = True
-            w["brma"].disabled = True
             w["location"].opacity = 0
-            w["brma"].opacity = 0
+            w["location"].height = 0
     
-            # Automatic mode: nothing to show until lookup happens
-            # Results box will be filled after lookup
-            pass
+            w["brma"].disabled = True
+            w["brma"].opacity = 0
+            w["brma"].height = 0
     
         # SERVICE CHARGES
         charges = data.service_charges or {}
@@ -5898,6 +5771,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
