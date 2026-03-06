@@ -5629,18 +5629,25 @@ class BenefitBuddy(App):
     
         parts = line.split(",")
     
-        try:
-            postcode = parts[0].replace(" ", "").upper()
-            brma = parts[1].strip()
-            country_code = parts[2].strip().upper()
-        except IndexError:
+        if len(parts) < 6:
             print("DEBUG: Malformed CSV line:", line)
             return None, None, None
     
+        # Correct column mapping
+        country_code = parts[0].strip().upper()
+        postcode = parts[3].replace(" ", "").upper()   # PCDS
+        brma_name = parts[5].strip()                   # brma_name
+    
+        # Map E/S/W to full names
         country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
         country = country_map.get(country_code, "")
     
-        return postcode, brma, country
+        # ⭐ DEBUG FIRST PARSED — put it RIGHT HERE
+        if not hasattr(self, "_debug_first_line"):
+            print("DEBUG FIRST PARSED:", postcode, brma_name, country)
+            self._debug_first_line = True
+    
+        return postcode, brma_name, country
 
     # ---------------------------------------------------------
     # TRUE BINARY SEARCH ON THE CSV FILE
@@ -5898,4 +5905,5 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
