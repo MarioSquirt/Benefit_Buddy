@@ -3223,13 +3223,17 @@ class CalculatorHousingScreen(BaseScreen):
 
     def lookup_brma(self, postcode):
         app = App.get_running_app()
-        postcode = (postcode or "").strip().replace(" ", "").upper()
-        return app.postcode_to_brma.get(postcode)
+        result = app.lookup_postcode(postcode)
+        if not result:
+            return None
+        return result["brma"]
     
     def lookup_location_for_postcode(self, postcode):
         app = App.get_running_app()
-        postcode = (postcode or "").strip().replace(" ", "").upper()
-        return app.postcode_to_country.get(postcode)
+        result = app.lookup_postcode(postcode)
+        if not result:
+            return None
+        return result["country"]
 
     def lookup_lha_rate(self, brma, bedrooms, location):
         if not brma:
@@ -5894,3 +5898,4 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
