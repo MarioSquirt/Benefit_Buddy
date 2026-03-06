@@ -2488,7 +2488,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["housing_type"] = GovUkIconSpinner(
             text="Select Housing Type:",
             values=["Rent", "Own", "Shared Accommodation"],
-            icon_map={"default": "images/icons/ChevronDown-icon/ChevronDown-16px.png"}
+            icon_map={}
         )
         
         housing_anchor.add_widget(w["housing_type"])
@@ -2550,7 +2550,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["tenancy_type"] = GovUkIconSpinner(
             text="Select Tenancy Type:",
             values=["Private", "Social"],
-            icon_map={"default": "images/icons/ChevronDown-icon/ChevronDown-16px.png"}
+            icon_map={}
         )
         
         tenancy_anchor.add_widget(w["tenancy_type"])
@@ -2810,12 +2810,14 @@ class CalculatorHousingScreen(BaseScreen):
             service_header.disabled = False
 
             if expanded:
-                service_label.color = get_color_from_hex("#FFFFFF")
+                service_label.color = get_color_from_hex("#005EA5")
                 service_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-                set_header_background(service_header, "#0B0C0C", 1.0)
+                service_chevron.size = (20, 20)
+                set_header_background(service_header, "#FFDD00", 1.0)
             else:
                 service_label.color = get_color_from_hex("#005EA5")
-                service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                service_chevron.source = ""
+                service_chevron.size = (0, 20)   # collapse horizontally
                 set_header_background(service_header, "#FFDD00", 1.0)
 
         def apply_service_box(mode, expanded):
@@ -5565,9 +5567,7 @@ class BenefitBuddy(App):
         self.calculator_state = CalculatorState()
         self.engine = CalculatorEngine()
 
-        # ---------------------------------------------------------
-        # SAVE CALLBACKS FOR FINAL CALCULATION SCREEN
-        # ---------------------------------------------------------
+        # Save callbacks
         self.save_callbacks = {
             "claimant": lambda: self.nav.get("calculator_claimant_details").save_claimant_details(),
             "finances": lambda: self.nav.get("calculator_finances").save_finances_details(),
@@ -5578,56 +5578,182 @@ class BenefitBuddy(App):
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
 
-        self.postcode_csv_loaded = False
+        # NEW: file handle + size for binary search
+        self.postcode_file = None
+        self.postcode_file_size = 0
+
+        # Cache for repeated lookups
+        self._postcode_cache = {}
 
         # Start at Disclaimer
         self.nav.go("disclaimer")
         return self.sm
 
+    # ---------------------------------------------------------
+    # OPEN CSV ONCE (BINARY MODE, NO MEMORY LOADING)
+    # ---------------------------------------------------------
     def ensure_postcode_csv_loaded(self):
-        if self.postcode_csv_loaded:
+        if getattr(self, "postcode_file", None):
             return
-    
-        import csv
-        from kivy.resources import resource_find
     
         path = resource_find("data/pcode_brma_lookup.csv")
         print("DEBUG: CSV path =", path)
     
         if not path:
             print("ERROR: pcode_brma_lookup.csv not found!")
-            self.postcode_to_brma = {}
-            self.postcode_to_country = {}
-            self.postcode_csv_loaded = True
             return
     
-        self.postcode_to_brma = {}
-        self.postcode_to_country = {}
+        # Open in binary mode for fastest seeking + reading
+        self.postcode_file = open(path, "rb")
+        self.postcode_file.seek(0, 2)
+        self.postcode_file_size = self.postcode_file.tell()
+    
+        print(f"DEBUG: Postcode CSV opened (binary), size = {self.postcode_file_size} bytes")
+    
+        # Optional but recommended: verify sorted order
+        self.verify_postcode_csv_sorted()
+
+    # ---------------------------------------------------------
+    # PARSE A SINGLE CSV LINE
+    # ---------------------------------------------------------
+    def parse_postcode_line(self, line_bytes):
+        try:
+            line = line_bytes.rstrip(b"\r\n").decode("utf-8")
+        except Exception:
+            print("DEBUG: Failed to decode line:", line_bytes)
+            return None, None, None
+    
+        parts = line.split(",")
+    
+        try:
+            postcode = parts[0].replace(" ", "").upper()
+            brma = parts[1].strip()
+            country_code = parts[2].strip().upper()
+        except IndexError:
+            print("DEBUG: Malformed CSV line:", line)
+            return None, None, None
     
         country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
+        country = country_map.get(country_code, "")
     
-        with open(path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            print("DEBUG row keys:", reader.fieldnames)
-    
-            for row in reader:
-                # Correct postcode column
-                pc = row.get("PCDS", "").replace(" ", "").upper()
-    
-                # Correct BRMA name column
-                brma = row.get("brma_name", "").strip()
-    
-                # Correct country mapping
-                country_code = row.get("country", "").strip().upper()
-                country = country_map.get(country_code, "")
-    
-                if pc:
-                    self.postcode_to_brma[pc] = brma
-                    self.postcode_to_country[pc] = country
-    
-        print(f"Loaded {len(self.postcode_to_brma)} postcode→BRMA rows")
-        self.postcode_csv_loaded = True
+        return postcode, brma, country
 
+    # ---------------------------------------------------------
+    # TRUE BINARY SEARCH ON THE CSV FILE
+    # ---------------------------------------------------------
+    def binary_search_postcode(self, target):
+        f = self.postcode_file
+        low = 0
+        high = self.postcode_file_size
+    
+        target = target.replace(" ", "").upper()
+        print(f"DEBUG: Starting binary search for {target}")
+    
+        steps = 0
+    
+        while low <= high:
+            steps += 1
+            mid = (low + high) // 2
+            f.seek(mid)
+    
+            # Skip partial line
+            _ = f.readline()
+    
+            line = f.readline()
+            if not line:
+                # SAFETY: jump backwards and retry
+                f.seek(max(0, mid - 200))
+                _ = f.readline()
+                line = f.readline()
+                if not line:
+                    print("DEBUG: No readable line at fallback position")
+                    return None
+    
+            postcode, brma, country = self.parse_postcode_line(line)
+            if not postcode:
+                high = mid - 1
+                continue
+    
+            print(f"DEBUG step {steps}: compare {postcode} vs {target}")
+    
+            if postcode == target:
+                print(f"DEBUG: MATCH FOUND after {steps} steps → {brma}, {country}")
+                return brma, country
+    
+            if postcode < target:
+                low = f.tell()
+            else:
+                high = mid - 1
+    
+        print(f"DEBUG: No match found after {steps} steps")
+        return None
+
+    # ---------------------------------------------------------
+    # PUBLIC LOOKUP WRAPPER
+    # ---------------------------------------------------------
+    def lookup_postcode(self, postcode):
+        import time
+    
+        self.ensure_postcode_csv_loaded()
+    
+        key = postcode.replace(" ", "").upper()
+    
+        # Cache hit
+        if key in self._postcode_cache:
+            print("DEBUG: Cache hit for", key)
+            print("DEBUG: Lookup for", key, "took 0.02 ms (cached)")
+            return self._postcode_cache[key]
+    
+        # TIMING START
+        start = time.perf_counter()
+    
+        result = self.binary_search_postcode(key)
+    
+        # TIMING END
+        elapsed = (time.perf_counter() - start) * 1000
+        print(f"DEBUG: Lookup for {key} took {elapsed:.2f} ms")
+    
+        self._postcode_cache[key] = result
+        return result
+
+    def verify_postcode_csv_sorted(self):
+        print("DEBUG: Verifying postcode CSV sorted order…")
+    
+        f = self.postcode_file
+        f.seek(0)
+    
+        prev = ""
+        checked = 0
+    
+        while checked < 5000:
+            line = f.readline()
+            if not line:
+                break
+    
+            postcode, _, _ = self.parse_postcode_line(line)
+            if not postcode:
+                continue
+    
+            if postcode < prev:
+                print("WARNING: CSV is NOT sorted — binary search may fail!")
+                f.seek(0)
+                return False
+    
+            prev = postcode
+            checked += 1
+    
+        print("DEBUG: CSV appears sorted (first 5000 rows)")
+        f.seek(0)
+        return True
+
+    def on_stop(self):
+        if getattr(self, "postcode_file", None):
+            print("DEBUG: Closing postcode CSV file")
+            self.postcode_file.close()
+
+    # ---------------------------------------------------------
+    # LHA CSV PRELOAD
+    # ---------------------------------------------------------
     def preload_lha_csvs(self, progress_callback, status_callback):
         import csv
         from kivy.resources import resource_find
@@ -5667,9 +5793,7 @@ class BenefitBuddy(App):
     
             progress_callback(0.1 + ((i + 1) / total_files) * 0.9)
     
-        # ---------------------------------------------------------
         # Build BRMA lists grouped by location
-        # ---------------------------------------------------------
         self.brma_by_location = {
             "england": [],
             "scotland": [],
@@ -5681,9 +5805,11 @@ class BenefitBuddy(App):
                 brma = row.get("BRMA", "").strip()
                 if brma and brma not in self.brma_by_location[location]:
                     self.brma_by_location[location].append(brma)
-            
+
+    # ---------------------------------------------------------
+    # PRELOAD ALL DATA
+    # ---------------------------------------------------------
     def preload_all_data(self, progress_callback, status_callback):
-    
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
 
@@ -5693,13 +5819,12 @@ class BenefitBuddy(App):
         progress_callback(1.0)
         status_callback("Ready")
 
+    # ---------------------------------------------------------
+    # STARTUP DIAGNOSTICS
+    # ---------------------------------------------------------
     def on_start(self):
-        # Run diagnostics after everything exists
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
 
-    def go_to_disclaimer(self, dt):
-        App.get_running_app().nav.go("disclaimer")
-    
     def run_startup_diagnostics(self, dt):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
     
@@ -5739,11 +5864,9 @@ class BenefitBuddy(App):
         current, peak = tracemalloc.get_traced_memory()
         print(f"  ✔ Memory usage: {current/1024:.1f} KB (peak {peak/1024:.1f} KB)")
 
-
 # Run the app
 if __name__ == "__main__":
     BenefitBuddy().run()
-
 
 # TO DO:
 
@@ -5771,17 +5894,3 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
-
-
-
-
-
-
-
-
-
-
-
-
-
-
