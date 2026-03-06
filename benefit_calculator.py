@@ -3204,78 +3204,79 @@ class CalculatorHousingScreen(BaseScreen):
     def save_state(self):
         w = self.housing_widgets
         data = self.calculator_state
-
+    
         data.housing_type = (w["housing_type"].text or "").strip().lower()
         data.tenancy_type = (w["tenancy_type"].text or "").strip().lower()
-
+    
         data.rent_raw = (w["rent"].text or "").strip()
         data.mortgage_raw = (w["mortgage"].text or "").strip()
         data.shared_raw = (w["shared"].text or "").strip()
         data.non_dependants_raw = (w["non_dependants"].text or "").strip()
         data.postcode = (w["postcode"].text or "").strip()
-
+    
         # Manual vs automatic location/BRMA
         data.manual_location = bool(w["manual_toggle"].active)
         if w["manual_toggle"].active:
             data.location = w["location"].text
             data.brma = w["brma"].text
         else:
-            data.location = w["location_display"].text.replace("Location: ", "")
-            data.brma = w["brma_display"].text.replace("BRMA: ", "")
-
+            # Automatic mode: store the last known values
+            data.location = data.location or ""
+            data.brma = data.brma or ""
+    
         # Service charges
         charges = {}
-
+    
         def parse_charge(widget):
             try:
                 return float(widget.text or 0)
             except Exception:
                 return 0.0
-
+    
         for key, widget in w["service_fields"].items():
             charges[key] = parse_charge(widget)
-
+    
         data.service_charges = charges
-
+    
         # Parsed numeric values
         try:
             data.non_dependants = int(w["non_dependants"].text or 0)
         except Exception:
             data.non_dependants = 0
-
+    
         try:
             data.rent = float(w["rent"].text or 0)
         except Exception:
             data.rent = 0.0
-
+    
         try:
             data.mortgage = float(w["mortgage"].text or 0)
         except Exception:
             data.mortgage = 0.0
-
+    
         try:
             data.shared = float(w["shared"].text or 0)
         except Exception:
             data.shared = 0.0
-
+    
     def load_state(self):
         w = self.housing_widgets
         data = self.calculator_state
-
+    
         # BASIC FIELDS
         if data.housing_type:
             w["housing_type"].text = data.housing_type.capitalize()
         else:
             w["housing_type"].text = "Rent"
-
+    
         w["tenancy_type"].text = data.tenancy_type or "Select tenancy type"
-
+    
         w["rent"].text = getattr(data, "rent_raw", "") or ""
         w["mortgage"].text = getattr(data, "mortgage_raw", "") or ""
         w["shared"].text = getattr(data, "shared_raw", "") or ""
         w["non_dependants"].text = getattr(data, "non_dependants_raw", "") or ""
         w["postcode"].text = data.postcode or ""
-
+    
         # SHOW CORRECT RENT/MORTGAGE/SHARED FIELD
         text = (w["housing_type"].text or "").lower()
         for key in ("rent", "mortgage", "shared"):
@@ -3283,7 +3284,7 @@ class CalculatorHousingScreen(BaseScreen):
             field.opacity = 0
             field.disabled = True
             field.height = 0
-
+    
         if "rent" in text:
             target = w["rent"]
         elif "own" in text:
@@ -3292,50 +3293,49 @@ class CalculatorHousingScreen(BaseScreen):
             target = w["shared"]
         else:
             target = None
-
+    
         if target:
             target.opacity = 1
             target.disabled = False
             target.height = 50
-
+    
         # MANUAL OVERRIDE
         if getattr(data, "manual_location", False):
             w["manual_toggle"].active = True
+    
             w["location"].disabled = False
             w["brma"].disabled = False
-
             w["location"].opacity = 1
             w["brma"].opacity = 1
-
+    
+            # Restore manual values
             w["location"].text = data.location or "Select Location"
+    
             # Re-filter BRMAs based on location
             app = App.get_running_app()
             loc = (w["location"].text or "").lower()
             brmas = app.brma_by_location.get(loc, [])
             w["brma"].values = brmas or ["Select BRMA"]
             w["brma"].text = data.brma or "Select BRMA"
-
-            # Hide automatic labels
-            w["location_display"].opacity = 0
-            w["brma_display"].opacity = 0
+    
         else:
             w["manual_toggle"].active = False
+    
             w["location"].disabled = True
             w["brma"].disabled = True
             w["location"].opacity = 0
             w["brma"].opacity = 0
-
-            w["location_display"].text = f"Location: {data.location}" if data.location else ""
-            w["brma_display"].text = f"BRMA: {data.brma}" if data.brma else ""
-            w["location_display"].opacity = 1
-            w["brma_display"].opacity = 1
-
+    
+            # Automatic mode: nothing to show until lookup happens
+            # Results box will be filled after lookup
+            pass
+    
         # SERVICE CHARGES
         charges = data.service_charges or {}
         for key, widget in w["service_fields"].items():
             val = charges.get(key, "")
             widget.text = "" if val in (None, "") else str(val)
-
+    
         # TENANCY-DEPENDENT SERVICE CHARGE ENABLE/DISABLE
         tenancy = (w["tenancy_type"].text or "").strip().lower()
         social = (tenancy == "social")
@@ -5903,6 +5903,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
