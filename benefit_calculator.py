@@ -2634,8 +2634,9 @@ class CalculatorHousingScreen(BaseScreen):
             size_hint=(1, None),
             height=50,
         )
-        manual_header.opacity = 0
+        manual_header.size_hint_y = None
         manual_header.height = 0
+        manual_header.opacity = 0
         manual_header.disabled = True
 
 
@@ -2792,6 +2793,7 @@ class CalculatorHousingScreen(BaseScreen):
                 manual_header.opacity = 1
                 manual_header.height = 50
                 manual_header.disabled = False
+                manual_header.size_hint_y = None   # keeps fixed height
         
                 # Expand manual section if needed
                 if not w_local["manual_section_expanded"]:
@@ -2823,6 +2825,7 @@ class CalculatorHousingScreen(BaseScreen):
                 manual_header.opacity = 0
                 manual_header.height = 0
                 manual_header.disabled = True
+                manual_header.size_hint_y = None   # ensures it collapses fully
         
                 # Fully collapse manual box regardless of state
                 apply_manual_box(False)
@@ -5895,6 +5898,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
