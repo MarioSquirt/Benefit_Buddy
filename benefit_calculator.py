@@ -5703,8 +5703,6 @@ class BenefitBuddy(App):
     # PUBLIC LOOKUP WRAPPER
     # ---------------------------------------------------------
     def lookup_postcode(self, postcode):
-        import time
-    
         self.ensure_postcode_csv_loaded()
     
         key = postcode.replace(" ", "").upper()
@@ -5715,17 +5713,25 @@ class BenefitBuddy(App):
             print("DEBUG: Lookup for", key, "took 0.02 ms (cached)")
             return self._postcode_cache[key]
     
-        # TIMING START
+        import time
         start = time.perf_counter()
     
         result = self.binary_search_postcode(key)
     
-        # TIMING END
         elapsed = (time.perf_counter() - start) * 1000
         print(f"DEBUG: Lookup for {key} took {elapsed:.2f} ms")
     
-        self._postcode_cache[key] = result
-        return result
+        if not result:
+            self._postcode_cache[key] = None
+            return None
+    
+        brma, country = result
+    
+        # ⭐ Return a dictionary (UI expects this)
+        final = {"brma": brma, "country": country}
+    
+        self._postcode_cache[key] = final
+        return final
 
     def verify_postcode_csv_sorted(self):
         print("DEBUG: Verifying postcode CSV sorted order…")
@@ -5905,5 +5911,6 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
