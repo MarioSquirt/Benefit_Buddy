@@ -1657,9 +1657,9 @@ class CalculatorNavBar(BoxLayout):
         super().__init__(
             orientation="horizontal",
             spacing=20,
-            padding=(20, 10),     # more vertical padding
+            padding=(20, 10),
             size_hint_y=None,
-            height=120,           # increased height for 2-line labels
+            height=120,
             **kwargs
         )
 
@@ -1680,16 +1680,16 @@ class CalculatorNavBar(BoxLayout):
         )
 
         # ---------------------------------------------------------
-        # Screen order (defines Previous/Next behaviour)
+        # UPDATED SCREEN ORDER (Children BEFORE Housing)
         # ---------------------------------------------------------
         self.screens = [
             ("Introduction", "calculator_intro"),
             ("Claimant Details", "calculator_claimant_details"),
             ("Finances", "calculator_finances"),
-            ("Housing", "calculator_housing"),
             ("Children", "calculator_children"),
             ("Additional Elements", "calculator_additional"),
             ("Sanctions", "calculator_sanctions"),
+            ("Housing", "calculator_housing"),
             ("Advanced Payments", "calculator_advance"),
             ("Summary", "calculator_final"),
         ]
@@ -3256,7 +3256,6 @@ class CalculatorHousingScreen(BaseScreen):
         else:
             return 0.0
 
-        from kivy.app import App
         data = App.get_running_app()._lha_data.get(location)
         if not data:
             return 0.0
@@ -3305,6 +3304,7 @@ class CalculatorHousingScreen(BaseScreen):
 
         return total
 
+
 class CalculatorChildrenScreen(BaseScreen):
     def __init__(self, calculator_state, **kwargs):
         super().__init__(**kwargs)
@@ -3327,8 +3327,8 @@ class CalculatorChildrenScreen(BaseScreen):
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=(20, 120, 20, 20),  # upward bias
-            size_hint=(1, None)
+            padding=(20, 20, 20, 20),   # FIXED: no more 120px top padding
+            size_hint_y=None
         )
         layout.bind(minimum_height=layout.setter("height"))
 
@@ -3366,7 +3366,7 @@ class CalculatorChildrenScreen(BaseScreen):
         # ---------------------------------------------------------
         # SPACER ABOVE BUTTONS
         # ---------------------------------------------------------
-        layout.add_widget(Widget(size_hint_y=0.05))
+        layout.add_widget(Widget(size_hint_y=None, height=20))
 
         # ---------------------------------------------------------
         # ADD CHILD BUTTON
@@ -3391,20 +3391,12 @@ class CalculatorChildrenScreen(BaseScreen):
         # ---------------------------------------------------------
         # SPACER BELOW BUTTONS
         # ---------------------------------------------------------
-        layout.add_widget(Widget(size_hint_y=0.05))
+        layout.add_widget(Widget(size_hint_y=None, height=20))
 
     # ---------------------------------------------------------
     # ADD CHILD SECTION
     # ---------------------------------------------------------
     def add_child_section(self, instance=None, prefill=None):
-        """
-        Creates a collapsible child section with:
-        - Name
-        - DOB
-        - Gender
-        - Adoption / Kinship / Multiple birth flags
-        - Remove button
-        """
 
         # COLLAPSIBLE HEADER
         header_btn = BoxLayout(
@@ -3414,26 +3406,26 @@ class CalculatorChildrenScreen(BaseScreen):
             height=60,
             padding=(15, 0)
         )
-        
-        # Add background
+
+        # Header background
         with header_btn.canvas.before:
             Color(*get_color_from_hex("#005EA5"))
             header_btn._bg = Rectangle(size=header_btn.size, pos=header_btn.pos)
-        
+
         header_btn.bind(
             size=lambda inst, val: setattr(header_btn._bg, "size", val),
             pos=lambda inst, val: setattr(header_btn._bg, "pos", val),
         )
-        
+
         header_label = SafeLabel(
             text="New Child",
             font_size=20,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
             halign="left",
             valign="middle"
         )
         header_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
+
         header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
@@ -3441,7 +3433,7 @@ class CalculatorChildrenScreen(BaseScreen):
             allow_stretch=True,
             keep_ratio=True
         )
-        
+
         header_btn.add_widget(header_label)
         header_btn.add_widget(header_chevron)
 
@@ -3450,14 +3442,18 @@ class CalculatorChildrenScreen(BaseScreen):
             orientation="vertical",
             spacing=10,
             padding=(10, 10),
-            size_hint=(1, None),
+            size_hint_y=None,
             height=0,
             opacity=0
         )
 
-        if not prefill:
-            content_box.height = content_box.minimum_height
+        # ⭐ FIX: Bind minimum_height so expansion works correctly
+        content_box.bind(minimum_height=content_box.setter("height"))
+
+        # Expand if prefilled
+        if prefill:
             content_box.opacity = 1
+            content_box.height = content_box.minimum_height
             header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
 
         # CHILD NAME
@@ -3531,20 +3527,18 @@ class CalculatorChildrenScreen(BaseScreen):
         def toggle_section(instance, touch=None):
             if touch and not instance.collide_point(*touch.pos):
                 return False
-        
+
             if content_box.height == 0:
-                # Expand
                 content_box.height = content_box.minimum_height
                 content_box.opacity = 1
                 header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
             else:
-                # Collapse
                 content_box.height = 0
                 content_box.opacity = 0
                 header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-        
+
             return True
-        
+
         header_btn.bind(on_touch_down=toggle_section)
 
         # STORE SECTION
@@ -3561,32 +3555,13 @@ class CalculatorChildrenScreen(BaseScreen):
 
         self.child_sections.append(section)
 
+        # Update header text dynamically
         header_label.text = self.get_child_header_text(section)
+        name_input.bind(text=lambda inst, val: setattr(header_label, "text", self.get_child_header_text(section)))
 
-        def update_header_text(instance, value):
-            header_label.text = self.get_child_header_text(section)
-        
-        name_input.bind(text=update_header_text)
-
+        # Add to layout
         self.children_layout.add_widget(header_btn)
         self.children_layout.add_widget(content_box)
-
-    # ---------------------------------------------------------
-    # REMOVE CHILD SECTION
-    # ---------------------------------------------------------
-    def remove_child_section(self, section):
-        if section in self.child_sections:
-            self.child_sections.remove(section)
-            self.children_layout.remove_widget(section["header"])
-            self.children_layout.remove_widget(section["content"])
-
-    # ---------------------------------------------------------
-    # HEADER TEXT (Child 1 (Name))
-    # ---------------------------------------------------------
-    def get_child_header_text(self, section):
-        index = self.child_sections.index(section) + 1
-        name = section["name"].text.strip()
-        return f"Child {index} ({name})" if name else f"Child {index}"
     
     def save_state(self):
         """
@@ -3640,6 +3615,14 @@ class CalculatorChildrenScreen(BaseScreen):
             # Rebuild each saved child
             for child in saved_children:
                 self.add_child_section(prefill=child)
+    
+        # ---------------------------------------------------------
+        # REFRESH HEADER TEXTS (Child 1, Child 2, etc.)
+        # ---------------------------------------------------------
+        for section in self.child_sections:
+            header_label = section["header"].children[1]  # SafeLabel inside header
+            header_label.text = self.get_child_header_text(section)
+            
 
 class CalculatorAdditionalElementsScreen(BaseScreen):
     def __init__(self, calculator_state, **kwargs):
@@ -5465,17 +5448,27 @@ class NavigationManager:
         # Screens created during navigation
         self.loaded = {}
 
+        # ---------------------------------------------------------
+        # UPDATED ORDER: children BEFORE housing
+        # ---------------------------------------------------------
         self.screen_factories = {
             name: (lambda n=name: ScreenFactory.create(n))
             for name in [
                 "instant", "disclaimer", "settings", "main",
                 "create_account", "log_in",
                 "main_guest_access", "main_full_access",
-                "calculator_intro", "calculator_claimant_details",
-                "calculator_finances", "calculator_housing",
-                "calculator_children", "calculator_additional",
-                "calculator_sanctions", "calculator_advance",
-                "calculator_final", "breakdown"
+
+                # Calculator flow
+                "calculator_intro",
+                "calculator_claimant_details",
+                "calculator_finances",
+                "calculator_children",
+                "calculator_additional",
+                "calculator_sanctions",
+                "calculator_housing",
+                "calculator_advance",
+                "calculator_final",
+                "breakdown"
             ]
         }
 
@@ -5486,9 +5479,7 @@ class NavigationManager:
         total = len(self.screen_factories)
         for i, (name, factory) in enumerate(self.screen_factories.items()):
             if name not in self.preloaded:
-                # Store the FACTORY for later creation on the main thread
                 self.preloaded[name] = factory
-    
             progress_callback(0.1 + (i + 1) / total * 0.9)
 
     # ---------------------------------------------------------
@@ -5512,7 +5503,7 @@ class NavigationManager:
             return
 
         # ---------------------------------------------------------
-        # DESTROY CURRENT SCREEN (only if it was dynamically created)
+        # DESTROY CURRENT SCREEN (only if dynamically created)
         # ---------------------------------------------------------
         current = self.sm.current
         if current and current in self.loaded:
@@ -5538,11 +5529,11 @@ class NavigationManager:
             del self.loaded[current]
 
         # ---------------------------------------------------------
-        # SELECT NEW SCREEN
+        # CREATE NEW SCREEN
         # ---------------------------------------------------------
         if name in self.preloaded:
             factory = self.preloaded[name]
-            new = factory()                     # ← CREATE THE SCREEN HERE
+            new = factory()
             self.loaded[name] = new
             self.sm.add_widget(new)
         else:
@@ -5560,6 +5551,7 @@ class NavigationManager:
                 new.load_state()
             except Exception as e:
                 print("ERROR in load_state():", e)
+
 
 # Define the main application class
 class BenefitBuddy(App):
@@ -5911,6 +5903,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
