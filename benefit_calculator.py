@@ -2493,9 +2493,6 @@ class CalculatorHousingScreen(BaseScreen):
         
         housing_anchor.add_widget(w["housing_type"])
         layout.add_widget(housing_anchor)
-        
-        # Force default text after layout (GovUkIconSpinner sometimes resets)
-        Clock.schedule_once(lambda dt: setattr(w["housing_type"], "text", "Select Housing Type:"), 0)
 
         def make_money_input(hint):
             return CustomTextInput(
@@ -2549,15 +2546,17 @@ class CalculatorHousingScreen(BaseScreen):
         
         w["tenancy_type"] = GovUkIconSpinner(
             text="Select Tenancy Type:",
-            values=["Private", "Social"],
+            values=[
+                "Private rented",
+                "Social",
+                "Temporary accommodation",
+                "Supported accommodation"
+            ],
             icon_map={}
         )
         
         tenancy_anchor.add_widget(w["tenancy_type"])
         layout.add_widget(tenancy_anchor)
-        
-        # Force default text after layout
-        Clock.schedule_once(lambda dt: setattr(w["tenancy_type"], "text", "Select Tenancy Type:"), 0)
 
         # ---------------------------------------------------------
         # NON-DEPENDANTS
@@ -5955,6 +5954,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
