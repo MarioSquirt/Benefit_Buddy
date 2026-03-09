@@ -253,7 +253,7 @@ class CalculatorState:
         # Housing
         # -----------------------------
         self.housing_type = ""        # "own", "private", "social", etc.
-        self.tenancy_type = "private"
+        self.tenancy_type = ""
         self.rent = 0.0
         self.mortgage = 0.0
         self.shared = 0.0
@@ -1687,9 +1687,9 @@ class CalculatorNavBar(BoxLayout):
             ("Claimant Details", "calculator_claimant_details"),
             ("Finances", "calculator_finances"),
             ("Children", "calculator_children"),
-            ("Additional Elements", "calculator_additional"),
             ("Sanctions", "calculator_sanctions"),
             ("Housing", "calculator_housing"),
+            ("Additional Elements", "calculator_additional"),
             ("Advanced Payments", "calculator_advance"),
             ("Summary", "calculator_final"),
         ]
@@ -3409,7 +3409,7 @@ class CalculatorChildrenScreen(BaseScreen):
 
         # Header background
         with header_btn.canvas.before:
-            Color(*get_color_from_hex("#005EA5"))
+            Color(*get_color_from_hex("#FFDD00"))
             header_btn._bg = Rectangle(size=header_btn.size, pos=header_btn.pos)
 
         header_btn.bind(
@@ -3420,7 +3420,7 @@ class CalculatorChildrenScreen(BaseScreen):
         header_label = SafeLabel(
             text="New Child",
             font_size=20,
-            color=get_color_from_hex("#FFFFFF"),
+            color=get_color_from_hex("#005EA5"),
             halign="left",
             valign="middle"
         )
@@ -5515,9 +5515,9 @@ class NavigationManager:
                 "calculator_claimant_details",
                 "calculator_finances",
                 "calculator_children",
-                "calculator_additional",
                 "calculator_sanctions",
                 "calculator_housing",
+                "calculator_additional",
                 "calculator_advance",
                 "calculator_final",
                 "breakdown"
@@ -5955,6 +5955,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
