@@ -3923,6 +3923,10 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
                 sar_box.opacity = 0
                 sar_box.disabled = True
                 sar_box.height = 0
+
+        def get_current_tenancy_type():
+            tenancy = getattr(self.calculator_state, "tenancy_type", "") or ""
+            return tenancy.strip().lower()
         
         # ---------------------------------------------------------
         # EXPAND / COLLAPSE TOGGLE
@@ -3931,7 +3935,8 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
             expanded = not w["sar_expanded"]
             w["sar_expanded"] = expanded
         
-            mode = get_tenancy_mode(w["tenancy_type"].text)
+            tenancy_type = get_current_tenancy_type()
+            mode = get_tenancy_mode(tenancy_type)
         
             apply_sar_header(mode, expanded)
             apply_sar_box(mode, expanded)
@@ -3971,18 +3976,16 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         add_sar_row("Temporary accommodation", "temporary_accommodation")
         add_sar_row("Victim of modern slavery", "modern_slavery")
         add_sar_row("Armed forces reservist returning to civilian life", "armed_forces")
-        
+
         # ---------------------------------------------------------
-        # TENANCY SPINNER CALLBACK
+        # INITIALISE SAR STATE BASED ON CURRENT TENANCY
         # ---------------------------------------------------------
-        def on_tenancy_change_sar(spinner, value):
-            mode = get_tenancy_mode(value)
-            expanded = w["sar_expanded"]
+        tenancy_type = get_current_tenancy_type()
+        mode = get_tenancy_mode(tenancy_type)
+        expanded = w["sar_expanded"]
         
-            apply_sar_header(mode, expanded)
-            apply_sar_box(mode, expanded)
-        
-        w["tenancy_type"].bind(text=on_tenancy_change_sar)
+        apply_sar_header(mode, expanded)
+        apply_sar_box(mode, expanded)
 
         # ---------------------------------------------------------
         # SPACERS / BUTTONS
@@ -5954,6 +5957,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
