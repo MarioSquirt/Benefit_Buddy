@@ -3562,6 +3562,58 @@ class CalculatorChildrenScreen(BaseScreen):
         # Add to layout
         self.children_layout.add_widget(header_btn)
         self.children_layout.add_widget(content_box)
+
+
+    def get_child_header_text(self, section):
+        """
+        Returns the header label text for a child section.
+        If the name field is filled, show the name.
+        Otherwise show 'Child X' based on index.
+        """
+        name = section["name"].text.strip()
+        if name:
+            return name
+
+        # Determine index based on position in child_sections
+        try:
+            index = self.child_sections.index(section) + 1
+        except ValueError:
+            index = 1
+
+        return f"Child {index}"
+
+    def remove_child_section(self, section):
+        """
+        Safely remove a child section from the UI and refresh numbering.
+        """
+
+        # 1. Remove widgets from layout
+        try:
+            self.children_layout.remove_widget(section["header"])
+        except Exception:
+            pass
+
+        try:
+            self.children_layout.remove_widget(section["content"])
+        except Exception:
+            pass
+
+        # 2. Remove from internal list
+        if section in self.child_sections:
+            self.child_sections.remove(section)
+
+        # 3. Refresh header numbering
+        self.refresh_child_headers()
+
+        # 4. If no children left, add a fresh empty section
+        if not self.child_sections:
+            self.add_child_section()
+
+    def refresh_child_headers(self):
+        for i, section in enumerate(self.child_sections, start=1):
+            name = section["name"].text.strip()
+            header_label = section["header"].children[1]  # SafeLabel
+            header_label.text = name if name else f"Child {i}"
     
     def save_state(self):
         """
@@ -5903,6 +5955,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
