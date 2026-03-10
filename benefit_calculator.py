@@ -4732,11 +4732,13 @@ class CalculatorFinalScreen(BaseScreen):
     # RUN CALCULATION (converted from run_calculation)
     # ---------------------------------------------------------
     def run_calculation(self, *args):
-        # 1. Run calculation
         try:
-            result = self.calculate_callback()
+            # Pass the required arguments to the engine
+            result = self.calculate_callback(self.calculator_state, UC_RATES)
+    
             result_text = f"Calculated Entitlement: £{result:.2f}"
             self.calculator_state.calculation_result = result_text
+    
         except Exception as e:
             self.summary_widgets["label"].text = f"Error during calculation: {str(e)}"
             return
@@ -6195,6 +6197,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
