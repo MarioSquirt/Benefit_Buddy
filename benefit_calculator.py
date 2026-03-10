@@ -3456,7 +3456,7 @@ class CalculatorChildrenScreen(BaseScreen):
         toggle_label = SafeLabel(
             text="Do you have children?",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
             halign="left"
         )
         toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
@@ -4305,7 +4305,7 @@ class CalculatorSanctionsScreen(BaseScreen):
         toggle_label = SafeLabel(
             text="Do you have any sanctions?",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
             halign="left"
         )
         toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
@@ -4494,7 +4494,7 @@ class CalculatorAdvanceScreen(BaseScreen):
         toggle_label = SafeLabel(
             text="Are you applying for an advance payment?",
             font_size=18,
-            color=get_color_from_hex("#005EA5"),
+            color=get_color_from_hex("#FFFFFF"),
             halign="left"
         )
         toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
@@ -6197,6 +6197,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
