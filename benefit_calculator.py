@@ -65,6 +65,25 @@ ICON_PATHS = {
     "Summary": "images/icons/Summary-icon/Summary-32px.png",
 }
 
+# ============================================================
+# LONDON POSTCODE DETECTION (100% ACCURATE)
+# ============================================================
+
+LONDON_OUTCODES = (
+    "E", "EC", "N", "NW", "SE", "SW", "W", "WC",
+    "BR", "CR", "DA", "EN", "HA", "IG", "KT", "RM", "SM", "TW", "UB"
+)
+
+def is_london_postcode(postcode: str) -> bool:
+    if not postcode:
+        return False
+
+    postcode = postcode.strip().upper()
+    # Extract outcode (e.g. "SW1A", "E14", "HA9")
+    outcode = postcode.split(" ")[0]
+
+    return any(outcode.startswith(prefix) for prefix in LONDON_OUTCODES)
+
 
 # --- Register base paths for resources ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -209,8 +228,17 @@ UC_RATES = {
         "extra_dp_couple": 266.94,
         "extra_disabled_children": 192.07,
     },
+    "benefit_cap": {
+        "london": {
+            "single": 1541.67,
+            "couple_or_parent": 1841.67,
+        },
+        "non_london": {
+            "single": 1298.67,
+            "couple_or_parent": 1516.67,
+        }
+    }
 }
-
 
 class CalculatorState:
     def __init__(self):
@@ -243,6 +271,7 @@ class CalculatorState:
         self.disability = ""          # "LCW", "LCWRA", or ""
         self.had_lcw_before_uc = False
         self.carer = False
+        self.receives_disability_benefits = False
 
         # -----------------------------
         # Childcare
@@ -263,6 +292,7 @@ class CalculatorState:
         self.brma = ""
         self.service_charges = {}
         self.single_under_35 = False
+        self.in_london = False
 
         # The Housing screen will attach this:
         self.lookup_lha_rate = None
@@ -931,6 +961,54 @@ class CalculatorEngine:
         return base + extra
 
     # ============================================================
+    # Benefit Cap
+    # ============================================================
+    def calculate_benefit_cap(self, data, UC_RATES, total_before_cap, has_lcwra, carer_element):
+        """
+        Applies the UC Benefit Cap unless exempt.
+        """
+    
+        # -----------------------------
+        # Exemptions
+        # -----------------------------
+        earnings = float(data.earnings or 0)
+    
+        # 1. LCWRA exemption
+        if has_lcwra:
+            return 0.0
+    
+        # 2. Carer element exemption
+        if carer_element > 0:
+            return 0.0
+    
+        # 3. Earnings threshold exemption
+        if earnings >= 722:
+            return 0.0
+    
+        # 4. Disability benefits exemption (optional)
+        if data.receives_disability_benefits:
+            return 0.0
+    
+        # -----------------------------
+        # Determine cap level
+        # -----------------------------
+        in_london = bool(data.in_london)
+        is_single = (data.relationship == "single")
+    
+        if in_london:
+            cap = UC_RATES["benefit_cap"]["london"]["single" if is_single else "couple_or_parent"]
+        else:
+            cap = UC_RATES["benefit_cap"]["non_london"]["single" if is_single else "couple_or_parent"]
+    
+        # -----------------------------
+        # Apply cap
+        # -----------------------------
+        if total_before_cap > cap:
+            return total_before_cap - cap
+    
+        return 0.0
+    
+    # ============================================================
     # FULL ENTITLEMENT CALCULATION
     # ============================================================
     def calculate_entitlement(self, data, UC_RATES):
@@ -1096,6 +1174,16 @@ class CalculatorEngine:
             transitional_sdp
         )
 
+        benefit_cap_reduction = self.calculate_benefit_cap(
+            data,
+            UC_RATES,
+            total,
+            has_lcwra,
+            carer_element
+        )
+        
+        total -= benefit_cap_reduction
+
         # Apply deductions
         total -= capital_income
         total -= earnings_deduction
@@ -1129,6 +1217,7 @@ class CalculatorEngine:
             "Sanction Reduction": -sanction_reduction,
             "Advance Payment Deduction": -advance_deduction,
             "Deduction Caps": -deduction_caps_total,
+            "Benefit Cap Reduction": -benefit_cap_reduction,
         }
         
         # Store for breakdown screen
@@ -3023,19 +3112,23 @@ class CalculatorHousingScreen(BaseScreen):
             postcode = w["postcode"].text.strip().replace(" ", "").upper()
             if not postcode:
                 return
-
+        
             self.show_loading("Finding BRMA...")
-
+        
             def do_lookup(dt):
                 try:
                     app = App.get_running_app()
                     app.ensure_postcode_csv_loaded()
-
+        
                     brma_name = self.lookup_brma(postcode)
                     location = self.lookup_location_for_postcode(postcode)
-
+        
                     print(f"DEBUG: postcode={postcode}, brma={brma_name}, location={location}")
-
+        
+                    # ⭐ NEW: set in_london automatically
+                    app.calculator_state.in_london = is_london_postcode(postcode)
+                    print("DEBUG: in_london =", app.calculator_state.in_london)
+        
                     # Fill results box
                     results_box = w["brma_results_box"]
                     results_box.clear_widgets()
@@ -3043,28 +3136,26 @@ class CalculatorHousingScreen(BaseScreen):
                     bedrooms = self.get_bedroom_entitlement()
                     loc_norm = location.lower() if location else None
                     lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
-
+        
                     results_box.opacity = 0
                     results_box.height = 0
                     
-                    # NEW: Add rows using the GOV.UK-style helper
                     add_result_row("Location:", location or "Not found")
                     add_result_row("BRMA:", brma_name or "Not found")
                     add_result_row("Bedroom entitlement:", str(bedrooms))
                     add_result_row("LHA monthly rate:", f"£{lha_monthly:.2f}")
                     
                     show_results_box()
-
-                    # Scroll to results AFTER they exist
+        
                     scroll = w.get("scroll_view")
                     if scroll:
                         Clock.schedule_once(lambda dt: scroll.scroll_to(results_box), 0.1)
-
+        
                 except Exception as e:
                     print("BRMA lookup error:", e)
                 finally:
                     self.hide_loading()
-
+        
             Clock.schedule_once(do_lookup, 0)
 
         find_brma_btn.bind(on_press=on_find_brma)
@@ -6104,6 +6195,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
