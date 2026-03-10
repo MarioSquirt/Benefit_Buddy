@@ -3237,11 +3237,11 @@ class CalculatorHousingScreen(BaseScreen):
     def lookup_lha_rate(self, brma, bedrooms, location):
         if not brma:
             return 0.0
-
+    
         location = (location or "").strip().lower()
         if location not in ("england", "scotland", "wales"):
             return 0.0
-
+    
         if bedrooms == "shared":
             col = "SAR"
         elif bedrooms == 1:
@@ -3254,20 +3254,20 @@ class CalculatorHousingScreen(BaseScreen):
             col = "4 Bed"
         else:
             return 0.0
-
+    
         data = App.get_running_app()._lha_data.get(location)
         if not data:
             return 0.0
-
+    
         brma_lower = brma.lower()
         for row in data:
             if row.get("BRMA", "").strip().lower() == brma_lower:
                 try:
-                    weekly = float(row.get(col, 0) or 0)
+                    monthly = float(row.get(col, 0) or 0)
                 except Exception:
-                    weekly = 0.0
-                return weekly * 52 / 12
-
+                    monthly = 0.0
+                return monthly   # <-- FIXED
+    
         return 0.0
 
     # ============================================================
@@ -3309,7 +3309,6 @@ class CalculatorChildrenScreen(BaseScreen):
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
         self.child_sections = []
-        self.children_layout = None
         self.build_ui()
 
     def build_ui(self):
@@ -3326,7 +3325,7 @@ class CalculatorChildrenScreen(BaseScreen):
         layout = BoxLayout(
             orientation="vertical",
             spacing=20,
-            padding=(20, 20, 20, 20),   # FIXED: no more 120px top padding
+            padding=(20, 20, 20, 20),
             size_hint_y=None
         )
         layout.bind(minimum_height=layout.setter("height"))
@@ -3334,9 +3333,6 @@ class CalculatorChildrenScreen(BaseScreen):
         scroll.add_widget(layout)
         root.add_widget(scroll)
         self.add_widget(root)
-
-        # Keep reference for dynamic insertion
-        self.children_layout = layout
 
         # ---------------------------------------------------------
         # INSTRUCTION LABEL
@@ -3352,15 +3348,42 @@ class CalculatorChildrenScreen(BaseScreen):
         layout.add_widget(instruction)
 
         # ---------------------------------------------------------
-        # LOAD SAVED CHILDREN OR START WITH ONE
+        # DO YOU HAVE CHILDREN? TOGGLE
         # ---------------------------------------------------------
-        saved_children = getattr(self.calculator_state, "children", [])
+        toggle_row = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint_y=None,
+            height=50
+        )
+        
+        self.has_children_cb = CheckBox(
+            size_hint=(None, None),
+            size=(40, 40)
+        )
+        
+        toggle_label = SafeLabel(
+            text="Do you have children?",
+            font_size=18,
+            color=get_color_from_hex("#005EA5"),
+            halign="left"
+        )
+        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
+        toggle_row.add_widget(self.has_children_cb)
+        toggle_row.add_widget(toggle_label)
+        layout.add_widget(toggle_row)
+        
+        # Bind toggle behaviour
+        self.has_children_cb.bind(active=self.on_children_toggle)
 
-        if not saved_children:
-            self.add_child_section()
-        else:
-            for child in saved_children:
-                self.add_child_section(prefill=child)
+        self.child_container = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            size_hint_y=None
+        )
+        self.child_container.bind(minimum_height=self.child_container.setter("height"))
+        layout.add_widget(self.child_container)
 
         # ---------------------------------------------------------
         # SPACER ABOVE BUTTONS
@@ -3559,9 +3582,10 @@ class CalculatorChildrenScreen(BaseScreen):
         name_input.bind(text=lambda inst, val: setattr(header_label, "text", self.get_child_header_text(section)))
 
         # Add to layout
-        self.children_layout.add_widget(header_btn)
-        self.children_layout.add_widget(content_box)
+        self.child_container.add_widget(header_btn)
+        self.child_container.add_widget(content_box)
 
+        Clock.schedule_once(lambda dt: setattr(content_box, "height", content_box.minimum_height), 0)
 
     def get_child_header_text(self, section):
         """
@@ -3588,12 +3612,12 @@ class CalculatorChildrenScreen(BaseScreen):
 
         # 1. Remove widgets from layout
         try:
-            self.children_layout.remove_widget(section["header"])
+            self.child_container.remove_widget(section["header"])
         except Exception:
             pass
 
         try:
-            self.children_layout.remove_widget(section["content"])
+            self.child_container.remove_widget(section["content"])
         except Exception:
             pass
 
@@ -3604,15 +3628,34 @@ class CalculatorChildrenScreen(BaseScreen):
         # 3. Refresh header numbering
         self.refresh_child_headers()
 
-        # 4. If no children left, add a fresh empty section
-        if not self.child_sections:
-            self.add_child_section()
-
     def refresh_child_headers(self):
         for i, section in enumerate(self.child_sections, start=1):
             name = section["name"].text.strip()
             header_label = section["header"].children[1]  # SafeLabel
             header_label.text = name if name else f"Child {i}"
+
+    def on_children_toggle(self, instance, value):
+        """
+        Show or hide the children sections based on the toggle.
+        """
+        if value:
+            # User has children → show layout and create first section if empty
+            self.child_container.opacity = 1
+            self.child_container.disabled = False
+    
+            if not self.child_sections:
+                self.add_child_section()
+    
+        else:
+            # User has no children → remove all sections
+            for section in list(self.child_sections):
+                self.remove_child_section(section)
+    
+            self.child_container.opacity = 0
+            self.child_container.disabled = True
+    
+            # Clear saved state immediately
+            self.calculator_state.children = []
     
     def save_state(self):
         """
@@ -3649,31 +3692,24 @@ class CalculatorChildrenScreen(BaseScreen):
         Called automatically by NavigationManager after screen creation.
         """
         saved_children = getattr(self.calculator_state, "children", [])
-    
-        # ---------------------------------------------------------
-        # CLEAR EXISTING SECTIONS
-        # ---------------------------------------------------------
+        
+        # Clear existing UI
         for section in list(self.child_sections):
             self.remove_child_section(section)
-    
-        # ---------------------------------------------------------
-        # REBUILD SECTIONS
-        # ---------------------------------------------------------
-        if not saved_children:
-            # Start with one empty child section
-            self.add_child_section()
-        else:
-            # Rebuild each saved child
+        
+        if saved_children:
+            self.has_children_cb.active = True
             for child in saved_children:
                 self.add_child_section(prefill=child)
+        else:
+            self.has_children_cb.active = False
+            self.child_container.opacity = 0
+            self.child_container.disabled = True
     
-        # ---------------------------------------------------------
-        # REFRESH HEADER TEXTS (Child 1, Child 2, etc.)
-        # ---------------------------------------------------------
         for section in self.child_sections:
             header_label = section["header"].children[1]  # SafeLabel inside header
             header_label.text = self.get_child_header_text(section)
-            
+
 
 class CalculatorAdditionalElementsScreen(BaseScreen):
     def __init__(self, calculator_state, **kwargs):
@@ -3927,6 +3963,25 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         def get_current_tenancy_type():
             tenancy = getattr(self.calculator_state, "tenancy_type", "") or ""
             return tenancy.strip().lower()
+
+        def get_tenancy_mode(tenancy_type):
+            """
+            Returns SAR applicability mode based on tenancy type.
+            tenancy_type should already be lowercase.
+            """
+        
+            tenancy_type = (tenancy_type or "").strip().lower()
+        
+            if not tenancy_type:
+                return "unset"
+        
+            # SAR applies ONLY to private rented sector
+            if tenancy_type in ("private", "private rented"):
+                return "applicable"
+        
+            # Social housing, supported accommodation, temporary accommodation
+            # do NOT use SAR
+            return "not_applicable"
         
         # ---------------------------------------------------------
         # EXPAND / COLLAPSE TOGGLE
@@ -4145,6 +4200,45 @@ class CalculatorSanctionsScreen(BaseScreen):
         layout.add_widget(instruction)
 
         # ---------------------------------------------------------
+        # DO YOU HAVE ANY SANCTIONS? TOGGLE
+        # ---------------------------------------------------------
+        toggle_row = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint_y=None,
+            height=50
+        )
+        
+        self.has_sanctions_cb = CheckBox(size_hint=(None, None), size=(40, 40))
+        
+        toggle_label = SafeLabel(
+            text="Do you have any sanctions?",
+            font_size=18,
+            color=get_color_from_hex("#005EA5"),
+            halign="left"
+        )
+        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
+        toggle_row.add_widget(self.has_sanctions_cb)
+        toggle_row.add_widget(toggle_label)
+        layout.add_widget(toggle_row)
+        
+        self.has_sanctions_cb.bind(active=self.on_sanctions_toggle)
+        
+        # ---------------------------------------------------------
+        # SANCTIONS CONTAINER (hidden unless toggle is ON)
+        # ---------------------------------------------------------
+        self.sanctions_container = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            size_hint_y=None
+        )
+        self.sanctions_container.opacity = 0
+        self.sanctions_container.disabled = True
+        self.sanctions_container.bind(minimum_height=self.sanctions_container.setter("height"))
+        layout.add_widget(self.sanctions_container)
+        
+        # ---------------------------------------------------------
         # SANCTION TYPE
         # ---------------------------------------------------------
         sanction_type_label = SafeLabel(
@@ -4154,15 +4248,15 @@ class CalculatorSanctionsScreen(BaseScreen):
             halign="left"
         )
         sanction_type_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(sanction_type_label)
-
+        self.sanctions_container.add_widget(sanction_type_label)
+        
         w["type"] = GovUkIconSpinner(
             text="Select sanction type",
             values=["lowest", "low", "medium", "high"],
             icon_map={}
         )
-        layout.add_widget(w["type"])
-
+        self.sanctions_container.add_widget(w["type"])
+        
         # ---------------------------------------------------------
         # SANCTION DURATION
         # ---------------------------------------------------------
@@ -4173,41 +4267,48 @@ class CalculatorSanctionsScreen(BaseScreen):
             halign="left"
         )
         sanction_duration_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(sanction_duration_label)
-
+        self.sanctions_container.add_widget(sanction_duration_label)
+        
         w["duration"] = GovUkIconSpinner(
             text="Select duration",
-            values=[
-                "7 days",
-                "14 days",
-                "28 days",
-                "91 days",
-                "182 days"
-            ],
+            values=["7 days", "14 days", "28 days", "91 days", "182 days"],
             icon_map={}
         )
-        layout.add_widget(w["duration"])
+        self.sanctions_container.add_widget(w["duration"])
+
+    def on_sanctions_toggle(self, instance, value):
+        if value:
+            self.sanctions_container.opacity = 1
+            self.sanctions_container.disabled = False
+        else:
+            self.sanctions_container.opacity = 0
+            self.sanctions_container.disabled = True
+    
+            # Clear saved sanction data immediately
+            self.calculator_state.sanction_type = ""
+            self.calculator_state.sanction_duration = 0
+            self.calculator_state.sanction_duration_raw = ""
 
     def save_state(self):
         w = self.sanctions_widgets
         data = self.calculator_state
     
-        # ---------------------------------------------------------
-        # SANCTION TYPE
-        # ---------------------------------------------------------
+        if not self.has_sanctions_cb.active:
+            data.sanction_type = ""
+            data.sanction_duration = 0
+            data.sanction_duration_raw = ""
+            return
+    
+        # Otherwise save normally:
         sanction_type = w["type"].text.strip().lower()
         if sanction_type in ["lowest", "low", "medium", "high"]:
             data.sanction_type = sanction_type
         else:
             data.sanction_type = ""
     
-        # ---------------------------------------------------------
-        # SANCTION DURATION
-        # ---------------------------------------------------------
         raw_duration = w["duration"].text.strip()
         data.sanction_duration_raw = raw_duration
     
-        # Convert "14 days" → 14
         try:
             data.sanction_duration = int(raw_duration.split()[0])
         except:
@@ -4217,26 +4318,25 @@ class CalculatorSanctionsScreen(BaseScreen):
         w = self.sanctions_widgets
         data = self.calculator_state
     
-        # ---------------------------------------------------------
-        # SANCTION TYPE
-        # ---------------------------------------------------------
         saved_type = getattr(data, "sanction_type", "")
-        valid_types = ["lowest", "low", "medium", "high"]
-    
-        if saved_type in valid_types:
-            w["type"].text = saved_type
-        else:
-            w["type"].text = "Select sanction type"
-    
-        # ---------------------------------------------------------
-        # SANCTION DURATION
-        # ---------------------------------------------------------
         saved_duration = getattr(data, "sanction_duration_raw", "")
-        valid_durations = ["7 days", "14 days", "28 days", "91 days", "182 days"]
     
-        if saved_duration in valid_durations:
+        if saved_type and saved_duration:
+            # User previously had sanctions
+            self.has_sanctions_cb.active = True
+            self.sanctions_container.opacity = 1
+            self.sanctions_container.disabled = False
+    
+            # Restore fields
+            w["type"].text = saved_type
             w["duration"].text = saved_duration
         else:
+            # User previously had no sanctions
+            self.has_sanctions_cb.active = False
+            self.sanctions_container.opacity = 0
+            self.sanctions_container.disabled = True
+    
+            w["type"].text = "Select sanction type"
             w["duration"].text = "Select duration"
             
 class CalculatorAdvanceScreen(BaseScreen):
@@ -4289,6 +4389,45 @@ class CalculatorAdvanceScreen(BaseScreen):
         layout.add_widget(instruction)
 
         # ---------------------------------------------------------
+        # ARE YOU APPLYING FOR AN ADVANCE PAYMENT? TOGGLE
+        # ---------------------------------------------------------
+        toggle_row = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint_y=None,
+            height=50
+        )
+        
+        self.has_advance_cb = CheckBox(size_hint=(None, None), size=(40, 40))
+        
+        toggle_label = SafeLabel(
+            text="Are you applying for an advance payment?",
+            font_size=18,
+            color=get_color_from_hex("#005EA5"),
+            halign="left"
+        )
+        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        
+        toggle_row.add_widget(self.has_advance_cb)
+        toggle_row.add_widget(toggle_label)
+        layout.add_widget(toggle_row)
+        
+        self.has_advance_cb.bind(active=self.on_advance_toggle)
+
+        # ---------------------------------------------------------
+        # ADVANCE PAYMENT CONTAINER (hidden unless toggle is ON)
+        # ---------------------------------------------------------
+        self.advance_container = BoxLayout(
+            orientation="vertical",
+            spacing=20,
+            size_hint_y=None
+        )
+        self.advance_container.opacity = 0
+        self.advance_container.disabled = True
+        self.advance_container.bind(minimum_height=self.advance_container.setter("height"))
+        layout.add_widget(self.advance_container)
+
+        # ---------------------------------------------------------
         # ADVANCE AMOUNT
         # ---------------------------------------------------------
         amount_label = SafeLabel(
@@ -4298,13 +4437,13 @@ class CalculatorAdvanceScreen(BaseScreen):
             halign="left"
         )
         amount_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(amount_label)
-
+        self.advance_container.add_widget(amount_label)
+        
         w["amount"] = CustomTextInput(
             hint_text="Enter amount",
             input_filter="float"
         )
-        layout.add_widget(w["amount"])
+        self.advance_container.add_widget(w["amount"])
 
         # ---------------------------------------------------------
         # REPAYMENT PERIOD
@@ -4316,57 +4455,65 @@ class CalculatorAdvanceScreen(BaseScreen):
             halign="left"
         )
         period_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        layout.add_widget(period_label)
-
+        self.advance_container.add_widget(period_label)
+        
         w["period"] = CustomTextInput(
             hint_text="Enter number of months",
             input_filter="int"
         )
-        layout.add_widget(w["period"])
+        self.advance_container.add_widget(w["period"])
 
-    # ---------------------------------------------------------
-    # SAVE STATE
-    # ---------------------------------------------------------
+    def on_advance_toggle(self, instance, value):
+        if value:
+            self.advance_container.opacity = 1
+            self.advance_container.disabled = False
+        else:
+            self.advance_container.opacity = 0
+            self.advance_container.disabled = True
+    
+            # Clear saved advance data immediately
+            self.calculator_state.advance_amount = 0
+            self.calculator_state.advance_repayment_period = ""
+
     def save_state(self):
         w = self.advance_widgets
         data = self.calculator_state
-
-        # ADVANCE AMOUNT
-        raw_amount = w["amount"].text.strip()
-        data.advance_amount_raw = raw_amount
-
+    
+        if not self.has_advance_cb.active:
+            data.advance_amount = 0
+            data.advance_repayment_period = ""
+            return
+    
+        # Otherwise save normally:
         try:
-            data.advance_amount = float(raw_amount or 0)
+            data.advance_amount = float(w["amount"].text.strip())
         except:
-            data.advance_amount = 0.0
+            data.advance_amount = 0
+        
+        data.advance_repayment_period = w["period"].text.strip()
 
-        # REPAYMENT PERIOD
-        raw_period = w["period"].text.strip()
-        data.repayment_period_raw = raw_period
-
-        try:
-            data.repayment_period = int(raw_period.split()[0])
-        except:
-            data.repayment_period = 0
-
-    # ---------------------------------------------------------
-    # LOAD STATE
-    # ---------------------------------------------------------
     def load_state(self):
         w = self.advance_widgets
         data = self.calculator_state
-
-        # ADVANCE AMOUNT
-        w["amount"].text = str(getattr(data, "advance_amount_raw", ""))
-
-        # REPAYMENT PERIOD
-        saved_period = getattr(data, "repayment_period_raw", "")
-        valid_periods = ["3 months", "6 months", "9 months", "12 months"]
-
-        if saved_period in valid_periods:
+    
+        saved_amount = getattr(data, "advance_amount", 0)
+        saved_period = getattr(data, "advance_repayment_period", "")
+    
+        if saved_amount > 0 or saved_period:
+            self.has_advance_cb.active = True
+            self.advance_container.opacity = 1
+            self.advance_container.disabled = False
+    
+            w["amount"].text = str(saved_amount)
             w["period"].text = saved_period
+
         else:
-            w["period"].text = "Select repayment period"
+            self.has_advance_cb.active = False
+            self.advance_container.opacity = 0
+            self.advance_container.disabled = True
+    
+            w["amount"].text = ""
+            w["period"].text = ""
                        
 class CalculatorFinalScreen(BaseScreen):
     def __init__(self, calculator_state, save_callbacks, calculate_callback, go_to_breakdown_callback, **kwargs):
@@ -5957,6 +6104,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
