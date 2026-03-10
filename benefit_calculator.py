@@ -5856,6 +5856,9 @@ class BenefitBuddy(App):
 
         self.calculator_state = CalculatorState()
         self.engine = CalculatorEngine()
+        
+        # Attach LHA lookup permanently
+        self.calculator_state.lookup_lha_rate = self.engine.lookup_lha_rate
 
         # Save callbacks
         self.save_callbacks = {
@@ -6197,6 +6200,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
