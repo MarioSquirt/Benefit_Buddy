@@ -5857,12 +5857,6 @@ class BenefitBuddy(App):
         
         self.calculator_state = CalculatorState()
         self.engine = CalculatorEngine()
-        
-        # After NavigationManager has created screens:
-        housing_screen = self.nav.get("calculator_housing")
-        self.calculator_state.lookup_lha_rate = housing_screen.lookup_lha_rate
-
-        print("DEBUG: LHA lookup attached:", self.calculator_state.lookup_lha_rate)
 
         # Save callbacks
         self.save_callbacks = {
@@ -6204,6 +6198,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
