@@ -1655,10 +1655,14 @@ class PulsingGlow(Widget):
 class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
         super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+        self.bind(minimum_height=self.setter("height"))
+
         self.is_open = False
         self.content_lines = content_lines
 
-        # HEADER LAYOUT (text + chevron)
+        # =========================================================
+        # HEADER (Yellow background + blue text + chevron)
+        # =========================================================
         self.header = BoxLayout(
             orientation="horizontal",
             spacing=10,
@@ -1667,15 +1671,27 @@ class CollapsibleSection(BoxLayout):
             padding=(10, 0)
         )
 
+        # GOV.UK Yellow background
+        with self.header.canvas.before:
+            Color(1, 0.866, 0, 1)  # Yellow
+            self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
+
+        self.header.bind(
+            pos=lambda inst, val: setattr(self._header_rect, "pos", val),
+            size=lambda inst, val: setattr(self._header_rect, "size", val),
+        )
+
+        # Header label (GOV.UK blue)
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
-            color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#003078"),  # GOV.UK blue
             halign="left",
             valign="middle"
         )
-        self.header_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
+        # Chevron
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
@@ -1692,7 +1708,9 @@ class CollapsibleSection(BoxLayout):
 
         self.add_widget(self.header)
 
+        # =========================================================
         # CONTENT BOX (collapsed initially)
+        # =========================================================
         self.content_box = BoxLayout(
             orientation="vertical",
             spacing=5,
@@ -1701,8 +1719,13 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
+        self.content_box.bind(minimum_height=self.content_box.setter("height"))
+
         self.add_widget(self.content_box)
 
+    # =========================================================
+    # TOGGLE OPEN/CLOSE
+    # =========================================================
     def toggle(self, instance, touch=None):
         if touch and not instance.collide_point(*touch.pos):
             return False
@@ -1730,8 +1753,8 @@ class CollapsibleSection(BoxLayout):
                 )
                 self.content_box.add_widget(lbl)
 
-            total_height = sum(child.height for child in self.content_box.children)
-            self.content_box.height = total_height
+            # Let minimum_height binding handle height
+            Clock.schedule_once(lambda dt: None, 0)
 
         else:
             # Collapse
@@ -2582,8 +2605,13 @@ class CalculatorHousingScreen(BaseScreen):
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
         w["housing_type"] = GovUkIconSpinner(
-            text="Select Housing Type:",
-            values=["Rent", "Own", "Shared Accommodation"],
+            text="Select Housing Type",
+            values=[
+                "Select Housing Type", 
+                "Rent", 
+                "Own", 
+                "Shared Accommodation"
+            ],
             icon_map={}
         )
         
@@ -2619,12 +2647,13 @@ class CalculatorHousingScreen(BaseScreen):
                 field.disabled = True
                 field.height = 0
 
-            text = (value_text or "").lower()
-            if "rent" in text:
+            text = (value_text or "").strip().lower()
+            
+            if text == "rent":
                 target = w["rent"]
-            elif "own" in text:
+            elif text == "own":
                 target = w["mortgage"]
-            elif "shared" in text:
+            elif text == "shared accommodation":
                 target = w["shared"]
             else:
                 return
@@ -2633,7 +2662,21 @@ class CalculatorHousingScreen(BaseScreen):
             target.disabled = False
             target.height = 50
 
+        def _update_tenancy_visibility(value_text):
+            text = (value_text or "").strip().lower()
+        
+            if text == "rent":
+                w["tenancy_type"].opacity = 1
+                w["tenancy_type"].disabled = False
+                w["tenancy_type"].height = 50
+            else:
+                w["tenancy_type"].opacity = 0
+                w["tenancy_type"].disabled = True
+                w["tenancy_type"].height = 0
+                w["tenancy_type"].text = "Select Tenancy Type"
+
         w["housing_type"].bind(text=lambda spinner, value: _show_amount_widget(value))
+        w["housing_type"].bind(text=lambda spinner, value: _update_tenancy_visibility(value))
 
         # ---------------------------------------------------------
         # TENANCY TYPE
@@ -2641,8 +2684,9 @@ class CalculatorHousingScreen(BaseScreen):
         tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
         w["tenancy_type"] = GovUkIconSpinner(
-            text="Select Tenancy Type:",
+            text="Select Tenancy Type",
             values=[
+                "Select Tenancy Type",
                 "Private rented",
                 "Social",
                 "Temporary accommodation",
@@ -2653,6 +2697,10 @@ class CalculatorHousingScreen(BaseScreen):
         
         tenancy_anchor.add_widget(w["tenancy_type"])
         layout.add_widget(tenancy_anchor)
+        
+        w["tenancy_type"].opacity = 0
+        w["tenancy_type"].disabled = True
+        w["tenancy_type"].height = 0
 
         # ---------------------------------------------------------
         # NON-DEPENDANTS
@@ -3129,6 +3177,10 @@ class CalculatorHousingScreen(BaseScreen):
         
                     brma_name = self.lookup_brma(postcode)
                     location = self.lookup_location_for_postcode(postcode)
+
+                    app.calculator_state.location = location
+                    app.calculator_state.brma = brma_name
+                    app.calculator_state.postcode = postcode
         
                     print(f"DEBUG: postcode={postcode}, brma={brma_name}, location={location}")
         
@@ -3504,9 +3556,14 @@ class CalculatorChildrenScreen(BaseScreen):
             halign="center",
             valign="middle",
             text_size=(250, None),
-            on_press=self.add_child_section
+            on_press=self.add_child_section,
+            opacity=0,              # ⭐ start hidden
+            disabled=True           # ⭐ start disabled
         )
         layout.add_widget(add_btn)
+        
+        # ⭐ Save reference
+        self.add_child_button = add_btn
 
         # ---------------------------------------------------------
         # SPACER BELOW BUTTONS
@@ -3732,28 +3789,43 @@ class CalculatorChildrenScreen(BaseScreen):
             header_label = section["header"].children[1]  # SafeLabel
             header_label.text = name if name else f"Child {i}"
 
-    def on_children_toggle(self, instance, value):
-        """
-        Show or hide the children sections based on the toggle.
-        """
-        if value:
-            # User has children → show layout and create first section if empty
-            self.child_container.opacity = 1
-            self.child_container.disabled = False
-    
-            if not self.child_sections:
-                self.add_child_section()
-    
-        else:
-            # User has no children → remove all sections
-            for section in list(self.child_sections):
-                self.remove_child_section(section)
-    
-            self.child_container.opacity = 0
-            self.child_container.disabled = True
-    
-            # Clear saved state immediately
-            self.calculator_state.children = []
+def on_children_toggle(self, instance, value):
+    """
+    Show or hide the children sections based on the toggle.
+    """
+    if value:
+        # User has children → show layout and create first section if empty
+        self.child_container.opacity = 1
+        self.child_container.disabled = False
+
+        # ⭐ SHOW the Add Child button
+        self.add_child_button.opacity = 1
+        self.add_child_button.disabled = False
+
+        if not self.child_sections:
+            section = self.add_child_section()
+
+            # Initialise content
+            section.toggle(section.header)   # builds content
+            section.toggle(section.header)   # collapses but keeps content
+
+            # Now expand it for the user
+            section.toggle(section.header)
+
+    else:
+        # User has no children → remove all sections
+        for section in list(self.child_sections):
+            self.remove_child_section(section)
+
+        self.child_container.opacity = 0
+        self.child_container.disabled = True
+
+        # ⭐ HIDE the Add Child button
+        self.add_child_button.opacity = 0
+        self.add_child_button.disabled = True
+
+        # Clear saved state immediately
+        self.calculator_state.children = []
     
     def save_state(self):
         """
@@ -4518,6 +4590,7 @@ class CalculatorAdvanceScreen(BaseScreen):
         self.advance_container = BoxLayout(
             orientation="vertical",
             spacing=20,
+            padding=(0, 10),
             size_hint_y=None
         )
         self.advance_container.opacity = 0
@@ -4539,7 +4612,11 @@ class CalculatorAdvanceScreen(BaseScreen):
         
         w["amount"] = CustomTextInput(
             hint_text="Enter amount",
-            input_filter="float"
+            input_filter="float",
+            size_hint_y=None,
+            height=50,          # ⭐ proper height
+            font_size=18,       # ⭐ readable text
+            padding=(10, 10)    # ⭐ breathing room
         )
         self.advance_container.add_widget(w["amount"])
 
@@ -4557,7 +4634,11 @@ class CalculatorAdvanceScreen(BaseScreen):
         
         w["period"] = CustomTextInput(
             hint_text="Enter number of months",
-            input_filter="int"
+            input_filter="int",
+            size_hint_y=None,
+            height=50,          # ⭐ proper height
+            font_size=18,       # ⭐ readable text
+            padding=(10, 10)    # ⭐ breathing room
         )
         self.advance_container.add_widget(w["period"])
 
@@ -4722,7 +4803,13 @@ class CalculatorFinalScreen(BaseScreen):
             text="View Calculation Breakdown",
             size_hint=(1, 1),
             background_color=(0, 0, 0, 0),
+            background_normal="",
             font_size=20,
+            font_name="roboto",
+            color=get_color_from_hex("#005EA5"),
+            halign="center",
+            valign="middle",
+            text_size=(250, None),
             on_press=lambda inst: self.go_to_breakdown_callback()
         )
         button_bar.add_widget(breakdown_btn)
@@ -6204,6 +6291,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
