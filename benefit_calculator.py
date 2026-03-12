@@ -3742,6 +3742,8 @@ class CalculatorChildrenScreen(BaseScreen):
 
         Clock.schedule_once(lambda dt: setattr(content_box, "height", content_box.minimum_height), 0)
 
+        return section
+
     def get_child_header_text(self, section):
         """
         Returns the header label text for a child section.
@@ -6291,6 +6293,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
