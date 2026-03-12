@@ -3727,7 +3727,8 @@ class CalculatorChildrenScreen(BaseScreen):
             "gender": gender_spinner,
             "adopted": adopted_cb,
             "kinship": kinship_cb,
-            "multiple": multiple_cb
+            "multiple": multiple_cb,
+            "toggle": toggle_section
         }
 
         self.child_sections.append(section)
@@ -3808,11 +3809,10 @@ class CalculatorChildrenScreen(BaseScreen):
                 section = self.add_child_section()
     
                 # Initialise content
-                section.toggle(section.header)   # builds content
-                section.toggle(section.header)   # collapses but keeps content
+                section["toggle"](section["header"])    # builds content
+                section["toggle"](section["header"])    # collapses but keeps content
     
-                # Now expand it for the user
-                section.toggle(section.header)
+                section["toggle"](section["header"])    # Now expand it for the user
     
         else:
             # User has no children → remove all sections
@@ -6293,6 +6293,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
