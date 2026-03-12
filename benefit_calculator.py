@@ -257,13 +257,14 @@ class CalculatorState:
         # Finances
         # -----------------------------
         self.income = 0.0
+        self.earnings = 0.0
         self.savings = 0.0
         self.debts = 0.0
 
         # -----------------------------
         # Children
         # -----------------------------
-        self.children = []  # list of dicts: {"dob": "...", "sex": "...", ...}
+        self.children = []  # list of dicts
 
         # -----------------------------
         # Disability / Carer
@@ -314,7 +315,7 @@ class CalculatorState:
         # Sanctions
         # -----------------------------
         self.sanction_type = ""
-        self.sanction_duration = ""
+        self.sanction_duration = 0     # numeric, not string
         self.hardship = False
 
         # -----------------------------
@@ -327,9 +328,9 @@ class CalculatorState:
         # Transitional SDP
         # -----------------------------
         self.had_sdp = False
-        self.extra_edp = False
-        self.extra_dp = False
-        self.extra_disabled_children = False
+        self.extra_edp = 0.0
+        self.extra_dp = 0.0
+        self.extra_disabled_children = 0.0
 
         # -----------------------------
         # Deduction Caps
@@ -344,6 +345,8 @@ class CalculatorState:
         # Final Result
         # -----------------------------
         self.calculation_result = ""
+        self.breakdown = {}
+
 
 
 class CalculatorEngine:
@@ -2516,6 +2519,9 @@ class CalculatorFinancesScreen(BaseScreen):
             data.income = float(w["income"].text or 0)
         except:
             data.income = 0.0
+
+        # ⭐ Mirror income → earnings for the engine
+        data.earnings = data.income
     
         try:
             data.savings = float(w["savings"].text or 0)
@@ -6198,6 +6204,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
