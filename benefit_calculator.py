@@ -293,8 +293,6 @@ class CalculatorState:
         self.service_charges = {}
         self.single_under_35 = False
         self.in_london = False
-
-        # The Housing screen will attach this:
         self.lookup_lha_rate = None
 
         # -----------------------------
@@ -2548,6 +2546,9 @@ class CalculatorHousingScreen(BaseScreen):
         self.housing_widgets = {}
         self.build_ui()
         self.load_state()
+
+        app = App.get_running_app()
+        app.calculator_state.lookup_lha_rate = self.lookup_lha_rate
 
     def build_ui(self):
         w = self.housing_widgets
@@ -5853,12 +5854,15 @@ class BenefitBuddy(App):
     def build(self):
         self.sm = ScreenManager()
         self.nav = NavigationManager(self.sm)
-
+        
         self.calculator_state = CalculatorState()
         self.engine = CalculatorEngine()
         
-        # Attach LHA lookup permanently
-        self.calculator_state.lookup_lha_rate = self.engine.lookup_lha_rate
+        # After NavigationManager has created screens:
+        housing_screen = self.nav.get("calculator_housing")
+        self.calculator_state.lookup_lha_rate = housing_screen.lookup_lha_rate
+
+        print("DEBUG: LHA lookup attached:", self.calculator_state.lookup_lha_rate)
 
         # Save callbacks
         self.save_callbacks = {
@@ -6200,6 +6204,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
