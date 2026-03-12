@@ -3789,43 +3789,43 @@ class CalculatorChildrenScreen(BaseScreen):
             header_label = section["header"].children[1]  # SafeLabel
             header_label.text = name if name else f"Child {i}"
 
-def on_children_toggle(self, instance, value):
-    """
-    Show or hide the children sections based on the toggle.
-    """
-    if value:
-        # User has children → show layout and create first section if empty
-        self.child_container.opacity = 1
-        self.child_container.disabled = False
-
-        # ⭐ SHOW the Add Child button
-        self.add_child_button.opacity = 1
-        self.add_child_button.disabled = False
-
-        if not self.child_sections:
-            section = self.add_child_section()
-
-            # Initialise content
-            section.toggle(section.header)   # builds content
-            section.toggle(section.header)   # collapses but keeps content
-
-            # Now expand it for the user
-            section.toggle(section.header)
-
-    else:
-        # User has no children → remove all sections
-        for section in list(self.child_sections):
-            self.remove_child_section(section)
-
-        self.child_container.opacity = 0
-        self.child_container.disabled = True
-
-        # ⭐ HIDE the Add Child button
-        self.add_child_button.opacity = 0
-        self.add_child_button.disabled = True
-
-        # Clear saved state immediately
-        self.calculator_state.children = []
+    def on_children_toggle(self, instance, value):
+        """
+        Show or hide the children sections based on the toggle.
+        """
+        if value:
+            # User has children → show layout and create first section if empty
+            self.child_container.opacity = 1
+            self.child_container.disabled = False
+    
+            # ⭐ SHOW the Add Child button
+            self.add_child_button.opacity = 1
+            self.add_child_button.disabled = False
+    
+            if not self.child_sections:
+                section = self.add_child_section()
+    
+                # Initialise content
+                section.toggle(section.header)   # builds content
+                section.toggle(section.header)   # collapses but keeps content
+    
+                # Now expand it for the user
+                section.toggle(section.header)
+    
+        else:
+            # User has no children → remove all sections
+            for section in list(self.child_sections):
+                self.remove_child_section(section)
+    
+            self.child_container.opacity = 0
+            self.child_container.disabled = True
+    
+            # ⭐ HIDE the Add Child button
+            self.add_child_button.opacity = 0
+            self.add_child_button.disabled = True
+    
+            # Clear saved state immediately
+            self.calculator_state.children = []
     
     def save_state(self):
         """
@@ -6291,6 +6291,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
