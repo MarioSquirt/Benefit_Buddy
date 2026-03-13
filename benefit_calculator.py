@@ -2114,7 +2114,7 @@ class CalculatorNavBar(BoxLayout):
             self.dropdown.parent.remove_widget(self.dropdown)
         self.dropdown = None
 
-def make_yes_no_row(self, label_text, callback):
+def make_yes_no_row(label_text, callback):
     row = BoxLayout(
         orientation="horizontal",
         spacing=20,
@@ -6339,6 +6339,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
