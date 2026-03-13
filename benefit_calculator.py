@@ -2113,6 +2113,49 @@ class CalculatorNavBar(BoxLayout):
         if self.dropdown and self.dropdown.parent:
             self.dropdown.parent.remove_widget(self.dropdown)
         self.dropdown = None
+
+def make_yes_no_row(self, label_text, callback):
+    row = BoxLayout(
+        orientation="horizontal",
+        spacing=20,
+        size_hint_y=None,
+        height=60
+    )
+
+    label = SafeLabel(
+        text=label_text,
+        font_size=18,
+        color=get_color_from_hex("#FFFFFF")
+    )
+
+    yes_btn = ToggleButton(
+        text="Yes",
+        group=label_text,
+        size_hint=(None, None),
+        size=(100, 50),
+        background_normal="",
+        background_color=get_color_from_hex("#1d70b8"),
+        color=get_color_from_hex("#FFFFFF")
+    )
+
+    no_btn = ToggleButton(
+        text="No",
+        group=label_text,
+        size_hint=(None, None),
+        size=(100, 50),
+        background_normal="",
+        background_color=get_color_from_hex("#1d70b8"),
+        color=get_color_from_hex("#FFFFFF")
+    )
+
+    yes_btn.bind(on_press=lambda inst: callback(True))
+    no_btn.bind(on_press=lambda inst: callback(False))
+
+    row.add_widget(label)
+    row.add_widget(yes_btn)
+    row.add_widget(no_btn)
+
+    return row, yes_btn, no_btn
     
 class BaseScreen(Screen):
     # ---------------------------------------------------------
@@ -2606,8 +2649,7 @@ class CalculatorHousingScreen(BaseScreen):
         
         w["housing_type"] = GovUkIconSpinner(
             text="Select Housing Type",
-            values=[
-                "Select Housing Type", 
+            values=[ 
                 "Rent", 
                 "Own", 
                 "Shared Accommodation"
@@ -2686,7 +2728,6 @@ class CalculatorHousingScreen(BaseScreen):
         w["tenancy_type"] = GovUkIconSpinner(
             text="Select Tenancy Type",
             values=[
-                "Select Tenancy Type",
                 "Private rented",
                 "Social",
                 "Temporary accommodation",
@@ -3284,7 +3325,7 @@ class CalculatorHousingScreen(BaseScreen):
         if data.housing_type:
             w["housing_type"].text = data.housing_type.capitalize()
         else:
-            w["housing_type"].text = "Rent"
+            w["housing_type"].text = "Select Housing Type"
     
         w["tenancy_type"].text = data.tenancy_type or "Select tenancy type"
     
@@ -3500,32 +3541,15 @@ class CalculatorChildrenScreen(BaseScreen):
         # ---------------------------------------------------------
         # DO YOU HAVE CHILDREN? TOGGLE
         # ---------------------------------------------------------
-        toggle_row = BoxLayout(
-            orientation="horizontal",
-            spacing=10,
-            size_hint_y=None,
-            height=50
+        children_row, children_yes_btn, children_no_btn = make_yes_no_row(
+            "Do you have children?",
+            self.on_children_toggle
         )
         
-        self.has_children_cb = CheckBox(
-            size_hint=(None, None),
-            size=(40, 40)
-        )
+        layout.add_widget(children_row)
         
-        toggle_label = SafeLabel(
-            text="Do you have children?",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-        toggle_row.add_widget(self.has_children_cb)
-        toggle_row.add_widget(toggle_label)
-        layout.add_widget(toggle_row)
-        
-        # Bind toggle behaviour
-        self.has_children_cb.bind(active=self.on_children_toggle)
+        self.children_yes_btn = children_yes_btn
+        self.children_no_btn = children_no_btn
 
         self.child_container = BoxLayout(
             orientation="vertical",
@@ -3679,10 +3703,27 @@ class CalculatorChildrenScreen(BaseScreen):
         adopted_row, adopted_cb = make_flag("Adopted", prefill.get("adopted", False) if prefill else False)
         kinship_row, kinship_cb = make_flag("Kinship care", prefill.get("kinship_care", False) if prefill else False)
         multiple_row, multiple_cb = make_flag("Multiple birth", prefill.get("multiple_birth", False) if prefill else False)
-
+        disabled_row, disabled_cb = make_flag("Disabled child (DLA/PIP)", prefill.get("disabled", False) if prefill else False)
+        severe_row, severe_cb = make_flag("Severely disabled child (DLA High Care / PIP Enhanced)", prefill.get("severely_disabled", False) if prefill else False)
+        ncc_row, ncc_cb = make_flag("Non‑consensual conception (Two‑child limit exception)", prefill.get("non_consensual", False) if prefill else False)
+        
         content_box.add_widget(adopted_row)
         content_box.add_widget(kinship_row)
         content_box.add_widget(multiple_row)
+        content_box.add_widget(disabled_row)
+        content_box.add_widget(severe_row)
+        content_box.add_widget(ncc_row)
+
+        def on_severe_active(instance, value):
+            if value:
+                disabled_cb.active = True
+        
+        def on_disabled_active(instance, value):
+            if not value:
+                severe_cb.active = False
+        
+        disabled_cb.bind(active=on_disabled_active)
+        severe_cb.bind(active=on_severe_active)
 
         # REMOVE CHILD BUTTON
         remove_btn = RoundedButton(
@@ -3728,6 +3769,9 @@ class CalculatorChildrenScreen(BaseScreen):
             "adopted": adopted_cb,
             "kinship": kinship_cb,
             "multiple": multiple_cb,
+            "disabled": disabled_cb,
+            "severely_disabled": severe_cb,
+            "non_consensual": ncc_cb,
             "toggle": toggle_section
         }
 
@@ -3792,48 +3836,42 @@ class CalculatorChildrenScreen(BaseScreen):
             header_label = section["header"].children[1]  # SafeLabel
             header_label.text = name if name else f"Child {i}"
 
-    def on_children_toggle(self, instance, value):
-        """
-        Show or hide the children sections based on the toggle.
-        """
+    def on_children_toggle(self, value):
         if value:
-            # User has children → show layout and create first section if empty
+            # YES
             self.child_container.opacity = 1
             self.child_container.disabled = False
     
-            # ⭐ SHOW the Add Child button
             self.add_child_button.opacity = 1
             self.add_child_button.disabled = False
     
             if not self.child_sections:
                 section = self.add_child_section()
     
-                # Initialise content
-                section["toggle"](section["header"])    # builds content
-                section["toggle"](section["header"])    # collapses but keeps content
-    
-                section["toggle"](section["header"])    # Now expand it for the user
+                section["toggle"](section["header"])
+                section["toggle"](section["header"])
+                section["toggle"](section["header"])
     
         else:
-            # User has no children → remove all sections
+            # NO
             for section in list(self.child_sections):
                 self.remove_child_section(section)
     
             self.child_container.opacity = 0
             self.child_container.disabled = True
     
-            # ⭐ HIDE the Add Child button
             self.add_child_button.opacity = 0
             self.add_child_button.disabled = True
     
-            # Clear saved state immediately
             self.calculator_state.children = []
     
     def save_state(self):
-        """
-        Save all child sections into calculator_state.children.
-        Called automatically by NavigationManager before screen destruction.
-        """
+        # If NO is selected → clear and exit
+        if self.children_no_btn.state == "down":
+            self.calculator_state.children = []
+            self.calculator_state.children_dobs = []
+            return
+    
         children = []
     
         for section in self.child_sections:
@@ -3841,7 +3879,6 @@ class CalculatorChildrenScreen(BaseScreen):
             dob = section["dob"].text.strip()
             gender = section["gender"].text.strip()
     
-            # Skip empty entries (no DOB = not a real child)
             if not dob:
                 continue
     
@@ -3851,35 +3888,48 @@ class CalculatorChildrenScreen(BaseScreen):
                 "gender": gender,
                 "adopted": section["adopted"].active,
                 "kinship_care": section["kinship"].active,
-                "multiple_birth": section["multiple"].active
+                "multiple_birth": section["multiple"].active,
+                "disabled": section["disabled"].active,
+                "severely_disabled": section["severely_disabled"].active,
+                "non_consensual": section["non_consensual"].active
             })
     
-        # Store in calculator_state
         self.calculator_state.children = children
         self.calculator_state.children_dobs = [c["dob"] for c in children]
     
     def load_state(self):
-        """
-        Rebuild all child sections from calculator_state.children.
-        Called automatically by NavigationManager after screen creation.
-        """
         saved_children = getattr(self.calculator_state, "children", [])
-        
+    
         # Clear existing UI
         for section in list(self.child_sections):
             self.remove_child_section(section)
-        
+    
         if saved_children:
-            self.has_children_cb.active = True
+            # YES previously selected
+            self.children_yes_btn.state = "down"
+            self.children_no_btn.state = "normal"
+    
+            self.child_container.opacity = 1
+            self.child_container.disabled = False
+            self.add_child_button.opacity = 1
+            self.add_child_button.disabled = False
+    
             for child in saved_children:
                 self.add_child_section(prefill=child)
+    
         else:
-            self.has_children_cb.active = False
+            # NO previously selected
+            self.children_yes_btn.state = "normal"
+            self.children_no_btn.state = "down"
+    
             self.child_container.opacity = 0
             self.child_container.disabled = True
+            self.add_child_button.opacity = 0
+            self.add_child_button.disabled = True
     
+        # Refresh headers
         for section in self.child_sections:
-            header_label = section["header"].children[1]  # SafeLabel inside header
+            header_label = section["header"].children[1]
             header_label.text = self.get_child_header_text(section)
 
 
@@ -4202,7 +4252,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         add_sar_row("Prospective adopter", "prospective_adopter")
         add_sar_row("Temporary accommodation", "temporary_accommodation")
         add_sar_row("Victim of modern slavery", "modern_slavery")
-        add_sar_row("Armed forces reservist returning to civilian life", "armed_forces")
+        add_sar_row("Armed forces reservist returning to civilian life", "armed_forces_reservist")
 
         # ---------------------------------------------------------
         # INITIALISE SAR STATE BASED ON CURRENT TENANCY
@@ -4374,28 +4424,15 @@ class CalculatorSanctionsScreen(BaseScreen):
         # ---------------------------------------------------------
         # DO YOU HAVE ANY SANCTIONS? TOGGLE
         # ---------------------------------------------------------
-        toggle_row = BoxLayout(
-            orientation="horizontal",
-            spacing=10,
-            size_hint_y=None,
-            height=50
+        sanctions_row, sanctions_yes_btn, sanctions_no_btn = make_yes_no_row(
+            "Do you have any sanctions?",
+            self.on_sanctions_toggle
         )
         
-        self.has_sanctions_cb = CheckBox(size_hint=(None, None), size=(40, 40))
+        layout.add_widget(sanctions_row)
         
-        toggle_label = SafeLabel(
-            text="Do you have any sanctions?",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-        toggle_row.add_widget(self.has_sanctions_cb)
-        toggle_row.add_widget(toggle_label)
-        layout.add_widget(toggle_row)
-        
-        self.has_sanctions_cb.bind(active=self.on_sanctions_toggle)
+        self.sanctions_yes_btn = sanctions_yes_btn
+        self.sanctions_no_btn = sanctions_no_btn
         
         # ---------------------------------------------------------
         # SANCTIONS CONTAINER (hidden unless toggle is ON)
@@ -4448,11 +4485,14 @@ class CalculatorSanctionsScreen(BaseScreen):
         )
         self.sanctions_container.add_widget(w["duration"])
 
-    def on_sanctions_toggle(self, instance, value):
+    def on_sanctions_toggle(self, value):
         if value:
+            # YES → show sanctions details
             self.sanctions_container.opacity = 1
             self.sanctions_container.disabled = False
+    
         else:
+            # NO → hide sanctions details
             self.sanctions_container.opacity = 0
             self.sanctions_container.disabled = True
     
@@ -4465,7 +4505,8 @@ class CalculatorSanctionsScreen(BaseScreen):
         w = self.sanctions_widgets
         data = self.calculator_state
     
-        if not self.has_sanctions_cb.active:
+        # If NO is selected
+        if self.sanctions_no_btn.state == "down":
             data.sanction_type = ""
             data.sanction_duration = 0
             data.sanction_duration_raw = ""
@@ -4494,17 +4535,22 @@ class CalculatorSanctionsScreen(BaseScreen):
         saved_duration = getattr(data, "sanction_duration_raw", "")
     
         if saved_type and saved_duration:
-            # User previously had sanctions
-            self.has_sanctions_cb.active = True
+            # YES previously selected
+            self.sanctions_yes_btn.state = "down"
+            self.sanctions_no_btn.state = "normal"
+    
             self.sanctions_container.opacity = 1
             self.sanctions_container.disabled = False
     
             # Restore fields
             w["type"].text = saved_type
             w["duration"].text = saved_duration
+    
         else:
-            # User previously had no sanctions
-            self.has_sanctions_cb.active = False
+            # NO previously selected
+            self.sanctions_yes_btn.state = "normal"
+            self.sanctions_no_btn.state = "down"
+    
             self.sanctions_container.opacity = 0
             self.sanctions_container.disabled = True
     
@@ -4563,28 +4609,15 @@ class CalculatorAdvanceScreen(BaseScreen):
         # ---------------------------------------------------------
         # ARE YOU APPLYING FOR AN ADVANCE PAYMENT? TOGGLE
         # ---------------------------------------------------------
-        toggle_row = BoxLayout(
-            orientation="horizontal",
-            spacing=10,
-            size_hint_y=None,
-            height=50
+        advance_row, advance_yes_btn, advance_no_btn = make_yes_no_row(
+            "Are you applying for an advance payment?",
+            self.on_advance_toggle
         )
         
-        self.has_advance_cb = CheckBox(size_hint=(None, None), size=(40, 40))
+        layout.add_widget(advance_row)
         
-        toggle_label = SafeLabel(
-            text="Are you applying for an advance payment?",
-            font_size=18,
-            color=get_color_from_hex("#FFFFFF"),
-            halign="left"
-        )
-        toggle_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-        toggle_row.add_widget(self.has_advance_cb)
-        toggle_row.add_widget(toggle_label)
-        layout.add_widget(toggle_row)
-        
-        self.has_advance_cb.bind(active=self.on_advance_toggle)
+        self.advance_yes_btn = advance_yes_btn
+        self.advance_no_btn = advance_no_btn
 
         # ---------------------------------------------------------
         # ADVANCE PAYMENT CONTAINER (hidden unless toggle is ON)
@@ -4644,11 +4677,13 @@ class CalculatorAdvanceScreen(BaseScreen):
         )
         self.advance_container.add_widget(w["period"])
 
-    def on_advance_toggle(self, instance, value):
+    def on_advance_toggle(self, value):
         if value:
+            # YES → show advance fields
             self.advance_container.opacity = 1
             self.advance_container.disabled = False
         else:
+            # NO → hide advance fields
             self.advance_container.opacity = 0
             self.advance_container.disabled = True
     
@@ -4660,7 +4695,8 @@ class CalculatorAdvanceScreen(BaseScreen):
         w = self.advance_widgets
         data = self.calculator_state
     
-        if not self.has_advance_cb.active:
+        # If NO is selected → clear and exit
+        if self.advance_no_btn.state == "down":
             data.advance_amount = 0
             data.advance_repayment_period = ""
             return
@@ -4670,7 +4706,7 @@ class CalculatorAdvanceScreen(BaseScreen):
             data.advance_amount = float(w["amount"].text.strip())
         except:
             data.advance_amount = 0
-        
+    
         data.advance_repayment_period = w["period"].text.strip()
 
     def load_state(self):
@@ -4681,15 +4717,21 @@ class CalculatorAdvanceScreen(BaseScreen):
         saved_period = getattr(data, "advance_repayment_period", "")
     
         if saved_amount > 0 or saved_period:
-            self.has_advance_cb.active = True
+            # YES previously selected
+            self.advance_yes_btn.state = "down"
+            self.advance_no_btn.state = "normal"
+    
             self.advance_container.opacity = 1
             self.advance_container.disabled = False
     
             w["amount"].text = str(saved_amount)
             w["period"].text = saved_period
-
+    
         else:
-            self.has_advance_cb.active = False
+            # NO previously selected
+            self.advance_yes_btn.state = "normal"
+            self.advance_no_btn.state = "down"
+    
             self.advance_container.opacity = 0
             self.advance_container.disabled = True
     
@@ -4915,6 +4957,9 @@ class CalculatorFinalScreen(BaseScreen):
                 f"  Adopted: {child.get('adopted')}",
                 f"  Kinship Care: {child.get('kinship_care')}",
                 f"  Multiple Birth: {child.get('multiple_birth')}",
+                f"  Disabled: {child.get('disabled')}",
+                f"  Severely Disabled: {child.get('severely_disabled')}",
+                f"  Non‑consensual Conception: {child.get('non_consensual')}",
             ])
         add_section("Children", child_lines)
 
@@ -4926,18 +4971,19 @@ class CalculatorFinalScreen(BaseScreen):
         ])
 
         # SAR Exemptions
+        sar = d.get("sar_exemptions", {})
         add_section("SAR Exemptions", [
-            f"Care Leaver: {d.get('care_leaver')}",
-            f"Severe Disability: {d.get('severe_disability')}",
-            f"MAPPA: {d.get('mappa')}",
-            f"Hostel Resident: {d.get('hostel_resident')}",
-            f"Domestic Abuse Refuge: {d.get('domestic_abuse_refuge')}",
-            f"Ex-Offender: {d.get('ex_offender')}",
-            f"Foster Carer: {d.get('foster_carer')}",
-            f"Prospective Adopter: {d.get('prospective_adopter')}",
-            f"Temporary Accommodation: {d.get('temporary_accommodation')}",
-            f"Modern Slavery Victim: {d.get('modern_slavery')}",
-            f"Armed Forces Reservist: {d.get('armed_forces_reservist')}",
+            f"Care Leaver: {sar.get('care_leaver')}",
+            f"Severe Disability: {sar.get('severe_disability')}",
+            f"MAPPA: {sar.get('mappa')}",
+            f"Hostel Resident: {sar.get('hostel_resident')}",
+            f"Domestic Abuse Refuge: {sar.get('domestic_abuse')}",
+            f"Ex-Offender: {sar.get('ex_offender')}",
+            f"Foster Carer: {sar.get('foster_carer')}",
+            f"Prospective Adopter: {sar.get('prospective_adopter')}",
+            f"Temporary Accommodation: {sar.get('temporary_accommodation')}",
+            f"Modern Slavery Victim: {sar.get('modern_slavery')}",
+            f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
         ])
 
         # Sanctions
@@ -4949,7 +4995,7 @@ class CalculatorFinalScreen(BaseScreen):
         # Advance Payments
         add_section("Advance Payments", [
             f"Amount: £{d.get('advance_amount')}",
-            f"Repayment Period: {d.get('repayment_period')} months",
+            f"Repayment Period: {d.get('advance_repayment_period')} months",
         ])
 
         # Calculation Result
@@ -5002,7 +5048,7 @@ class CalculationBreakdownScreen(BaseScreen):
         self.add_widget(outer)
 
     def go_back(self, *args):
-        App.get_running_app().nav.go("summary")
+        App.get_running_app().nav.go("calculator_final")
 
     def populate_breakdown(self, breakdown_dict):
         """Fill the table with calculation components."""
@@ -6293,6 +6339,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
