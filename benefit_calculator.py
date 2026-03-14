@@ -2129,14 +2129,20 @@ def make_yes_no_row(label_text, callback):
         color=get_color_from_hex("#FFFFFF")
     )
 
+    # GOV.UK colours
+    normal_yellow = get_color_from_hex("#FFDD00")   # Bright yellow
+    down_yellow   = get_color_from_hex("#F0C800")   # Slightly darker yellow
+    blue_text     = get_color_from_hex("#005EA5")   # GOV.UK blue
+
     yes_btn = ToggleButton(
         text="Yes",
         group=label_text,
         size_hint=(None, None),
         size=(100, 50),
-        background_normal="",
-        background_color=get_color_from_hex("#1d70b8"),
-        color=get_color_from_hex("#FFFFFF")
+        background_normal="",   # Remove default image
+        background_down="",     # Remove default pressed image
+        background_color=normal_yellow,
+        color=blue_text
     )
 
     no_btn = ToggleButton(
@@ -2145,10 +2151,19 @@ def make_yes_no_row(label_text, callback):
         size_hint=(None, None),
         size=(100, 50),
         background_normal="",
-        background_color=get_color_from_hex("#1d70b8"),
-        color=get_color_from_hex("#FFFFFF")
+        background_down="",
+        background_color=normal_yellow,
+        color=blue_text
     )
 
+    # Change colour when selected/unselected
+    def update_color(inst, state):
+        inst.background_color = down_yellow if state == "down" else normal_yellow
+
+    yes_btn.bind(state=update_color)
+    no_btn.bind(state=update_color)
+
+    # Callbacks for your logic
     yes_btn.bind(on_press=lambda inst: callback(True))
     no_btn.bind(on_press=lambda inst: callback(False))
 
@@ -4915,7 +4930,9 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Claimant
         add_section("Claimant Details", [
+            f"Claimant Name: {d.get('claimant_name')}",
             f"Claimant DOB: {d.get('claimant_dob')}",
+            f"Partner Name: {d.get('partner_name')}",
             f"Partner DOB: {d.get('partner_dob')}",
             f"Relationship: {d.get('relationship')}",
         ])
@@ -4953,6 +4970,7 @@ class CalculatorFinalScreen(BaseScreen):
         for i, child in enumerate(d.get("children", []), start=1):
             child_lines.extend([
                 f"Child {i}:",
+                f"  Name: {child.get('name')}",
                 f"  DOB: {child.get('dob')}",
                 f"  Sex: {child.get('gender')}",
                 f"  Adopted: {child.get('adopted')}",
@@ -5042,6 +5060,8 @@ class CalculationBreakdownScreen(BaseScreen):
             text="Back to Summary",
             size_hint=(1, None),
             height=60,
+            background_color=get_color_from_hex("#FFDD00"),
+            color=get_color_from_hex("#005EA5"),
             on_press=self.go_back
         )
         outer.add_widget(back_btn)
@@ -6340,6 +6360,7 @@ if __name__ == "__main__":
 
 # add a save feature to save the user's data to a file
 # add a load feature to load the user's data from a file
+
 
 
 
