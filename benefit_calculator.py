@@ -4964,6 +4964,7 @@ class CalculatorFinalScreen(BaseScreen):
             f"MAPPA: {sar.get('mappa')}",
             f"Hostel Resident: {sar.get('hostel_resident')}",
             f"Domestic Abuse Refuge: {sar.get('domestic_abuse')}",
+        ]
 
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
