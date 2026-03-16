@@ -3626,7 +3626,7 @@ class CalculatorChildrenScreen(BaseScreen):
             spacing=10,
             size_hint=(1, None),
             height=60,
-            padding=(15, 0)
+            padding=(15, 10)
         )
 
         # Header background
@@ -3653,7 +3653,6 @@ class CalculatorChildrenScreen(BaseScreen):
             size_hint=(None, None),
             size=(20, 20),
             allow_stretch=True,
-            valign="middle",
             keep_ratio=True
         )
 
