@@ -2131,7 +2131,7 @@ def make_yes_no_row(label_text, callback):
 
     # GOV.UK colours
     normal_yellow = get_color_from_hex("#FFDD00")   # Bright yellow
-    down_yellow   = get_color_from_hex("#F0C800")   # Slightly darker yellow
+    down_yellow   = get_color_from_hex("#C8A600")   # Much darker, clearly visible
     blue_text     = get_color_from_hex("#005EA5")   # GOV.UK blue
 
     yes_btn = ToggleButton(
@@ -5058,10 +5058,13 @@ class CalculationBreakdownScreen(BaseScreen):
         # Back button
         back_btn = RoundedButton(
             text="Back to Summary",
-            size_hint=(1, None),
-            height=60,
-            background_color=get_color_from_hex("#FFDD00"),
+            size_hint=(1, 1),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+            font_size=20,
+            font_name="roboto",
             color=get_color_from_hex("#005EA5"),
+            text_size=(250, None),
             on_press=self.go_back
         )
         outer.add_widget(back_btn)
