@@ -2172,6 +2172,15 @@ def make_yes_no_row(label_text, callback):
     row.add_widget(no_btn)
 
     return row, yes_btn, no_btn
+
+# ---------------------------------------------------------
+# MONEY FORMATTER (add this near the top of your file)
+# ---------------------------------------------------------
+def fmt_money(value):
+    try:
+        return f"£{float(value):,.2f}"
+    except:
+        return "£0.00"
     
 class BaseScreen(Screen):
     # ---------------------------------------------------------
@@ -2663,14 +2672,13 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
-        w["housing_type"] = GovUkIconSpinner(
+        w["housing_type"] = GovUkSpinner(
             text="Select Housing Type",
             values=[ 
                 "Rent", 
                 "Own", 
                 "Shared Accommodation"
             ],
-            icon_map={}
         )
         
         housing_anchor.add_widget(w["housing_type"])
@@ -2741,7 +2749,7 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
-        w["tenancy_type"] = GovUkIconSpinner(
+        w["tenancy_type"] = GovUkSpinner(
             text="Select Tenancy Type",
             values=[
                 "Private rented",
@@ -2749,7 +2757,6 @@ class CalculatorHousingScreen(BaseScreen):
                 "Temporary accommodation",
                 "Supported accommodation"
             ],
-            icon_map={}
         )
         
         tenancy_anchor.add_widget(w["tenancy_type"])
@@ -2824,10 +2831,9 @@ class CalculatorHousingScreen(BaseScreen):
         
         # LOCATION SPINNER (manual)
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        w["location"] = GovUkIconSpinner(
+        w["location"] = GovUkSpinner(
             text="Select Location",
             values=["England", "Scotland", "Wales"],
-            icon_map={},
         )
         location_anchor.add_widget(w["location"])
         layout.add_widget(location_anchor)
@@ -2837,10 +2843,9 @@ class CalculatorHousingScreen(BaseScreen):
         
         # BRMA SPINNER (manual)
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        w["brma"] = GovUkIconSpinner(
+        w["brma"] = GovUkSpinner(
             text="Select BRMA",
             values=["Select BRMA"],
-            icon_map={},
         )
         brma_anchor.add_widget(w["brma"])
         layout.add_widget(brma_anchor)
@@ -3648,6 +3653,7 @@ class CalculatorChildrenScreen(BaseScreen):
             size_hint=(None, None),
             size=(20, 20),
             allow_stretch=True,
+            valign="middle",
             keep_ratio=True
         )
 
@@ -4162,7 +4168,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
             if expanded:
                 sar_label.color = get_color_from_hex("#FFFFFF")
                 sar_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-                set_sar_background(sar_header, "#0B0C0C", 1.0)
+                set_sar_background(sar_header, "#FFDD00", 1.0)
                 sar_header.opacity = 1
                 sar_header.disabled = False
                 return
@@ -4475,10 +4481,9 @@ class CalculatorSanctionsScreen(BaseScreen):
         sanction_type_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         self.sanctions_container.add_widget(sanction_type_label)
         
-        w["type"] = GovUkIconSpinner(
+        w["type"] = GovUkSpinner(
             text="Select sanction type",
             values=["lowest", "low", "medium", "high"],
-            icon_map={}
         )
         self.sanctions_container.add_widget(w["type"])
         
@@ -4494,10 +4499,9 @@ class CalculatorSanctionsScreen(BaseScreen):
         sanction_duration_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         self.sanctions_container.add_widget(sanction_duration_label)
         
-        w["duration"] = GovUkIconSpinner(
+        w["duration"] = GovUkSpinner(
             text="Select duration",
             values=["7 days", "14 days", "28 days", "91 days", "182 days"],
-            icon_map={}
         )
         self.sanctions_container.add_widget(w["duration"])
 
@@ -4753,15 +4757,9 @@ class CalculatorAdvanceScreen(BaseScreen):
     
             w["amount"].text = ""
             w["period"].text = ""
-                       
+
 class CalculatorFinalScreen(BaseScreen):
     def __init__(self, calculator_state, save_callbacks, calculate_callback, go_to_breakdown_callback, **kwargs):
-        """
-        calculator_state: shared CalculatorState object
-        save_callbacks: dict of save functions from other screens
-        calculate_callback: your calculate_entitlement() function
-        go_to_breakdown_callback: navigation to breakdown screen
-        """
         super().__init__(**kwargs)
         self.calculator_state = calculator_state
         self.save_callbacks = save_callbacks
@@ -4774,31 +4772,18 @@ class CalculatorFinalScreen(BaseScreen):
         self.build_ui()
 
     # ---------------------------------------------------------
-    # BUILD UI (converted from create_calculate_screen)
+    # BUILD UI
     # ---------------------------------------------------------
     def build_ui(self):
-        # ROOT layout (nav bar + outer content)
         root = BoxLayout(orientation="vertical")
-    
-        # ⭐ Navigation bar at the top
+
         root.add_widget(CalculatorNavBar(current="calculator_final"))
-    
-        # OUTER container (scrollable summary + fixed button bar)
-        outer = BoxLayout(
-            orientation="vertical",
-            spacing=0,
-            padding=0
-        )
-    
-        # ============================
-        # TOP: SCROLLABLE SUMMARY AREA
-        # ============================
-        self.calculate_scroll = ScrollView(
-            size_hint=(1, 1),
-            do_scroll_x=False,
-            do_scroll_y=True
-        )
-    
+
+        outer = BoxLayout(orientation="vertical", spacing=0, padding=0)
+
+        # Scroll area
+        self.calculate_scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+
         summary_layout = BoxLayout(
             orientation="vertical",
             spacing=30,
@@ -4806,17 +4791,12 @@ class CalculatorFinalScreen(BaseScreen):
             size_hint=(1, None)
         )
         summary_layout.bind(minimum_height=summary_layout.setter("height"))
-    
-        # Title
+
         summary_layout.add_widget(
-            wrapped_SafeLabel(
-                "Summary of your Universal Credit calculation:",
-                18,
-                30
-            )
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
-    
-        # Summary placeholder
+
+        # Placeholder label
         self.summary_widgets["label"] = SafeLabel(
             text="No calculation yet.",
             font_size=16,
@@ -4830,20 +4810,13 @@ class CalculatorFinalScreen(BaseScreen):
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
         summary_layout.add_widget(self.summary_widgets["label"])
-    
+
         self.calculate_scroll.add_widget(summary_layout)
         outer.add_widget(self.calculate_scroll)
-    
-        # ============================
-        # BOTTOM: FIXED BUTTON BAR
-        # ============================
-        button_bar = BoxLayout(
-            size_hint=(1, None),
-            height=100,
-            padding=20,
-            spacing=20
-        )
-    
+
+        # Bottom button bar
+        button_bar = BoxLayout(size_hint=(1, None), height=100, padding=20, spacing=20)
+
         run_btn = RoundedButton(
             text="Run Calculation",
             size_hint=(1, 1),
@@ -4858,7 +4831,7 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=self.run_calculation
         )
         button_bar.add_widget(run_btn)
-    
+
         breakdown_btn = RoundedButton(
             text="View Calculation Breakdown",
             size_hint=(1, 1),
@@ -4873,42 +4846,34 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=lambda inst: self.go_to_breakdown_callback()
         )
         button_bar.add_widget(breakdown_btn)
-    
+
         outer.add_widget(button_bar)
-    
-        # Add outer container to root
         root.add_widget(outer)
-    
-        # Add root to screen
         self.add_widget(root)
 
     # ---------------------------------------------------------
-    # RUN CALCULATION (converted from run_calculation)
+    # RUN CALCULATION
     # ---------------------------------------------------------
     def run_calculation(self, *args):
         try:
-            # Pass the required arguments to the engine
             result = self.calculate_callback(self.calculator_state, UC_RATES)
-    
             result_text = f"Calculated Entitlement: £{result:.2f}"
             self.calculator_state.calculation_result = result_text
-    
+
         except Exception as e:
             self.summary_widgets["label"].text = f"Error during calculation: {str(e)}"
             return
-    
-        # 2. Update summary
+
         try:
             self.update_summary()
         except Exception as e:
             self.summary_widgets["label"].text = f"Error updating summary: {str(e)}"
             return
-    
-        # 3. Scroll to top
+
         Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
     # ---------------------------------------------------------
-    # SUMMARY REBUILD (converted from on_pre_enter_summary)
+    # SUMMARY REBUILD
     # ---------------------------------------------------------
     def update_summary(self):
         d = self.calculator_state.__dict__
@@ -4917,15 +4882,17 @@ class CalculatorFinalScreen(BaseScreen):
         summary_layout.clear_widgets()
 
         summary_layout.add_widget(
-            wrapped_SafeLabel(
-                "Summary of your Universal Credit calculation:",
-                18,
-                30
-            )
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
 
         def add_section(title, lines):
             section = CollapsibleSection(title, lines)
+
+            # ⭐ FIX: ensure all labels inside the collapsible align identically
+            for child in section.content.children:
+                if isinstance(child, SafeLabel):
+                    child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+
             summary_layout.add_widget(section)
 
         # Claimant
@@ -4939,18 +4906,18 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Finances
         add_section("Finances", [
-            f"Income: £{d.get('income')}",
-            f"Savings: £{d.get('savings')}",
-            f"Debts: £{d.get('debts')}",
+            f"Income: {fmt_money(d.get('income'))}",
+            f"Savings: {fmt_money(d.get('savings'))}",
+            f"Debts: {fmt_money(d.get('debts'))}",
         ])
 
         # Housing
         add_section("Housing", [
             f"Housing Type: {d.get('housing_type')}",
             f"Tenancy Type: {d.get('tenancy_type')}",
-            f"Rent: £{d.get('rent')}",
-            f"Mortgage: £{d.get('mortgage')}",
-            f"Shared Accommodation Charge: £{d.get('shared')}",
+            f"Rent: {fmt_money(d.get('rent'))}",
+            f"Mortgage: {fmt_money(d.get('mortgage'))}",
+            f"Shared Accommodation Charge: {fmt_money(d.get('shared'))}",
             f"Non-dependants: {d.get('non_dependants')}",
             f"Postcode: {d.get('postcode')}",
             f"Location: {d.get('location')}",
@@ -4962,7 +4929,7 @@ class CalculatorFinalScreen(BaseScreen):
         charges = d.get("service_charges", {})
         if charges:
             add_section("Service Charges (Social Rent)", [
-                f"{k.replace('_', ' ').title()}: £{v}" for k, v in charges.items()
+                f"{k.replace('_', ' ').title()}: {fmt_money(v)}" for k, v in charges.items()
             ])
 
         # Children
@@ -4986,7 +4953,7 @@ class CalculatorFinalScreen(BaseScreen):
         add_section("Additional Elements", [
             f"Carer: {d.get('carer')}",
             f"Disability: {d.get('disability')}",
-            f"Childcare Costs: £{d.get('childcare')}",
+            f"Childcare Costs: {fmt_money(d.get('childcare'))}",
         ])
 
         # SAR Exemptions
@@ -4997,33 +4964,6 @@ class CalculatorFinalScreen(BaseScreen):
             f"MAPPA: {sar.get('mappa')}",
             f"Hostel Resident: {sar.get('hostel_resident')}",
             f"Domestic Abuse Refuge: {sar.get('domestic_abuse')}",
-            f"Ex-Offender: {sar.get('ex_offender')}",
-            f"Foster Carer: {sar.get('foster_carer')}",
-            f"Prospective Adopter: {sar.get('prospective_adopter')}",
-            f"Temporary Accommodation: {sar.get('temporary_accommodation')}",
-            f"Modern Slavery Victim: {sar.get('modern_slavery')}",
-            f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
-        ])
-
-        # Sanctions
-        add_section("Sanctions", [
-            f"Type: {d.get('sanction_type')}",
-            f"Duration: {d.get('sanction_duration')} days",
-        ])
-
-        # Advance Payments
-        add_section("Advance Payments", [
-            f"Amount: £{d.get('advance_amount')}",
-            f"Repayment Period: {d.get('advance_repayment_period')} months",
-        ])
-
-        # Calculation Result
-        if d.get("calculation_result"):
-            add_section("Calculation Result", [
-                d["calculation_result"]
-            ])
-
-        Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
@@ -5058,7 +4998,8 @@ class CalculationBreakdownScreen(BaseScreen):
         # Back button
         back_btn = RoundedButton(
             text="Back to Summary",
-            size_hint=(1, 1),
+            size_hint=(1, None),
+            height=60
             background_color=(0, 0, 0, 0),
             background_normal="",
             font_size=20,
