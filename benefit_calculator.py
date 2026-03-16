@@ -5001,7 +5001,7 @@ class CalculationBreakdownScreen(BaseScreen):
         back_btn = RoundedButton(
             text="Back to Summary",
             size_hint=(1, None),
-            height=60
+            height=60,
             background_color=(0, 0, 0, 0),
             background_normal="",
             font_size=20,
