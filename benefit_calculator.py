@@ -1524,6 +1524,8 @@ class GovUkDropdown(BoxLayout):
         self.dropdown.bind(size=lambda inst, val: setattr(self.dropdown._bg, "size", val))
         self.dropdown.bind(pos=lambda inst, val: setattr(self.dropdown._bg, "pos", val))
 
+        self.dropdown.bind(on_dismiss=self._on_dropdown_dismiss)
+
         # Add dropdown items
         for v in self.values:
             btn = Button(
@@ -1539,6 +1541,9 @@ class GovUkDropdown(BoxLayout):
 
         # Open dropdown on touch
         self.bind(on_touch_down=self.open_dropdown)
+
+    def _on_dropdown_dismiss(self, *args):
+        self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
     # Proper Kivy property for save/load
     @property
@@ -1559,7 +1564,6 @@ class GovUkDropdown(BoxLayout):
 
     def select(self, value):
         self.text = value  # updates both internal + visible text
-        self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
         self.dropdown.dismiss()
 
 # Create a loading animation using a sequence of PNG images
@@ -1730,6 +1734,9 @@ class CalculatorNavBar(BoxLayout):
             height=120,
             **kwargs
         )
+        
+        Window.bind(on_touch_down=self._close_if_outside)
+
 
         self.current = current
         self.dropdown_open = False
@@ -1935,6 +1942,7 @@ class CalculatorNavBar(BoxLayout):
             allow_stretch=True,
             keep_ratio=True,
         )
+        self.current_chevron = chevron
     
         btn.add_widget(self._center_icon(img))
         btn.add_widget(lbl)
@@ -1976,31 +1984,39 @@ class CalculatorNavBar(BoxLayout):
     # =====================================================================
     # DROPDOWN MENU
     # =====================================================================
-
+    
     def toggle_dropdown(self, *args):
         if self.dropdown_open:
             self.close_dropdown()
         else:
             self.open_dropdown()
-
+    
+    
     def open_dropdown(self):
         if self.dropdown_open:
             return
     
         self.dropdown_open = True
     
-        # Floating panel container
+        # Toggle chevron UP
+        if self.current_chevron:
+            self.current_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+    
+        # Floating container
         self.dropdown = FloatLayout(size_hint=(1, None), height=400)
     
-        # Create the panel FIRST
+        # Panel
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=(10, 60, 10, 10),   # left, top, right, bottom
+            padding=(10, 60, 10, 10),
             spacing=10,
         )
+    
+        # Top spacer to push items down
+        panel.add_widget(Widget(size_hint_y=None, height=40))
     
         # Background
         with panel.canvas.before:
@@ -2012,15 +2028,12 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
     
-        # Now compute position safely
+        # Position panel under navbar
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
         navbar_x, navbar_y = self.to_window(self.x, self.y)
     
-        # Compute navbar bottom in window coordinates
-        navbar_x, navbar_y = self.to_window(self.x, self.y)
-        
-        # Position dropdown so its TOP sits right
-        panel_y = navbar_y - panel.height
+        # Perfect alignment
+        panel_y = navbar_y - panel.height + 20
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
@@ -2059,15 +2072,28 @@ class CalculatorNavBar(BoxLayout):
     
         self.dropdown.add_widget(panel)
         self.parent.add_widget(self.dropdown)
-
+    
+    
     def close_dropdown(self):
         if not self.dropdown_open:
             return
-
+    
         self.dropdown_open = False
+    
+        # Toggle chevron DOWN
+        if self.current_chevron:
+            self.current_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+    
         if self.dropdown and self.dropdown.parent:
             self.dropdown.parent.remove_widget(self.dropdown)
+    
         self.dropdown = None
+    
+    
+    def _close_if_outside(self, window, touch):
+        if self.dropdown_open and self.dropdown:
+            if not self.dropdown.collide_point(*touch.pos):
+                self.close_dropdown()
 
 def make_yes_no_row(label_text, callback):
     row = BoxLayout(
@@ -3674,6 +3700,10 @@ class CalculatorChildrenScreen(BaseScreen):
         )
         
         content_box.add_widget(gender_spinner)
+
+        gender_spinner.label.bind(
+            text=lambda inst, val, s=gender_spinner: setattr(s, "text", val)
+        )
 
         # FLAGS
         def make_flag(label, value=False):
