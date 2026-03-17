@@ -1471,12 +1471,15 @@ class GovUkDropdown(BoxLayout):
             **kwargs
         )
 
+        # Store values
         self.values = values or []
 
         # Centre the dropdown like the old spinner
         self.size_hint_x = None
         self.pos_hint = {"center_x": 0.5}
 
+        # Internal text property (for save/load)
+        self._text = text
 
         # Background (GOV.UK yellow)
         with self.canvas.before:
@@ -1486,7 +1489,7 @@ class GovUkDropdown(BoxLayout):
         self.bind(size=lambda inst, val: setattr(self._bg, "size", val))
         self.bind(pos=lambda inst, val: setattr(self._bg, "pos", val))
 
-        # Label
+        # Label (visible text)
         self.label = SafeLabel(
             text=text,
             font_size=18,
@@ -1494,7 +1497,10 @@ class GovUkDropdown(BoxLayout):
             halign="left",
             valign="middle"
         )
+
+        # Proper text wrapping + centring
         self.label.text_size = (self.width - 40, None)
+        self.label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
         self.bind(width=lambda inst, val: setattr(self.label, "text_size", (val - 40, None)))
 
         # Chevron
@@ -1507,8 +1513,10 @@ class GovUkDropdown(BoxLayout):
         self.add_widget(self.label)
         self.add_widget(self.chevron)
 
-        # Dropdown
-        self.dropdown = DropDown()
+        # Dropdown panel
+        self.dropdown = DropDown(auto_width=False)
+        self.dropdown.width = self.width
+
         with self.dropdown.canvas.before:
             Color(1, 1, 1, 1)
             self.dropdown._bg = Rectangle(size=self.dropdown.size, pos=self.dropdown.pos)
@@ -1516,6 +1524,7 @@ class GovUkDropdown(BoxLayout):
         self.dropdown.bind(size=lambda inst, val: setattr(self.dropdown._bg, "size", val))
         self.dropdown.bind(pos=lambda inst, val: setattr(self.dropdown._bg, "pos", val))
 
+        # Add dropdown items
         for v in self.values:
             btn = Button(
                 text=v,
@@ -1528,7 +1537,18 @@ class GovUkDropdown(BoxLayout):
             btn.bind(on_release=lambda inst: self.select(inst.text))
             self.dropdown.add_widget(btn)
 
+        # Open dropdown on touch
         self.bind(on_touch_down=self.open_dropdown)
+
+    # Proper Kivy property for save/load
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, value):
+        self._text = value
+        self.label.text = value
 
     def open_dropdown(self, instance, touch):
         if self.collide_point(*touch.pos):
@@ -1538,7 +1558,7 @@ class GovUkDropdown(BoxLayout):
         return False
 
     def select(self, value):
-        self.label.text = value
+        self.text = value  # updates both internal + visible text
         self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
         self.dropdown.dismiss()
 
