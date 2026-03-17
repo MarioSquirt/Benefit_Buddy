@@ -1466,12 +1466,17 @@ class GovUkDropdown(BoxLayout):
             spacing=10,
             padding=(15, 10),
             size_hint=(None, None),
-            height=60,
-            width=250,
+            height=55,
+            width=300,
             **kwargs
         )
 
         self.values = values or []
+
+        # Centre the dropdown like the old spinner
+        self.size_hint_x = None
+        self.pos_hint = {"center_x": 0.5}
+
 
         # Background (GOV.UK yellow)
         with self.canvas.before:
@@ -1484,12 +1489,13 @@ class GovUkDropdown(BoxLayout):
         # Label
         self.label = SafeLabel(
             text=text,
-            font_size=20,
+            font_size=18,
             color=get_color_from_hex("#005EA5"),
             halign="left",
             valign="middle"
         )
-        self.label.bind(width=lambda inst, val: setattr(self.label, "text_size", (val, None)))
+        self.label.text_size = (self.width - 40, None)
+        self.bind(width=lambda inst, val: setattr(self.label, "text_size", (val - 40, None)))
 
         # Chevron
         self.chevron = Image(
@@ -1972,7 +1978,7 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=(10, 20, 10, 10),   # left, top, right, bottom
+            padding=(10, 60, 10, 10),   # left, top, right, bottom
             spacing=10,
         )
     
@@ -1993,8 +1999,8 @@ class CalculatorNavBar(BoxLayout):
         # Compute navbar bottom in window coordinates
         navbar_x, navbar_y = self.to_window(self.x, self.y)
         
-        # Position dropdown so its TOP sits just below the navbar BOTTOM
-        panel_y = navbar_y - panel.height - 10
+        # Position dropdown so its TOP sits right
+        panel_y = navbar_y - panel.height
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
@@ -2669,8 +2675,8 @@ class CalculatorHousingScreen(BaseScreen):
                 w["tenancy_type"].height = 0
                 w["tenancy_type"].text = "Select Tenancy Type"
 
-        w["housing_type"].bind(text=lambda spinner, value: _show_amount_widget(value))
-        w["housing_type"].bind(text=lambda spinner, value: _update_tenancy_visibility(value))
+        w["housing_type"].label.bind(text=lambda spinner, value: _show_amount_widget(value))
+        w["housing_type"].label.bind(text=lambda spinner, value: _update_tenancy_visibility(value))
 
         # ---------------------------------------------------------
         # TENANCY TYPE
@@ -2800,7 +2806,7 @@ class CalculatorHousingScreen(BaseScreen):
             w["brma"].values = brmas or ["Select BRMA"]
             w["brma"].text = "Select BRMA"
         
-        w["location"].bind(text=on_manual_location_change)
+        w["location"].label.bind(text=on_manual_location_change)
         
         # Manual BRMA change → update results
         def on_manual_brma_change(spinner, value):
@@ -2824,7 +2830,7 @@ class CalculatorHousingScreen(BaseScreen):
         
             show_results_box()
         
-        w["brma"].bind(text=on_manual_brma_change)
+        w["brma"].label.bind(text=on_manual_brma_change)
         
         # Manual mode toggle logic (clean + simple)
         def toggle_manual_mode(instance, value):
@@ -3057,7 +3063,7 @@ class CalculatorHousingScreen(BaseScreen):
             for field in w["service_fields"].values():
                 field.disabled = not social
 
-        w["tenancy_type"].bind(text=on_tenancy_change_service)
+        w["tenancy_type"].label.bind(text=on_tenancy_change_service)
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
