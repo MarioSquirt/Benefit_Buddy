@@ -1459,154 +1459,82 @@ class IconRow(ButtonBehavior, BoxLayout):
         self.bg.pos = self.pos
         self.bg.size = self.size
 
-# ---------------------------------------------------------
-# BASE GOV.UK SPINNER (styling only)
-# ---------------------------------------------------------
-class GovUkSpinner(Spinner):
-    def __init__(self, **kwargs):
+class GovUkDropdown(BoxLayout):
+    def __init__(self, text="Select", values=None, **kwargs):
         super().__init__(
-            size_hint=(None, None),
-            size=(250, 50),
-            background_normal="",
-            background_color=get_color_from_hex("#FFDD00"),
-            color=get_color_from_hex("#005EA5"),
-            disabled_color=get_color_from_hex("#005EA5"),
-            background_disabled_normal="",
-            font_size=20,
-            font_name="roboto",
-            halign="center",
-            valign="middle",
-            text_size=(250, None),
-            pos_hint={"center_x": 0.5},
-            **kwargs
-        )
-
-# ---------------------------------------------------------
-# FINAL GOV.UK ICON SPINNER (FULLY SAFE & FEATURED)
-# ---------------------------------------------------------
-class GovUkIconSpinner(GovUkSpinner):
-    def __init__(self, icon_map=None, **kwargs):
-        self.icon_map = icon_map or {}
-        super().__init__(**kwargs)
-
-        # ⭐ Canvas background (GOV.UK yellow)
-        with self.canvas.before:
-            self._bg_color = Color(*get_color_from_hex("#FFDD00"))  # normal yellow
-            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
-
-        # Keep rect in sync with widget size/pos
-        self.bind(
-            size=lambda inst, val: setattr(self._bg_rect, "size", val),
-            pos=lambda inst, val: setattr(self._bg_rect, "pos", val),
-        )
-
-        # -----------------------------------------------------
-        # Clear default spinner children (just visual content)
-        # -----------------------------------------------------
-        self.clear_widgets()
-
-        # -----------------------------------------------------
-        # Build custom button layout
-        # -----------------------------------------------------
-        self.button_box = BoxLayout(
             orientation="horizontal",
             spacing=10,
             padding=(15, 10),
-            size_hint=(1, 1)
+            size_hint=(None, None),
+            height=60,
+            width=250,
+            **kwargs
         )
 
-        # Spinner label
-        self.label = Label(
-            text=self.text or "Select",
-            color=get_color_from_hex("#005EA5"),  # GOV.UK blue
+        self.values = values or []
+
+        # Background (GOV.UK yellow)
+        with self.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))
+            self._bg = Rectangle(size=self.size, pos=self.pos)
+
+        self.bind(size=lambda inst, val: setattr(self._bg, "size", val))
+        self.bind(pos=lambda inst, val: setattr(self._bg, "pos", val))
+
+        # Label
+        self.label = SafeLabel(
+            text=text,
             font_size=20,
+            color=get_color_from_hex("#005EA5"),
             halign="left",
             valign="middle"
         )
+        self.label.bind(width=lambda inst, val: setattr(self.label, "text_size", (val, None)))
 
-        # Chevron icon (down arrow by default)
+        # Chevron
         self.chevron = Image(
-            source="images/icons/ChevronDown-icon/ChevronDown-32px.png",
+            source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(24, 24),
-            allow_stretch=True,
-            keep_ratio=True
+            size=(20, 20)
         )
 
-        self.button_box.add_widget(self.label)
-        self.button_box.add_widget(self.chevron)
-        self.add_widget(self.button_box)
+        self.add_widget(self.label)
+        self.add_widget(self.chevron)
 
-        # Keep label synced with spinner text
-        self.bind(text=lambda instance, value: setattr(self.label, "text", value))
-
-        # -----------------------------------------------------
-        # Simple active state (pressed)
-        # -----------------------------------------------------
-        self.normal_bg = get_color_from_hex("#FFDD00")
-        self.active_bg = get_color_from_hex("#CCB000")
-
-        def on_press(*_):
-            self._bg_color.rgba = self.active_bg  # darker yellow
-
-        def on_release(*_):
-            self._bg_color.rgba = self.normal_bg  # normal yellow
-
-        self.bind(on_press=on_press, on_release=on_release)
-
-        # Ensure we start with normal background
-        self._bg_color.rgba = self.normal_bg
-
-    # ---------------------------------------------------------
-    # Build dropdown manually (Android-safe)
-    # ---------------------------------------------------------
-    def _build_dropdown(self):
-        dropdown = DropDown()
-
-        # Dropdown background
-        with dropdown.canvas.before:
+        # Dropdown
+        self.dropdown = DropDown()
+        with self.dropdown.canvas.before:
             Color(1, 1, 1, 1)
-            dropdown.bg = Rectangle(pos=dropdown.pos, size=dropdown.size)
+            self.dropdown._bg = Rectangle(size=self.dropdown.size, pos=self.dropdown.pos)
 
-        dropdown.bind(pos=lambda *_: setattr(dropdown.bg, "pos", dropdown.pos))
-        dropdown.bind(size=lambda *_: setattr(dropdown.bg, "size", dropdown.size))
+        self.dropdown.bind(size=lambda inst, val: setattr(self.dropdown._bg, "size", val))
+        self.dropdown.bind(pos=lambda inst, val: setattr(self.dropdown._bg, "pos", val))
 
-        # Update spinner text when selecting
-        dropdown.bind(on_select=lambda instance, value: setattr(self, "text", value))
+        for v in self.values:
+            btn = Button(
+                text=v,
+                size_hint_y=None,
+                height=50,
+                background_normal="",
+                background_color=get_color_from_hex("#FFFFFF"),
+                color=get_color_from_hex("#005EA5")
+            )
+            btn.bind(on_release=lambda inst: self.select(inst.text))
+            self.dropdown.add_widget(btn)
 
-        # Add rows
-        for value in self.values:
-            icon_path = self.icon_map.get(value)
-            row = IconRow(text=value, icon_path=icon_path)
-            row.bind(on_release=lambda row_instance: dropdown.select(row_instance.label.text))
-            dropdown.add_widget(row)
+        self.bind(on_touch_down=self.open_dropdown)
 
-        # When dropdown is dismissed, reset chevron + background
-        dropdown.bind(on_dismiss=lambda *_: self._on_dropdown_dismiss())
+    def open_dropdown(self, instance, touch):
+        if self.collide_point(*touch.pos):
+            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+            self.dropdown.open(self)
+            return True
+        return False
 
-        self._dropdown = dropdown
-
-    # ---------------------------------------------------------
-    # Open dropdown safely and swap chevron icon
-    # ---------------------------------------------------------
-    def open_dropdown(self, *args):
-        # Ensure dropdown exists
-        if not getattr(self, "_dropdown", None):
-            self._build_dropdown()
-
-        # Swap chevron to "up"
-        if self.chevron:
-            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-32px.png"
-
-        return super().open_dropdown(*args)
-
-    # ---------------------------------------------------------
-    # Handle dropdown dismiss: reset chevron + background
-    # ---------------------------------------------------------
-    def _on_dropdown_dismiss(self, *args):
-        if self.chevron:
-            self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-32px.png"
-        self.background_color = self.normal_bg
+    def select(self, value):
+        self.label.text = value
+        self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+        self.dropdown.dismiss()
 
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
@@ -2065,8 +1993,8 @@ class CalculatorNavBar(BoxLayout):
         # Compute navbar bottom in window coordinates
         navbar_x, navbar_y = self.to_window(self.x, self.y)
         
-        # Position dropdown so its TOP sits exactly at the navbar BOTTOM
-        panel_y = navbar_y - panel.height
+        # Position dropdown so its TOP sits just below the navbar BOTTOM
+        panel_y = navbar_y - panel.height - 10
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
@@ -2672,13 +2600,13 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         housing_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
-        w["housing_type"] = GovUkSpinner(
+        w["housing_type"] = GovUkDropdown(
             text="Select Housing Type",
-            values=[ 
-                "Rent", 
-                "Own", 
+            values=[
+                "Rent",
+                "Own",
                 "Shared Accommodation"
-            ],
+            ]
         )
         
         housing_anchor.add_widget(w["housing_type"])
@@ -2749,14 +2677,14 @@ class CalculatorHousingScreen(BaseScreen):
         # ---------------------------------------------------------
         tenancy_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
         
-        w["tenancy_type"] = GovUkSpinner(
+        w["tenancy_type"] = GovUkDropdown(
             text="Select Tenancy Type",
             values=[
                 "Private rented",
                 "Social",
                 "Temporary accommodation",
                 "Supported accommodation"
-            ],
+            ]
         )
         
         tenancy_anchor.add_widget(w["tenancy_type"])
@@ -2831,29 +2759,38 @@ class CalculatorHousingScreen(BaseScreen):
         
         # LOCATION SPINNER (manual)
         location_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        w["location"] = GovUkSpinner(
+        
+        w["location"] = GovUkDropdown(
             text="Select Location",
-            values=["England", "Scotland", "Wales"],
+            values=["England", "Scotland", "Wales"]
         )
+        
         location_anchor.add_widget(w["location"])
         layout.add_widget(location_anchor)
+        
+        # Preserve your visibility logic
         w["location"].disabled = True
         w["location"].opacity = 0
         w["location"].height = 0
         
         # BRMA SPINNER (manual)
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
-        w["brma"] = GovUkSpinner(
+        
+        w["brma"] = GovUkDropdown(
             text="Select BRMA",
-            values=["Select BRMA"],
+            values=["Select BRMA"]
         )
+        
         brma_anchor.add_widget(w["brma"])
         layout.add_widget(brma_anchor)
+        
+        # Preserve your visibility logic
         w["brma"].disabled = True
         w["brma"].opacity = 0
         w["brma"].height = 0
-        Clock.schedule_once(lambda dt: setattr(w["brma"], "text", "Select BRMA"), 0)
         
+        Clock.schedule_once(lambda dt: setattr(w["brma"].label, "text", "Select BRMA"), 0)
+                
         # Manual location change → filter BRMAs
         def on_manual_location_change(spinner, value):
             loc = (value or "").lower()
@@ -3705,11 +3642,11 @@ class CalculatorChildrenScreen(BaseScreen):
         content_box.add_widget(dob_input)
 
         # GENDER SPINNER
-        gender_spinner = GovUkIconSpinner(
+        gender_spinner = GovUkDropdown(
             text=prefill.get("gender", "Select gender") if prefill else "Select gender",
-            values=["Male", "Female", "Prefer not to say"],
-            icon_map={}
+            values=["Male", "Female", "Prefer not to say"]
         )
+        
         content_box.add_widget(gender_spinner)
 
         # FLAGS
@@ -4165,7 +4102,7 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         # ---------------------------------------------------------
         def apply_sar_header(mode, expanded):
             if expanded:
-                sar_label.color = get_color_from_hex("#FFFFFF")
+                sar_label.color = get_color_from_hex("#005EA5")
                 sar_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
                 set_sar_background(sar_header, "#FFDD00", 1.0)
                 sar_header.opacity = 1
@@ -4468,9 +4405,7 @@ class CalculatorSanctionsScreen(BaseScreen):
         self.sanctions_container.bind(minimum_height=self.sanctions_container.setter("height"))
         layout.add_widget(self.sanctions_container)
         
-        # ---------------------------------------------------------
         # SANCTION TYPE
-        # ---------------------------------------------------------
         sanction_type_label = SafeLabel(
             text="Sanction type",
             font_size=18,
@@ -4480,15 +4415,13 @@ class CalculatorSanctionsScreen(BaseScreen):
         sanction_type_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         self.sanctions_container.add_widget(sanction_type_label)
         
-        w["type"] = GovUkSpinner(
+        w["type"] = GovUkDropdown(
             text="Select sanction type",
-            values=["lowest", "low", "medium", "high"],
+            values=["lowest", "low", "medium", "high"]
         )
         self.sanctions_container.add_widget(w["type"])
         
-        # ---------------------------------------------------------
         # SANCTION DURATION
-        # ---------------------------------------------------------
         sanction_duration_label = SafeLabel(
             text="Sanction duration",
             font_size=18,
@@ -4498,9 +4431,9 @@ class CalculatorSanctionsScreen(BaseScreen):
         sanction_duration_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         self.sanctions_container.add_widget(sanction_duration_label)
         
-        w["duration"] = GovUkSpinner(
+        w["duration"] = GovUkDropdown(
             text="Select duration",
-            values=["7 days", "14 days", "28 days", "91 days", "182 days"],
+            values=["7 days", "14 days", "28 days", "91 days", "182 days"]
         )
         self.sanctions_container.add_widget(w["duration"])
 
@@ -4963,8 +4896,13 @@ class CalculatorFinalScreen(BaseScreen):
             f"MAPPA: {sar.get('mappa')}",
             f"Hostel Resident: {sar.get('hostel_resident')}",
             f"Domestic Abuse Refuge: {sar.get('domestic_abuse')}",
-            ]
-        )
+            f"Ex-Offender: {sar.get('ex_offender')}",
+            f"Foster Carer: {sar.get('foster_carer')}",
+            f"Prospective Adopter: {sar.get('prospective_adopter')}",
+            f"Temporary Accommodation: {sar.get('temporary_accommodation')}",
+            f"Modern Slavery Victim: {sar.get('modern_slavery')}",
+            f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
+        ])
 
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
