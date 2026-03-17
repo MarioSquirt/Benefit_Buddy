@@ -2033,7 +2033,7 @@ class CalculatorNavBar(BoxLayout):
         navbar_x, navbar_y = self.to_window(self.x, self.y)
     
         # Perfect alignment
-        panel_y = navbar_y - panel.height + 20
+        panel_y = navbar_y - panel.height
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
@@ -4852,6 +4852,10 @@ class CalculatorFinalScreen(BaseScreen):
             self.summary_widgets["label"].text = f"Error during calculation: {str(e)}"
             return
 
+        print("CALCULATION RESULT:", result)
+            
+        print("Calling update_summary() with state:", self.calculator_state.__dict__)
+
         try:
             self.update_summary()
         except Exception as e:
@@ -4864,6 +4868,18 @@ class CalculatorFinalScreen(BaseScreen):
     # SUMMARY REBUILD
     # ---------------------------------------------------------
     def update_summary(self):
+        print("\n===== SUMMARY DEBUG =====")
+        for key, value in self.calculator_state.__dict__.items():
+            print(f"{key}: {value}")
+        print("===== END SUMMARY DEBUG =====\n")
+        
+        print("SUMMARY EXPECTED FIELDS:")
+        print("claimant_name:", d.get("claimant_name"))
+        print("income:", d.get("income"))
+        print("housing_type:", d.get("housing_type"))
+        print("children:", d.get("children"))
+        print("calculation_result:", d.get("calculation_result"))
+
         d = self.calculator_state.__dict__
 
         summary_layout = self.calculate_scroll.children[0]
