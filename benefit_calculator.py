@@ -2028,13 +2028,10 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
     
-        # Position panel under navbar
-        btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        navbar_x, navbar_y = self.to_window(self.x, self.y)
-    
-        # Perfect alignment
-        panel_y = navbar_y - panel.height
-        panel.pos = (btn_x, panel_y)
+        # Position panel directly under the navbar
+        panel_x = self.current_btn.x
+        panel_y = self.y - panel.height
+        panel.pos = (panel_x, panel_y)
     
         # Add menu items
         for label, screen_name in self.screens:
@@ -4872,33 +4869,34 @@ class CalculatorFinalScreen(BaseScreen):
         for key, value in self.calculator_state.__dict__.items():
             print(f"{key}: {value}")
         print("===== END SUMMARY DEBUG =====\n")
-        
+    
+        # MUST come before any use of d
+        d = self.calculator_state.__dict__
+    
         print("SUMMARY EXPECTED FIELDS:")
         print("claimant_name:", d.get("claimant_name"))
         print("income:", d.get("income"))
         print("housing_type:", d.get("housing_type"))
         print("children:", d.get("children"))
         print("calculation_result:", d.get("calculation_result"))
-
-        d = self.calculator_state.__dict__
-
+    
         summary_layout = self.calculate_scroll.children[0]
         summary_layout.clear_widgets()
-
+    
         summary_layout.add_widget(
             wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
-
+    
         def add_section(title, lines):
             section = CollapsibleSection(title, lines)
-
-            # ⭐ FIX: ensure all labels inside the collapsible align identically
+    
+            # Ensure all labels inside the collapsible align identically
             for child in section.content.children:
                 if isinstance(child, SafeLabel):
                     child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+    
             summary_layout.add_widget(section)
-
+    
         # Claimant
         add_section("Claimant Details", [
             f"Claimant Name: {d.get('claimant_name')}",
@@ -4907,14 +4905,14 @@ class CalculatorFinalScreen(BaseScreen):
             f"Partner DOB: {d.get('partner_dob')}",
             f"Relationship: {d.get('relationship')}",
         ])
-
+    
         # Finances
         add_section("Finances", [
             f"Income: {fmt_money(d.get('income'))}",
             f"Savings: {fmt_money(d.get('savings'))}",
             f"Debts: {fmt_money(d.get('debts'))}",
         ])
-
+    
         # Housing
         add_section("Housing", [
             f"Housing Type: {d.get('housing_type')}",
@@ -4928,14 +4926,14 @@ class CalculatorFinalScreen(BaseScreen):
             f"BRMA: {d.get('brma')}",
             f"Manual BRMA Mode: {d.get('manual_location')}",
         ])
-
+    
         # Service Charges
         charges = d.get("service_charges", {})
         if charges:
             add_section("Service Charges (Social Rent)", [
                 f"{k.replace('_', ' ').title()}: {fmt_money(v)}" for k, v in charges.items()
             ])
-
+    
         # Children
         child_lines = [f"Number of Children: {len(d.get('children', []))}"]
         for i, child in enumerate(d.get("children", []), start=1):
@@ -4952,14 +4950,14 @@ class CalculatorFinalScreen(BaseScreen):
                 f"  Non‑consensual Conception: {child.get('non_consensual')}",
             ])
         add_section("Children", child_lines)
-
+    
         # Additional Elements
         add_section("Additional Elements", [
             f"Carer: {d.get('carer')}",
             f"Disability: {d.get('disability')}",
             f"Childcare Costs: {fmt_money(d.get('childcare'))}",
         ])
-
+    
         # SAR Exemptions
         sar = d.get("sar_exemptions", {})
         add_section("SAR Exemptions", [
