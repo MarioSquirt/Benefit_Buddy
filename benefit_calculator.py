@@ -2028,8 +2028,6 @@ class CalculatorNavBar(BoxLayout):
             padding=(10, 10, 10, 10),
             spacing=10,
         )
-        # Add spacer to push content down
-        panel.add_widget(Widget(size_hint_y=None, height=40))
     
         # Background
         with panel.canvas.before:
