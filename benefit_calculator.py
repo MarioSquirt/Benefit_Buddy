@@ -1614,6 +1614,8 @@ class PulsingGlow(Widget):
 class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
         super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+
+        # Section grows with content
         self.bind(minimum_height=self.setter("height"))
 
         self.is_open = False
@@ -1632,7 +1634,7 @@ class CollapsibleSection(BoxLayout):
 
         # GOV.UK Yellow background
         with self.header.canvas.before:
-            Color(1, 0.866, 0, 1)  # Yellow
+            Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
 
         self.header.bind(
@@ -1640,11 +1642,11 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
 
-        # Header label (GOV.UK blue)
+        # Header label
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
-            color=get_color_from_hex("#003078"),  # GOV.UK blue
+            color=get_color_from_hex("#003078"),
             halign="left",
             valign="middle"
         )
@@ -1678,7 +1680,11 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-        self.content_box.bind(minimum_height=self.content_box.setter("height"))
+
+        # FIX: ensure content box grows with its children
+        self.content_box.bind(
+            minimum_height=lambda inst, val: setattr(inst, "height", val)
+        )
 
         self.add_widget(self.content_box)
 
@@ -1706,13 +1712,16 @@ class CollapsibleSection(BoxLayout):
                     color=get_color_from_hex("#FFFFFF"),
                     size_hint_y=None
                 )
+
+                # FIX: ensure label height updates from texture
                 lbl.bind(
                     width=lambda inst, val: setattr(inst, "text_size", (val, None)),
                     texture_size=lambda inst, val: setattr(inst, "height", val[1])
                 )
+
                 self.content_box.add_widget(lbl)
 
-            # Let minimum_height binding handle height
+            # Allow layout to update
             Clock.schedule_once(lambda dt: None, 0)
 
         else:
@@ -1724,6 +1733,14 @@ class CollapsibleSection(BoxLayout):
 
         return True
 
+def make_row_callback(row, target_screen):
+    def _on_touch_down(inst, touch):
+        if row.collide_point(*touch.pos):
+            App.get_running_app().nav.go(target_screen)
+            return True
+        return False
+    return _on_touch_down
+
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
         super().__init__(
@@ -1734,9 +1751,6 @@ class CalculatorNavBar(BoxLayout):
             height=120,
             **kwargs
         )
-        
-        Window.bind(on_touch_down=self._close_if_outside)
-
 
         self.current = current
         self.dropdown_open = False
@@ -2011,12 +2025,9 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=(10, 60, 10, 10),
+            padding=(10, 10, 10, 10),
             spacing=10,
         )
-    
-        # Top spacer to push items down
-        panel.add_widget(Widget(size_hint_y=None, height=40))
     
         # Background
         with panel.canvas.before:
@@ -2028,10 +2039,10 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
     
-        # Position panel directly under the navbar
-        panel_x = self.current_btn.x
-        panel_y = self.y - panel.height
-        panel.pos = (panel_x, panel_y)
+        # Position panel just under the navbar background
+        btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
+        panel_y = btn_y - panel.height - panel.padding[1] - self.padding[1]
+        panel.pos = (btn_x, panel_y)
     
         # Add menu items
         for label, screen_name in self.screens:
@@ -2060,15 +2071,12 @@ class CalculatorNavBar(BoxLayout):
             row.add_widget(icon)
             row.add_widget(lbl)
     
-            row.bind(
-                on_touch_down=lambda inst, touch, s=screen_name:
-                    App.get_running_app().nav.go(s) if inst.collide_point(*touch.pos) else None
-            )
+            row.bind(on_touch_down=make_row_callback(row, screen_name))
     
             panel.add_widget(row)
     
         self.dropdown.add_widget(panel)
-        self.parent.add_widget(self.dropdown)
+        App.get_running_app().root.add_widget(self.dropdown)
     
     
     def close_dropdown(self):
@@ -2085,12 +2093,6 @@ class CalculatorNavBar(BoxLayout):
             self.dropdown.parent.remove_widget(self.dropdown)
     
         self.dropdown = None
-    
-    
-    def _close_if_outside(self, window, touch):
-        if self.dropdown_open and self.dropdown:
-            if not self.dropdown.collide_point(*touch.pos):
-                self.close_dropdown()
 
 def make_yes_no_row(label_text, callback):
     row = BoxLayout(
