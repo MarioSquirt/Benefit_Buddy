@@ -2025,7 +2025,7 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=(10, 15, 10, 10),
+            padding=(10, 40, 10, 10),
             spacing=10,
         )
     
