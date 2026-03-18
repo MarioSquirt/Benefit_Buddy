@@ -1746,7 +1746,7 @@ class CalculatorNavBar(BoxLayout):
         super().__init__(
             orientation="horizontal",
             spacing=20,
-            padding=(10, 6),
+            padding=(10, 10),
             size_hint_y=None,
             height=80,
             **kwargs
