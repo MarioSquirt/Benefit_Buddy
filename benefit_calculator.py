@@ -2041,7 +2041,7 @@ class CalculatorNavBar(BoxLayout):
     
         # Position panel just under the navbar background
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        panel_y = btn_y - panel.height - 10
+        panel_y = btn_y - panel.height - 8
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
