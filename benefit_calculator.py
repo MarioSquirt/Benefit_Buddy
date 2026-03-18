@@ -2024,7 +2024,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="vertical",
             size_hint=(None, None),
             width=300,
-            height=400,
+            height=500,
             padding=(10, 10, 10, 10),
             spacing=10,
         )
