@@ -1866,7 +1866,7 @@ class CalculatorNavBar(BoxLayout):
             padding=(0, 0),
         )
         btn.size_hint_y = None
-        btn.height = 80
+        btn.height = 60
     
         img = Image(
             source=icon,
@@ -1883,7 +1883,7 @@ class CalculatorNavBar(BoxLayout):
             valign="middle",
             color=get_color_from_hex("#005EA5"),
             size_hint=(1, None),
-            height=80,
+            height=60,
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
     
@@ -1928,7 +1928,7 @@ class CalculatorNavBar(BoxLayout):
             padding=(0, 0),
         )
         btn.size_hint_y = None
-        btn.height = 80
+        btn.height = 60
     
         img = Image(
             source=icon,
@@ -1945,7 +1945,7 @@ class CalculatorNavBar(BoxLayout):
             valign="middle",
             color=get_color_from_hex("#005EA5"),
             size_hint=(1, None),
-            height=80,
+            height=60,
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
     
