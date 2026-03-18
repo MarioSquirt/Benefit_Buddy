@@ -2025,9 +2025,11 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(None, None),
             width=300,
             height=400,
-            padding=(10, 20, 10, 10),
+            padding=(10, 10, 10, 10),
             spacing=10,
         )
+        # Add spacer to push content down
+        panel.add_widget(Widget(size_hint_y=None, height=40))
     
         # Background
         with panel.canvas.before:
@@ -2041,7 +2043,7 @@ class CalculatorNavBar(BoxLayout):
     
         # Position panel just under the navbar background
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        panel_y = btn_y - panel.height - 20
+        panel_y = btn_y - panel.height - 10
         panel.pos = (btn_x, panel_y)
     
         # Add menu items
