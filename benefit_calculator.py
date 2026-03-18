@@ -5924,27 +5924,38 @@ class NavigationManager:
     # ---------------------------------------------------------
     def go(self, name):
         print("DEBUG: go() called with:", name)
-
+    
         if not name:
             print("ERROR: NavigationManager.go() received invalid screen name:", name)
             return
-
+    
+        # ---------------------------------------------------------
+        # SAVE STATE OF CURRENT SCREEN BEFORE SWITCHING
+        # ---------------------------------------------------------
+        current = self.sm.current
+        if current:
+            screen = self.get(current)
+            if screen and hasattr(screen, "save_state"):
+                try:
+                    screen.save_state()
+                except Exception as e:
+                    print("ERROR in save_state():", e)
+    
         # ---------------------------------------------------------
         # USE PRELOADED SCREEN IF AVAILABLE
         # ---------------------------------------------------------
         if name in self.preloaded:
             new = self.preloaded[name]
-
+    
         else:
-            # Dynamically create screen only if not preloaded
             if name not in self.loaded:
                 self.loaded[name] = ScreenFactory.create(name)
                 self.sm.add_widget(self.loaded[name])
             new = self.loaded[name]
-
+    
         # Switch to the screen
         self.sm.current = name
-
+    
         # Load state if needed
         if hasattr(new, "load_state"):
             try:
