@@ -2028,6 +2028,7 @@ class CalculatorNavBar(BoxLayout):
             padding=(10, 20, 10, 10),
             spacing=10,
         )
+        panel.add_widget(Widget(size_hint_y=None, height=20))
     
         # Background
         with panel.canvas.before:
