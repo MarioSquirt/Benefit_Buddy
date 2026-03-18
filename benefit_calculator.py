@@ -1854,9 +1854,19 @@ class CalculatorNavBar(BoxLayout):
         return box
 
     # =====================================================================
-    # BUTTON FACTORIES — ALL VERTICALLY CENTERED
+    # BUTTON FACTORIES — ALL VERTICALLY CENTERED + SAFE TOUCH HANDLING
     # =====================================================================
-
+    
+    def _bind_press(self, widget, callback):
+        """Bind a safe on_touch_down handler that prevents event bubbling."""
+        def handler(inst, touch):
+            if widget.collide_point(*touch.pos):
+                callback(widget)
+                return True   # STOP PROPAGATION
+            return False
+        widget.bind(on_touch_down=handler)
+    
+    
     def make_nav_button(self, label, icon, on_press):
         btn = BoxLayout(
             orientation="horizontal",
@@ -1890,16 +1900,15 @@ class CalculatorNavBar(BoxLayout):
         btn.add_widget(self._center_icon(img))
         btn.add_widget(lbl)
     
-        btn.bind(
-            on_touch_down=lambda inst, touch:
-                on_press(inst) if inst.collide_point(*touch.pos) else None
-        )
+        # SAFE TOUCH HANDLER
+        self._bind_press(btn, on_press)
     
         return btn
-
+    
+    
     def make_text_button(self, label, enabled, on_press):
         color = get_color_from_hex("#005EA5") if enabled else (0.3, 0.3, 0.3, 1)
-
+    
         lbl = SafeLabel(
             text=label,
             font_size=18,
@@ -1910,15 +1919,14 @@ class CalculatorNavBar(BoxLayout):
             size=(140, 60),
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
-
+    
         if enabled:
-            lbl.bind(
-                on_touch_down=lambda inst, touch:
-                    on_press(inst) if inst.collide_point(*touch.pos) else None
-            )
-
+            # SAFE TOUCH HANDLER
+            self._bind_press(lbl, on_press)
+    
         return lbl
-
+    
+    
     def make_current_button(self, label, icon, on_press):
         btn = BoxLayout(
             orientation="horizontal",
@@ -1962,10 +1970,8 @@ class CalculatorNavBar(BoxLayout):
         btn.add_widget(lbl)
         btn.add_widget(self._center_icon(chevron))
     
-        btn.bind(
-            on_touch_down=lambda inst, touch:
-                on_press(inst) if inst.collide_point(*touch.pos) else None
-        )
+        # SAFE TOUCH HANDLER
+        self._bind_press(btn, on_press)
     
         return btn
 
