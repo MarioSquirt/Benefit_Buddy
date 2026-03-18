@@ -2076,7 +2076,8 @@ class CalculatorNavBar(BoxLayout):
             panel.add_widget(row)
     
         self.dropdown.add_widget(panel)
-        App.get_running_app().root.add_widget(self.dropdown)
+        current_screen = App.get_running_app().root.current_screen
+        current_screen.add_widget(self.dropdown)
     
     
     def close_dropdown(self):
@@ -2090,7 +2091,9 @@ class CalculatorNavBar(BoxLayout):
             self.current_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
     
         if self.dropdown and self.dropdown.parent:
-            self.dropdown.parent.remove_widget(self.dropdown)
+            current_screen = App.get_running_app().root.current_screen
+            if self.dropdown and self.dropdown.parent:
+                current_screen.remove_widget(self.dropdown)
     
         self.dropdown = None
 
