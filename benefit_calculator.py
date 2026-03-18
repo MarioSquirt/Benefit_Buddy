@@ -4764,6 +4764,7 @@ class CalculatorFinalScreen(BaseScreen):
 
         self.summary_widgets = {}
         self.calculate_scroll = None
+        self.summary_layout = None  # <-- store the layout explicitly
 
         self.build_ui()
 
@@ -4778,17 +4779,22 @@ class CalculatorFinalScreen(BaseScreen):
         outer = BoxLayout(orientation="vertical", spacing=0, padding=0)
 
         # Scroll area
-        self.calculate_scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+        self.calculate_scroll = ScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True
+        )
 
-        summary_layout = BoxLayout(
+        # Store as an attribute so we don't rely on children[0]
+        self.summary_layout = BoxLayout(
             orientation="vertical",
             spacing=30,
             padding=20,
             size_hint=(1, None)
         )
-        summary_layout.bind(minimum_height=summary_layout.setter("height"))
+        self.summary_layout.bind(minimum_height=self.summary_layout.setter("height"))
 
-        summary_layout.add_widget(
+        self.summary_layout.add_widget(
             wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
 
@@ -4805,9 +4811,12 @@ class CalculatorFinalScreen(BaseScreen):
             width=lambda inst, val: setattr(inst, "text_size", (val, None)),
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
-        summary_layout.add_widget(self.summary_widgets["label"])
+        self.summary_layout.add_widget(self.summary_widgets["label"])
 
-        self.calculate_scroll.add_widget(summary_layout)
+        # Ensure scrollview has ONLY this layout as its child
+        self.calculate_scroll.clear_widgets()
+        self.calculate_scroll.add_widget(self.summary_layout)
+
         outer.add_widget(self.calculate_scroll)
 
         # Bottom button bar
@@ -4861,7 +4870,6 @@ class CalculatorFinalScreen(BaseScreen):
             return
 
         print("CALCULATION RESULT:", result)
-            
         print("Calling update_summary() with state:", self.calculator_state.__dict__)
 
         try:
@@ -4870,6 +4878,7 @@ class CalculatorFinalScreen(BaseScreen):
             self.summary_widgets["label"].text = f"Error updating summary: {str(e)}"
             return
 
+        # Scroll to top after layout updates
         Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
     # ---------------------------------------------------------
@@ -4880,34 +4889,37 @@ class CalculatorFinalScreen(BaseScreen):
         for key, value in self.calculator_state.__dict__.items():
             print(f"{key}: {value}")
         print("===== END SUMMARY DEBUG =====\n")
-    
-        # MUST come before any use of d
+
         d = self.calculator_state.__dict__
-    
+
         print("SUMMARY EXPECTED FIELDS:")
         print("claimant_name:", d.get("claimant_name"))
         print("income:", d.get("income"))
         print("housing_type:", d.get("housing_type"))
         print("children:", d.get("children"))
         print("calculation_result:", d.get("calculation_result"))
-    
-        summary_layout = self.calculate_scroll.children[0]
-        summary_layout.clear_widgets()
-    
-        summary_layout.add_widget(
+
+        # Work directly on the stored layout, not children[0]
+        if not self.summary_layout:
+            print("ERROR: summary_layout is None")
+            return
+
+        self.summary_layout.clear_widgets()
+
+        self.summary_layout.add_widget(
             wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
-    
+
         def add_section(title, lines):
             section = CollapsibleSection(title, lines)
-    
+
             # Ensure all labels inside the collapsible align identically
             for child in section.content.children:
                 if isinstance(child, SafeLabel):
                     child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-    
-            summary_layout.add_widget(section)
-    
+
+            self.summary_layout.add_widget(section)
+
         # Claimant
         add_section("Claimant Details", [
             f"Claimant Name: {d.get('claimant_name')}",
@@ -4916,14 +4928,14 @@ class CalculatorFinalScreen(BaseScreen):
             f"Partner DOB: {d.get('partner_dob')}",
             f"Relationship: {d.get('relationship')}",
         ])
-    
+
         # Finances
         add_section("Finances", [
             f"Income: {fmt_money(d.get('income'))}",
             f"Savings: {fmt_money(d.get('savings'))}",
             f"Debts: {fmt_money(d.get('debts'))}",
         ])
-    
+
         # Housing
         add_section("Housing", [
             f"Housing Type: {d.get('housing_type')}",
@@ -4937,14 +4949,14 @@ class CalculatorFinalScreen(BaseScreen):
             f"BRMA: {d.get('brma')}",
             f"Manual BRMA Mode: {d.get('manual_location')}",
         ])
-    
+
         # Service Charges
         charges = d.get("service_charges", {})
         if charges:
             add_section("Service Charges (Social Rent)", [
                 f"{k.replace('_', ' ').title()}: {fmt_money(v)}" for k, v in charges.items()
             ])
-    
+
         # Children
         child_lines = [f"Number of Children: {len(d.get('children', []))}"]
         for i, child in enumerate(d.get("children", []), start=1):
@@ -4961,14 +4973,14 @@ class CalculatorFinalScreen(BaseScreen):
                 f"  Non‑consensual Conception: {child.get('non_consensual')}",
             ])
         add_section("Children", child_lines)
-    
+
         # Additional Elements
         add_section("Additional Elements", [
             f"Carer: {d.get('carer')}",
             f"Disability: {d.get('disability')}",
             f"Childcare Costs: {fmt_money(d.get('childcare'))}",
         ])
-    
+
         # SAR Exemptions
         sar = d.get("sar_exemptions", {})
         add_section("SAR Exemptions", [
@@ -4984,6 +4996,14 @@ class CalculatorFinalScreen(BaseScreen):
             f"Modern Slavery Victim: {sar.get('modern_slavery')}",
             f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
         ])
+
+        # Force layout refresh so ScrollView updates correctly
+        def refresh_scroll(*args):
+            self.summary_layout.do_layout()
+            self.calculate_scroll.do_layout()
+            self.calculate_scroll.scroll_y = 1.0
+
+        Clock.schedule_once(refresh_scroll, 0)
 
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
