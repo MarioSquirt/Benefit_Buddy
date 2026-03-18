@@ -1748,7 +1748,7 @@ class CalculatorNavBar(BoxLayout):
             spacing=20,
             padding=(12, 8),
             size_hint_y=None,
-            height=70,
+            height=80,
             **kwargs
         )
 
@@ -1862,7 +1862,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=8,
             size_hint=(None, None),
-            size=(160, 80),
+            size=(160, 60),
             padding=(0, 0),
         )
         btn.size_hint_y = None
@@ -1907,7 +1907,7 @@ class CalculatorNavBar(BoxLayout):
             valign="middle",
             color=color,
             size_hint=(None, None),
-            size=(140, 80),
+            size=(140, 60),
         )
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
@@ -1924,7 +1924,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=8,
             size_hint=(None, None),
-            size=(300, 80),
+            size=(300, 60),
             padding=(0, 0),
         )
         btn.size_hint_y = None
