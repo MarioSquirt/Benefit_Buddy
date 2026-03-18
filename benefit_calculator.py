@@ -4885,19 +4885,13 @@ class CalculatorFinalScreen(BaseScreen):
     # SUMMARY REBUILD
     # ---------------------------------------------------------
     def update_summary(self):
+        print("SUMMARY SCREEN INSTANCE:", self)
         print("\n===== SUMMARY DEBUG =====")
         for key, value in self.calculator_state.__dict__.items():
             print(f"{key}: {value}")
         print("===== END SUMMARY DEBUG =====\n")
 
         d = self.calculator_state.__dict__
-
-        print("SUMMARY EXPECTED FIELDS:")
-        print("claimant_name:", d.get("claimant_name"))
-        print("income:", d.get("income"))
-        print("housing_type:", d.get("housing_type"))
-        print("children:", d.get("children"))
-        print("calculation_result:", d.get("calculation_result"))
 
         # Work directly on the stored layout, not children[0]
         if not self.summary_layout:
@@ -4918,6 +4912,11 @@ class CalculatorFinalScreen(BaseScreen):
                 if isinstance(child, SafeLabel):
                     child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
 
+            # Force section to have a real height
+            section.size_hint_y = None
+            section.height = section.minimum_height
+            section.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
+            
             self.summary_layout.add_widget(section)
 
         # Claimant
