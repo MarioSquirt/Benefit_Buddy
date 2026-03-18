@@ -5863,10 +5863,10 @@ class NavigationManager:
     def __init__(self, screen_manager):
         self.sm = screen_manager
 
-        # Screens created during preload
+        # Screens created during preload (persistent)
         self.preloaded = {}
 
-        # Screens created during navigation
+        # Screens created dynamically (non-preloaded)
         self.loaded = {}
 
         # ---------------------------------------------------------
@@ -5900,17 +5900,23 @@ class NavigationManager:
         total = len(self.screen_factories)
         for i, (name, factory) in enumerate(self.screen_factories.items()):
             if name not in self.preloaded:
-                self.preloaded[name] = factory
+                # Create the screen instance ONCE
+                screen = factory()
+                self.preloaded[name] = screen
+
+                # Add it to the ScreenManager immediately
+                self.sm.add_widget(screen)
+
             progress_callback(0.1 + (i + 1) / total * 0.9)
 
     # ---------------------------------------------------------
     # GET SCREEN (preloaded or loaded)
     # ---------------------------------------------------------
     def get(self, name):
-        if name in self.loaded:
-            return self.loaded[name]
         if name in self.preloaded:
             return self.preloaded[name]
+        if name in self.loaded:
+            return self.loaded[name]
         return None
 
     # ---------------------------------------------------------
@@ -5924,55 +5930,27 @@ class NavigationManager:
             return
 
         # ---------------------------------------------------------
-        # DESTROY CURRENT SCREEN (only if dynamically created)
-        # ---------------------------------------------------------
-        current = self.sm.current
-        if current and current in self.loaded:
-            old = self.loaded[current]
-
-            if hasattr(old, "save_state"):
-                try:
-                    old.save_state()
-                except Exception as e:
-                    print("ERROR in save_state():", e)
-
-            try:
-                old.on_pre_leave()
-            except Exception as e:
-                print("ERROR in on_pre_leave():", e)
-
-            try:
-                old.destroy()
-            except Exception as e:
-                print("ERROR in destroy():", e)
-
-            self.sm.remove_widget(old)
-            del self.loaded[current]
-
-        # ---------------------------------------------------------
-        # CREATE NEW SCREEN
+        # USE PRELOADED SCREEN IF AVAILABLE
         # ---------------------------------------------------------
         if name in self.preloaded:
-            factory = self.preloaded[name]
-            new = factory()
-            self.loaded[name] = new
-            self.sm.add_widget(new)
-        else:
-            new = ScreenFactory.create(name)
-            self.loaded[name] = new
-            self.sm.add_widget(new)
+            new = self.preloaded[name]
 
+        else:
+            # Dynamically create screen only if not preloaded
+            if name not in self.loaded:
+                self.loaded[name] = ScreenFactory.create(name)
+                self.sm.add_widget(self.loaded[name])
+            new = self.loaded[name]
+
+        # Switch to the screen
         self.sm.current = name
 
-        # ---------------------------------------------------------
-        # LOAD STATE
-        # ---------------------------------------------------------
+        # Load state if needed
         if hasattr(new, "load_state"):
             try:
                 new.load_state()
             except Exception as e:
                 print("ERROR in load_state():", e)
-
 
 # Define the main application class
 class BenefitBuddy(App):
