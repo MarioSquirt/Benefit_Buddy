@@ -5051,11 +5051,11 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Claimant
         add_section("Claimant Details", [
-            f"Claimant Name: {title_case(d.get('claimant_name')}",
+            f"Claimant Name: {title_case(d.get('claimant_name'))}",
             f"Claimant DOB: {d.get('claimant_dob')}",
-            f"Partner Name: {title_case(d.get('partner_name')}",
+            f"Partner Name: {title_case(d.get('partner_name'))}",
             f"Partner DOB: {d.get('partner_dob')}",
-            f"Relationship: {title_case(d.get('relationship')}",
+            f"Relationship: {title_case(d.get('relationship'))}",
         ])
 
         # Finances
@@ -5067,16 +5067,16 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Housing
         add_section("Housing", [
-            f"Housing Type: {title_case(d.get('housing_type')}",
-            f"Tenancy Type: {title_case(d.get('tenancy_type')}",
+            f"Housing Type: {title_case(d.get('housing_type'))}",
+            f"Tenancy Type: {title_case(d.get('tenancy_type'))}",
             f"Rent: {fmt_money(d.get('rent'))}",
             f"Mortgage: {fmt_money(d.get('mortgage'))}",
             f"Shared Accommodation Charge: {fmt_money(d.get('shared'))}",
             f"Non-dependants: {d.get('non_dependants')}",
             f"Postcode: {d.get('postcode')}",
-            f"Location: {title_case(d.get('location')}",
+            f"Location: {title_case(d.get('location'))}",
             f"BRMA: {d.get('brma')}",
-            f"Manual BRMA Mode: {title_case(d.get('manual_location')}",
+            f"Manual BRMA Mode: {title_case(d.get('manual_location'))}",
         ])
 
         # Service Charges
@@ -5093,7 +5093,7 @@ class CalculatorFinalScreen(BaseScreen):
                 f"Child {i}:",
                 f"  Name: {title_case(child.get('name'))}",
                 f"  DOB: {child.get('dob')}",
-                f"  Sex: {title_case(child.get('gender')}",
+                f"  Sex: {title_case(child.get('gender'))}",
                 f"  Adopted: {child.get('adopted')}",
                 f"  Kinship Care: {child.get('kinship_care')}",
                 f"  Multiple Birth: {child.get('multiple_birth')}",
@@ -5105,8 +5105,8 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Additional Elements
         add_section("Additional Elements", [
-            f"Carer: {title_case(d.get('carer')}",
-            f"Disability: {title_case(d.get('disability')}",
+            f"Carer: {title_case(d.get('carer'))}",
+            f"Disability: {title_case(d.get('disability'))}",
             f"Childcare Costs: {fmt_money(d.get('childcare'))}",
         ])
 
