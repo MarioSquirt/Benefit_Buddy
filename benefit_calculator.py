@@ -1628,10 +1628,6 @@ class CollapsibleSection(BoxLayout):
             height=64,
             padding=(10, 0)
         )
-        
-        self.header.bind(
-            minimum_height=self.header.setter("height")
-        )
 
         with self.header.canvas.before:
             Color(1, 0.866, 0, 1)
