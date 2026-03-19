@@ -4980,6 +4980,12 @@ class CalculatorFinalScreen(BaseScreen):
             self.calculate_scroll.do_layout()
             self.calculate_scroll.scroll_y = 1.0
 
+        print("SUMMARY LAYOUT DEBUG:")
+        print("  children:", len(self.summary_layout.children))
+        print("  height:", self.summary_layout.height)
+        for i, child in enumerate(self.summary_layout.children):
+            print(f"  child[{i}]:", type(child), "height=", getattr(child, "height", None))
+
         Clock.schedule_once(refresh_scroll, 0)
 
 class CalculationBreakdownScreen(BaseScreen):
