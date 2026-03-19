@@ -1493,20 +1493,21 @@ class GovUkDropdown(BoxLayout):
 
         # Yellow background
         with self.header.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
+            self._header_color = Color(*get_color_from_hex("#FFDD00"))
             self._header_bg = Rectangle(size=self.header.size, pos=self.header.pos)
-
+        
         self.header.bind(
             size=lambda inst, val: setattr(self._header_bg, "size", val),
             pos=lambda inst, val: setattr(self._header_bg, "pos", val),
         )
-
+        
         # Touch highlight
         def on_press(*args):
-            self._header_bg.rgb = (0.95, 0.82, 0)
+            self._header_color.rgb = (0.95, 0.82, 0)
+        
         def on_release(*args):
-            self._header_bg.rgb = get_color_from_hex("#FFDD00")[:3]
-
+            self._header_color.rgb = get_color_from_hex("#FFDD00")[:3]
+        
         self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
         self.header.bind(on_touch_up=lambda inst, touch: on_release())
 
@@ -1720,7 +1721,7 @@ class CollapsibleSection(BoxLayout):
 
         # Background
         with self.header.canvas.before:
-            Color(1, 0.866, 0, 1)
+            self._header_color = Color(*get_color_from_hex("#FFDD00"))
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
 
         self.header.bind(
@@ -1730,9 +1731,10 @@ class CollapsibleSection(BoxLayout):
 
         # Touch highlight (darken on press)
         def on_press(*args):
-            self._header_rect.rgb = (0.95, 0.82, 0)
+            self._header_color.rgb = (0.95, 0.82, 0)
+        
         def on_release(*args):
-            self._header_rect.rgb = (1, 0.866, 0)
+            self._header_color.rgb = (1, 0.866, 0)
 
         self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
         self.header.bind(on_touch_up=lambda inst, touch: on_release())
