@@ -1481,7 +1481,7 @@ class GovUkDropdown(BoxLayout):
         self.pos_hint = {"center_x": 0.5}
 
         # =========================================================
-        # HEADER
+        # HEADER (yellow)
         # =========================================================
         self.header = BoxLayout(
             orientation="horizontal",
@@ -1522,22 +1522,13 @@ class GovUkDropdown(BoxLayout):
         )
         self.label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
 
-        # Chevron
+        # Chevron (no animation now, just flip instantly)
         self.chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(20, 20),
             pos_hint={"center_y": 0.5}
         )
-        self.chevron.rotation = 0
-
-        with self.chevron.canvas.before:
-            PushMatrix()
-            self.chevron_rot = Rotate(origin=self.chevron.center, angle=0)
-        with self.chevron.canvas.after:
-            PopMatrix()
-
-        self.chevron.bind(center=lambda inst, val: setattr(self.chevron_rot, "origin", val))
 
         self.header.add_widget(self.label)
         self.header.add_widget(self.chevron)
@@ -1555,21 +1546,13 @@ class GovUkDropdown(BoxLayout):
             opacity=0
         )
 
-        # Canvas anchoring: panel always drawn BELOW header
         with self.dropdown_panel.canvas.before:
-            PushMatrix()
-            self._panel_translate = Translate(0, 0, 0)
-
             Color(*get_color_from_hex("#FFDD00"))
             self._border = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
 
             Color(1, 1, 1, 1)
             self._panel_bg = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
 
-        with self.dropdown_panel.canvas.after:
-            PopMatrix()
-
-        # Update border + background
         def update_panel(*args):
             self._border.size = (self.dropdown_panel.width, self.dropdown_panel.height)
             self._border.pos = self.dropdown_panel.pos
@@ -1578,13 +1561,6 @@ class GovUkDropdown(BoxLayout):
             self._panel_bg.pos = (self.dropdown_panel.x + 2, self.dropdown_panel.y + 2)
 
         self.dropdown_panel.bind(size=update_panel, pos=update_panel)
-
-        # Anchor panel visually under header
-        def update_translate(*args):
-            self._panel_translate.y = -self.dropdown_panel.height
-
-        self.dropdown_panel.bind(height=update_translate)
-        self.header.bind(y=update_translate)
 
         # Add options
         for v in self.values:
@@ -1608,11 +1584,12 @@ class GovUkDropdown(BoxLayout):
 
         self.add_widget(self.dropdown_panel)
 
-        # Ensure dropdown grows downward
+        # Ensure the whole dropdown grows downward
         self.size_hint_y = None
         self.bind(minimum_height=self.setter("height"))
         self.height = self.minimum_height
 
+        # Open dropdown on touch
         self.header.bind(on_touch_down=self._on_header_touch)
 
     # =========================================================
@@ -1628,7 +1605,7 @@ class GovUkDropdown(BoxLayout):
         self.label.text = value
 
     # =========================================================
-    # OPEN/CLOSE LOGIC
+    # OPEN/CLOSE LOGIC (no Animation)
     # =========================================================
     def _on_header_touch(self, instance, touch):
         if self.header.collide_point(*touch.pos):
@@ -1640,28 +1617,27 @@ class GovUkDropdown(BoxLayout):
         self.is_open = not self.is_open
 
         if self.is_open:
-            Animation(angle=180, d=0.25, t="out_quad").start(self.chevron_rot)
+            # Chevron down → up (swap icon or rotate instantly if you prefer)
+            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png" \
+                if os.path.exists("images/icons/ChevronUp-icon/ChevronUp-16px.png") \
+                else "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
             panel_height = len(self.values) * 50 + 4
             section_height = self.header.height + panel_height
 
-            self.height = self.header.height
-
             self.dropdown_panel.opacity = 1
-            self.dropdown_panel.height = 0
+            self.dropdown_panel.height = panel_height
 
-            Animation(height=panel_height, opacity=1, d=0.25, t="out_quad").start(self.dropdown_panel)
-            Animation(height=section_height, d=0.25, t="out_quad").start(self)
-
-            for child in self.dropdown_panel.children:
-                child.opacity = 0
-                Animation(opacity=1, d=0.15, t="out_quad").start(child)
+            self.height = section_height
 
         else:
-            Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
+            # Chevron up → down
+            self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
-            Animation(height=0, opacity=0, d=0.25, t="out_quad").start(self.dropdown_panel)
-            Animation(height=self.header.height, d=0.25, t="out_quad").start(self)
+            self.dropdown_panel.opacity = 0
+            self.dropdown_panel.height = 0
+
+            self.height = self.header.height
 
     # =========================================================
     # SELECT
@@ -1765,23 +1741,12 @@ class CollapsibleSection(BoxLayout):
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
-        # Chevron
+        # Chevron (instant flip, no animation)
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(24, 24),
             pos_hint={"center_y": 0.5}
-        )
-        self.header_chevron.rotation = 0
-
-        with self.header_chevron.canvas.before:
-            PushMatrix()
-            self.chevron_rot = Rotate(origin=self.header_chevron.center, angle=0)
-        with self.header_chevron.canvas.after:
-            PopMatrix()
-
-        self.header_chevron.bind(
-            center=lambda inst, val: setattr(self.chevron_rot, "origin", val)
         )
 
         self.header.add_widget(self.header_label)
@@ -1821,7 +1786,6 @@ class CollapsibleSection(BoxLayout):
         with self.content_box.canvas.after:
             PopMatrix()
 
-        # Update translation so content stays glued under header
         def update_translate(*args):
             self._content_translate.y = -self.content_box.height
 
@@ -1842,21 +1806,21 @@ class CollapsibleSection(BoxLayout):
     # =========================================================
     def _on_header_touch(self, instance, touch):
         if self.header.collide_point(*touch.pos):
-            self.toggle(self.header, touch)
+            self.toggle()
             return True
         return False
 
     # =========================================================
-    # TOGGLE (ANIMATED)
+    # TOGGLE (NO ANIMATION)
     # =========================================================
-    def toggle(self, instance, touch=None):
-        if touch and not self.header.collide_point(*touch.pos):
-            return False
-
+    def toggle(self):
         self.is_open = not self.is_open
 
         if self.is_open:
-            Animation(angle=180, d=0.25, t="out_quad").start(self.chevron_rot)
+            # Flip chevron instantly
+            self.header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png" \
+                if os.path.exists("images/icons/ChevronUp-icon/ChevronUp-16px.png") \
+                else "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
             # Build content
             self.content_box.clear_widgets()
@@ -1867,36 +1831,31 @@ class CollapsibleSection(BoxLayout):
                     halign="left",
                     valign="middle",
                     color=get_color_from_hex("#FFFFFF"),
-                    size_hint_y=None,
-                    opacity=0
+                    size_hint_y=None
                 )
                 lbl.bind(
                     width=lambda inst, val: setattr(inst, "text_size", (val, None)),
                     texture_size=lambda inst, val: setattr(inst, "height", val[1])
                 )
                 self.content_box.add_widget(lbl)
-                Animation(opacity=1, d=0.15, t="out_quad").start(lbl)
 
+            # Expand instantly
             content_height = self.content_box.minimum_height
-            section_height = self.header.height + content_height
-
-            self.height = self.header.height
             self.content_box.opacity = 1
-            self.content_box.height = 0
+            self.content_box.height = content_height
 
-            Animation(height=content_height, d=0.25, t="out_quad").start(self.content_box)
-            Animation(height=section_height, d=0.25, t="out_quad").start(self)
+            self.height = self.header.height + content_height
 
         else:
-            Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
+            # Flip chevron instantly
+            self.header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
-            anim = Animation(height=0, opacity=0, d=0.25, t="out_quad")
-            anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
-            anim.start(self.content_box)
+            # Collapse instantly
+            self.content_box.opacity = 0
+            self.content_box.height = 0
+            self.content_box.clear_widgets()
 
-            Animation(height=self.header.height, d=0.25, t="out_quad").start(self)
-
-        return True
+            self.height = self.header.height
 
 def make_row_callback(row, target_screen):
     def _on_touch_down(inst, touch):
