@@ -4974,12 +4974,6 @@ class CalculatorFinalScreen(BaseScreen):
             f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
         ])
 
-        # Force layout refresh so ScrollView updates correctly
-        def refresh_scroll(*args):
-            self.summary_layout.do_layout()
-            self.calculate_scroll.do_layout()
-            self.calculate_scroll.scroll_y = 1.0
-
         print("SUMMARY LAYOUT DEBUG:")
         print("  children:", len(self.summary_layout.children))
         print("  height:", self.summary_layout.height)
