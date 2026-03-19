@@ -35,7 +35,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.togglebutton import ToggleButton
 
 # --- Kivy graphics/animation ---
-from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle, PushMatrix, PopMatrix, Rotate
+from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle, PushMatrix, PopMatrix, Rotate, Translate
 from kivy.animation import Animation
 
 # --- Project-specific ---
