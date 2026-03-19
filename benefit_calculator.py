@@ -35,7 +35,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.togglebutton import ToggleButton
 
 # --- Kivy graphics/animation ---
-from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle
+from kivy.graphics import Color, Ellipse, Line, RoundedRectangle, Rectangle, PushMatrix, PopMatrix, Rotate
 from kivy.animation import Animation
 
 # --- Project-specific ---
@@ -246,7 +246,7 @@ class CalculatorState:
         # -----------------------------
         # Claimant / Partner
         # -----------------------------
-        self.relationship = "single"
+        self.relationship = "Single"
         self.claimant_name = ""
         self.claimant_dob = ""
         self.partner_name = ""
@@ -366,7 +366,7 @@ class CalculatorEngine:
         # Standard allowance
         age = data.claimant_age
         partner_age = data.partner_age
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
 
         if is_single:
             if age < 25:
@@ -654,7 +654,7 @@ class CalculatorEngine:
         except:
             return 0.0
 
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
 
         # Determine claimant category
         if is_single:
@@ -666,7 +666,7 @@ class CalculatorEngine:
                 category = "joint_25plus"
 
         # Determine daily rate
-        if sanction_type == "high":
+        if sanction_type == "High":
             daily_rate = UC_RATES["sanctions"]["daily_100"][category]
         elif sanction_type in ("medium", "low"):
             daily_rate = UC_RATES["sanctions"]["daily_40"][category]
@@ -694,7 +694,7 @@ class CalculatorEngine:
 
         age = data.claimant_age
         partner_age = data.partner_age
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
 
         if age is None:
             raise ValueError("Claimant age missing — DOB must be entered before calculation.")
@@ -760,7 +760,7 @@ class CalculatorEngine:
         num_children = len(children)
 
         # Adults
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
         adults = 1 if is_single else 2
 
         bedrooms = 1  # for the claimant(s)
@@ -872,13 +872,13 @@ class CalculatorEngine:
         # -----------------------------
         # Owner‑occupier (mortgage)
         # -----------------------------
-        if housing_type == "own":
+        if housing_type == "Own":
             return float(data.mortgage or 0)
 
         # -----------------------------
         # Shared accommodation
         # -----------------------------
-        if housing_type == "shared accommodation":
+        if housing_type == "Shared Accommodation":
             return float(data.shared or 0)
 
         # -----------------------------
@@ -894,7 +894,7 @@ class CalculatorEngine:
         # -----------------------------
         # SOCIAL RENT
         # -----------------------------
-        if location.lower() in ["england", "scotland", "wales"] and data.tenancy_type == "social":
+        if location.lower() in ["england", "scotland", "wales"] and data.tenancy_type == "Social":
             eligible_services = self.calculate_eligible_service_charges(data)
             eligible_rent = float(data.rent or 0)
 
@@ -909,7 +909,7 @@ class CalculatorEngine:
 
         # Shared accommodation rule
         if bedrooms == 1 and data.single_under_35:
-            bedrooms = "shared"
+            bedrooms = "Shared"
 
         # Lookup LHA rate (provided by Housing screen)
         if not callable(data.lookup_lha_rate):
@@ -995,7 +995,7 @@ class CalculatorEngine:
         # Determine cap level
         # -----------------------------
         in_london = bool(data.in_london)
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
     
         if in_london:
             cap = UC_RATES["benefit_cap"]["london"]["single" if is_single else "couple_or_parent"]
@@ -1022,10 +1022,10 @@ class CalculatorEngine:
         # Relationship defaults
         # -----------------------------
         if not data.relationship:
-            data.relationship = "single"
+            data.relationship = "Single"
 
         if not data.tenancy_type:
-            data.tenancy_type = "private"
+            data.tenancy_type = "Private"
 
         # -----------------------------
         # Parse ages
@@ -1041,7 +1041,7 @@ class CalculatorEngine:
 
         age = parse_age(data.claimant_dob)
         partner_age = parse_age(data.partner_dob)
-        is_single = (data.relationship == "single")
+        is_single = (data.relationship == "Single")
 
         # Strict validation
         if age is None:
@@ -1067,7 +1067,7 @@ class CalculatorEngine:
             is_single and
             age is not None and age < 35 and
             num_children == 0 and
-            data.tenancy_type == "private" and
+            data.tenancy_type == "Private" and
             not self.is_sar_exempt(data)
         )
 
@@ -1459,74 +1459,125 @@ class IconRow(ButtonBehavior, BoxLayout):
         self.bg.pos = self.pos
         self.bg.size = self.size
 
+# ---------------------------------------------------------
+# DROPDOWN MENU
+# ---------------------------------------------------------
 class GovUkDropdown(BoxLayout):
     def __init__(self, text="Select", values=None, **kwargs):
         super().__init__(
-            orientation="horizontal",
-            spacing=10,
-            padding=(15, 10),
+            orientation="vertical",
+            spacing=0,
             size_hint=(None, None),
-            height=55,
             width=300,
             **kwargs
         )
 
-        # Store values
         self.values = values or []
+        self._text = text
+        self.is_open = False
 
-        # Centre the dropdown like the old spinner
+        # Center horizontally
         self.size_hint_x = None
         self.pos_hint = {"center_x": 0.5}
 
-        # Internal text property (for save/load)
-        self._text = text
+        # =========================================================
+        # HEADER (yellow)
+        # =========================================================
+        self.header = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
+            size_hint=(1, None),
+            height=55
+        )
 
-        # Background (GOV.UK yellow)
-        with self.canvas.before:
+        # Yellow background
+        with self.header.canvas.before:
             Color(*get_color_from_hex("#FFDD00"))
-            self._bg = Rectangle(size=self.size, pos=self.pos)
+            self._header_bg = Rectangle(size=self.header.size, pos=self.header.pos)
 
-        self.bind(size=lambda inst, val: setattr(self._bg, "size", val))
-        self.bind(pos=lambda inst, val: setattr(self._bg, "pos", val))
+        self.header.bind(
+            size=lambda inst, val: setattr(self._header_bg, "size", val),
+            pos=lambda inst, val: setattr(self._header_bg, "pos", val),
+        )
 
-        # Label (visible text)
+        # Touch highlight
+        def on_press(*args):
+            self._header_bg.rgb = (0.95, 0.82, 0)
+        def on_release(*args):
+            self._header_bg.rgb = get_color_from_hex("#FFDD00")[:3]
+
+        self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
+        self.header.bind(on_touch_up=lambda inst, touch: on_release())
+
+        # Label
         self.label = SafeLabel(
             text=text,
             font_size=18,
             color=get_color_from_hex("#005EA5"),
             halign="left",
-            valign="middle"
+            valign="middle",
+            size_hint=(1, None),
+            height=55
         )
-
-        # Proper text wrapping + centring
-        self.label.text_size = (self.width - 40, None)
         self.label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        self.bind(width=lambda inst, val: setattr(self.label, "text_size", (val - 40, None)))
 
         # Chevron
         self.chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(20, 20)
+            size=(20, 20),
+            pos_hint={"center_y": 0.5}
+        )
+        self.chevron.rotation = 0
+
+        # Rotation transform
+        with self.chevron.canvas.before:
+            PushMatrix()
+            self.chevron_rot = Rotate(origin=self.chevron.center, angle=0)
+        with self.chevron.canvas.after:
+            PopMatrix()
+
+        self.chevron.bind(center=lambda inst, val: setattr(self.chevron_rot, "origin", val))
+
+        self.header.add_widget(self.label)
+        self.header.add_widget(self.chevron)
+
+        self.add_widget(self.header)
+
+        # =========================================================
+        # DROPDOWN PANEL (white with 2px yellow border)
+        # =========================================================
+        self.dropdown_panel = BoxLayout(
+            orientation="vertical",
+            spacing=0,
+            padding=(0, 0),
+            size_hint_y=None,
+            height=0,
+            opacity=0
         )
 
-        self.add_widget(self.label)
-        self.add_widget(self.chevron)
+        with self.dropdown_panel.canvas.before:
+            # Border
+            Color(*get_color_from_hex("#FFDD00"))
+            self._border = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
 
-        # Dropdown panel
-        self.dropdown = DropDown(auto_width=False)
-        self.dropdown.width = self.width
-
-        with self.dropdown.canvas.before:
+            # Inner white background
             Color(1, 1, 1, 1)
-            self.dropdown._bg = Rectangle(size=self.dropdown.size, pos=self.dropdown.pos)
+            self._panel_bg = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
 
-        self.dropdown.bind(size=lambda inst, val: setattr(self.dropdown._bg, "size", val))
-        self.dropdown.bind(pos=lambda inst, val: setattr(self.dropdown._bg, "pos", val))
+        def update_panel(*args):
+            # Outer border
+            self._border.size = (self.dropdown_panel.width, self.dropdown_panel.height)
+            self._border.pos = self.dropdown_panel.pos
 
-        self.dropdown.bind(on_dismiss=self._on_dropdown_dismiss)
+            # Inner panel inset by 2px
+            self._panel_bg.size = (self.dropdown_panel.width - 4, self.dropdown_panel.height - 4)
+            self._panel_bg.pos = (self.dropdown_panel.x + 2, self.dropdown_panel.y + 2)
 
-        # Add dropdown items
+        self.dropdown_panel.bind(size=update_panel, pos=update_panel)
+
+        # Add options
         for v in self.values:
             btn = Button(
                 text=v,
@@ -1536,16 +1587,26 @@ class GovUkDropdown(BoxLayout):
                 background_color=get_color_from_hex("#FFFFFF"),
                 color=get_color_from_hex("#005EA5")
             )
+
+            # Touch highlight
+            def make_press(btn_ref):
+                return lambda *args: setattr(btn_ref, "background_color", (0.95, 0.95, 0.95, 1))
+            def make_release(btn_ref):
+                return lambda *args: setattr(btn_ref, "background_color", (1, 1, 1, 1))
+
+            btn.bind(on_press=make_press(btn), on_release=make_release(btn))
+
             btn.bind(on_release=lambda inst: self.select(inst.text))
-            self.dropdown.add_widget(btn)
+            self.dropdown_panel.add_widget(btn)
+
+        self.add_widget(self.dropdown_panel)
 
         # Open dropdown on touch
-        self.bind(on_touch_down=self.open_dropdown)
+        self.header.bind(on_touch_down=self._on_header_touch)
 
-    def _on_dropdown_dismiss(self, *args):
-        self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-
-    # Proper Kivy property for save/load
+    # =========================================================
+    # PROPERTY
+    # =========================================================
     @property
     def text(self):
         return self._text
@@ -1555,16 +1616,44 @@ class GovUkDropdown(BoxLayout):
         self._text = value
         self.label.text = value
 
-    def open_dropdown(self, instance, touch):
-        if self.collide_point(*touch.pos):
-            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-            self.dropdown.open(self)
+    # =========================================================
+    # OPEN/CLOSE LOGIC
+    # =========================================================
+    def _on_header_touch(self, instance, touch):
+        if self.header.collide_point(*touch.pos):
+            self.toggle()
             return True
         return False
 
+    def toggle(self):
+        self.is_open = not self.is_open
+
+        if self.is_open:
+            # Chevron rotate up
+            Animation(angle=180, d=0.25, t="out_quad").start(self.chevron_rot)
+
+            # Fade + slide open
+            target_height = len(self.values) * 50 + 4  # +4 for border inset
+            Animation(height=target_height, opacity=1, d=0.25, t="out_quad").start(self.dropdown_panel)
+
+            # Fade-in each option
+            for child in self.dropdown_panel.children:
+                child.opacity = 0
+                Animation(opacity=1, d=0.15, t="out_quad").start(child)
+
+        else:
+            # Chevron rotate down
+            Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
+
+            # Fade + slide closed
+            Animation(height=0, opacity=0, d=0.25, t="out_quad").start(self.dropdown_panel)
+
+    # =========================================================
+    # SELECT
+    # =========================================================
     def select(self, value):
-        self.text = value  # updates both internal + visible text
-        self.dropdown.dismiss()
+        self.text = value
+        self.toggle()
 
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
@@ -1613,7 +1702,7 @@ class PulsingGlow(Widget):
 # =========================================================
 class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
-        super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
+        super().__init__(orientation="vertical", spacing=0, size_hint_y=None, **kwargs)
 
         self.is_open = False
         self.content_lines = content_lines
@@ -1626,9 +1715,10 @@ class CollapsibleSection(BoxLayout):
             spacing=10,
             size_hint=(1, None),
             height=64,
-            padding=(10, 0)
+            padding=(15, 0)
         )
 
+        # Background
         with self.header.canvas.before:
             Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
@@ -1638,28 +1728,69 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
 
+        # Touch highlight (darken on press)
+        def on_press(*args):
+            self._header_rect.rgb = (0.95, 0.82, 0)
+        def on_release(*args):
+            self._header_rect.rgb = (1, 0.866, 0)
+
+        self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
+        self.header.bind(on_touch_up=lambda inst, touch: on_release())
+
+        # Label
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
-            color=get_color_from_hex("#003078"),
+            color=get_color_from_hex("#005EA5"),
             halign="left",
-            valign="middle"
+            valign="middle",
+            size_hint=(1, None),
+            height=64,
+            pos_hint={"center_y": 0.5}
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
+        # Chevron (rotating)
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(20, 20)
+            size=(24, 24),
+            pos_hint={"center_y": 0.5}
+        )
+        self.header_chevron.rotation = 0
+
+        # Rotation transform
+        with self.header_chevron.canvas.before:
+            PushMatrix()
+            self.chevron_rot = Rotate(origin=self.header_chevron.center, angle=0)
+        with self.header_chevron.canvas.after:
+            PopMatrix()
+
+        # Keep rotation origin centered
+        self.header_chevron.bind(
+            center=lambda inst, val: setattr(self.chevron_rot, "origin", val)
         )
 
+        # Add widgets
         self.header.add_widget(self.header_label)
         self.header.add_widget(self.header_chevron)
 
-        # Correct touch handler
+        # Touch handler
         self.header.bind(on_touch_down=self._on_header_touch)
 
         self.add_widget(self.header)
+
+        # =========================================================
+        # DIVIDER LINE (GOV.UK style)
+        # =========================================================
+        with self.canvas.after:
+            Color(0.85, 0.85, 0.85, 1)
+            self.divider = Rectangle(size=(self.width, 1), pos=(self.x, self.y))
+
+        self.bind(
+            pos=lambda inst, val: setattr(self.divider, "pos", (inst.x, inst.y)),
+            size=lambda inst, val: setattr(self.divider, "size", (inst.width, 1))
+        )
 
         # =========================================================
         # CONTENT BOX
@@ -1667,7 +1798,7 @@ class CollapsibleSection(BoxLayout):
         self.content_box = BoxLayout(
             orientation="vertical",
             spacing=5,
-            padding=(20, 0),
+            padding=(20, 10),
             size_hint_y=None,
             height=0,
             opacity=0
@@ -1679,7 +1810,7 @@ class CollapsibleSection(BoxLayout):
         self.add_widget(self.content_box)
 
         # =========================================================
-        # NOW bind section height (after children exist)
+        # SECTION HEIGHT BINDING
         # =========================================================
         self.bind(minimum_height=self.setter("height"))
         self.height = self.minimum_height
@@ -1694,19 +1825,21 @@ class CollapsibleSection(BoxLayout):
         return False
 
     # =========================================================
-    # TOGGLE
+    # TOGGLE (ANIMATED)
     # =========================================================
     def toggle(self, instance, touch=None):
+        # Only toggle when the header itself is touched
         if touch and not self.header.collide_point(*touch.pos):
             return False
 
         self.is_open = not self.is_open
 
         if self.is_open:
-            self.header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
-            self.content_box.opacity = 1
-            self.content_box.clear_widgets()
+            # Rotate chevron upward
+            Animation(angle=180, d=0.25, t="out_quad").start(self.chevron_rot)
 
+            # Build content
+            self.content_box.clear_widgets()
             for line in self.content_lines:
                 lbl = SafeLabel(
                     text=line,
@@ -1714,7 +1847,8 @@ class CollapsibleSection(BoxLayout):
                     halign="left",
                     valign="middle",
                     color=get_color_from_hex("#FFFFFF"),
-                    size_hint_y=None
+                    size_hint_y=None,
+                    opacity=0
                 )
                 lbl.bind(
                     width=lambda inst, val: setattr(inst, "text_size", (val, None)),
@@ -1722,13 +1856,27 @@ class CollapsibleSection(BoxLayout):
                 )
                 self.content_box.add_widget(lbl)
 
-            Clock.schedule_once(lambda dt: None, 0)
+                # Fade-in animation for each line
+                Animation(opacity=1, d=0.15, t="out_quad").start(lbl)
+
+            # Animate open
+            target_height = self.content_box.minimum_height
+            self.content_box.opacity = 1
+
+            Animation(height=target_height, d=0.25, t="out_quad").start(self)
+            Animation(height=target_height, d=0.25, t="out_quad").start(self.content_box)
 
         else:
-            self.header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-            self.content_box.opacity = 0
-            self.content_box.height = 0
-            self.content_box.clear_widgets()
+            # Rotate chevron downward
+            Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
+
+            # Animate closed
+            anim = Animation(height=0, opacity=0, d=0.25, t="out_quad")
+            anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
+            anim.start(self.content_box)
+
+            # Animate section height back to header only
+            Animation(height=self.header.height, d=0.25, t="out_quad").start(self)
 
         return True
 
@@ -2168,6 +2316,14 @@ def fmt_money(value):
         return f"£{float(value):,.2f}"
     except:
         return "£0.00"
+
+# ---------------------------------------------------------
+# CAPITALISE
+# ---------------------------------------------------------
+def title_case(value):
+    if not value:
+        return ""
+    return str(value).title()
     
 class BaseScreen(Screen):
     # ---------------------------------------------------------
@@ -2423,18 +2579,18 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
     
         # Relationship
         if w["single_checkbox"].active:
-            data.relationship = "single"
+            data.relationship = "Single"
         elif w["couple_checkbox"].active:
-            data.relationship = "couple"
+            data.relationship = "Couple"
         else:
-            data.relationship = "single"  # safe default
+            data.relationship = "Single"  # safe default
     
         # Claimant details
         data.claimant_name = w["name"].text.strip()
         data.claimant_dob = w["dob"].text.strip()
     
         # Partner details (only if couple)
-        if data.relationship == "couple":
+        if data.relationship == "Couple":
             data.partner_name = w["partner_name"].text.strip()
             data.partner_dob = w["partner_dob"].text.strip()
         else:
@@ -2450,8 +2606,8 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
     
         # Relationship
         rel = getattr(data, "relationship", "single")
-        w["single_checkbox"].active = (rel == "single")
-        w["couple_checkbox"].active = (rel == "couple")
+        w["single_checkbox"].active = (rel == "Single")
+        w["couple_checkbox"].active = (rel == "Couple")
     
         # Claimant fields
         w["name"].text = getattr(data, "claimant_name", "")
@@ -2462,7 +2618,7 @@ class CalculatorClaimantDetailsScreen(BaseScreen):
         w["partner_dob"].text = getattr(data, "partner_dob", "")
     
         # Enable/disable partner fields
-        is_couple = (rel == "couple")
+        is_couple = (rel == "Couple")
         w["partner_name"].disabled = not is_couple
         w["partner_dob"].disabled = not is_couple
         
@@ -2702,12 +2858,12 @@ class CalculatorHousingScreen(BaseScreen):
 
             text = (value_text or "").strip().lower()
             
-            if text == "rent":
-                target = w["rent"]
-            elif text == "own":
-                target = w["mortgage"]
-            elif text == "shared accommodation":
-                target = w["shared"]
+            if text == "Rent":
+                target = w["Rent"]
+            elif text == "Own":
+                target = w["Mortgage"]
+            elif text == "Shared Accommodation":
+                target = w["Shared"]
             else:
                 return
 
@@ -2718,7 +2874,7 @@ class CalculatorHousingScreen(BaseScreen):
         def _update_tenancy_visibility(value_text):
             text = (value_text or "").strip().lower()
         
-            if text == "rent":
+            if text == "Rent":
                 w["tenancy_type"].opacity = 1
                 w["tenancy_type"].disabled = False
                 w["tenancy_type"].height = 50
@@ -2739,10 +2895,10 @@ class CalculatorHousingScreen(BaseScreen):
         w["tenancy_type"] = GovUkDropdown(
             text="Select Tenancy Type",
             values=[
-                "Private rented",
+                "Private Rented",
                 "Social",
-                "Temporary accommodation",
-                "Supported accommodation"
+                "Temporary Accommodation",
+                "Supported Accommodation"
             ]
         )
         
@@ -2789,9 +2945,9 @@ class CalculatorHousingScreen(BaseScreen):
 
         def get_service_mode(value):
             val = (value or "").lower()
-            if val == "social":
+            if val == "Social":
                 return "applicable"
-            elif val == "private":
+            elif val == "Private":
                 return "not_applicable"
             return "unset"
 
@@ -3112,7 +3268,7 @@ class CalculatorHousingScreen(BaseScreen):
             apply_service_box(mode, expanded)
 
             # Enable/disable service fields based on tenancy
-            social = (value or "").strip().lower() == "social"
+            social = (value or "").strip().lower() == "Social"
             for field in w["service_fields"].values():
                 field.disabled = not social
 
@@ -3344,7 +3500,7 @@ class CalculatorHousingScreen(BaseScreen):
         else:
             w["housing_type"].text = "Select Housing Type"
     
-        w["tenancy_type"].text = data.tenancy_type or "Select tenancy type"
+        w["tenancy_type"].text = data.tenancy_type or "Select Tenancy Type"
     
         w["rent"].text = getattr(data, "rent_raw", "") or ""
         w["mortgage"].text = getattr(data, "mortgage_raw", "") or ""
@@ -3415,7 +3571,7 @@ class CalculatorHousingScreen(BaseScreen):
     
         # TENANCY-DEPENDENT SERVICE CHARGE ENABLE/DISABLE
         tenancy = (w["tenancy_type"].text or "").strip().lower()
-        social = (tenancy == "social")
+        social = (tenancy == "Social")
         for widget in w["service_fields"].values():
             widget.disabled = not social
 
@@ -3450,7 +3606,7 @@ class CalculatorHousingScreen(BaseScreen):
         if location not in ("england", "scotland", "wales"):
             return 0.0
     
-        if bedrooms == "shared":
+        if bedrooms == "Shared":
             col = "SAR"
         elif bedrooms == 1:
             col = "1 Bed"
@@ -4895,11 +5051,11 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Claimant
         add_section("Claimant Details", [
-            f"Claimant Name: {d.get('claimant_name')}",
+            f"Claimant Name: {title_case(d.get('claimant_name')}",
             f"Claimant DOB: {d.get('claimant_dob')}",
-            f"Partner Name: {d.get('partner_name')}",
+            f"Partner Name: {title_case(d.get('partner_name')}",
             f"Partner DOB: {d.get('partner_dob')}",
-            f"Relationship: {d.get('relationship')}",
+            f"Relationship: {title_case(d.get('relationship')}",
         ])
 
         # Finances
@@ -4911,16 +5067,16 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Housing
         add_section("Housing", [
-            f"Housing Type: {d.get('housing_type')}",
-            f"Tenancy Type: {d.get('tenancy_type')}",
+            f"Housing Type: {title_case(d.get('housing_type')}",
+            f"Tenancy Type: {title_case(d.get('tenancy_type')}",
             f"Rent: {fmt_money(d.get('rent'))}",
             f"Mortgage: {fmt_money(d.get('mortgage'))}",
             f"Shared Accommodation Charge: {fmt_money(d.get('shared'))}",
             f"Non-dependants: {d.get('non_dependants')}",
             f"Postcode: {d.get('postcode')}",
-            f"Location: {d.get('location')}",
+            f"Location: {title_case(d.get('location')}",
             f"BRMA: {d.get('brma')}",
-            f"Manual BRMA Mode: {d.get('manual_location')}",
+            f"Manual BRMA Mode: {title_case(d.get('manual_location')}",
         ])
 
         # Service Charges
@@ -4935,9 +5091,9 @@ class CalculatorFinalScreen(BaseScreen):
         for i, child in enumerate(d.get("children", []), start=1):
             child_lines.extend([
                 f"Child {i}:",
-                f"  Name: {child.get('name')}",
+                f"  Name: {title_case(child.get('name'))}",
                 f"  DOB: {child.get('dob')}",
-                f"  Sex: {child.get('gender')}",
+                f"  Sex: {title_case(child.get('gender')}",
                 f"  Adopted: {child.get('adopted')}",
                 f"  Kinship Care: {child.get('kinship_care')}",
                 f"  Multiple Birth: {child.get('multiple_birth')}",
@@ -4949,8 +5105,8 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Additional Elements
         add_section("Additional Elements", [
-            f"Carer: {d.get('carer')}",
-            f"Disability: {d.get('disability')}",
+            f"Carer: {title_case(d.get('carer')}",
+            f"Disability: {title_case(d.get('disability')}",
             f"Childcare Costs: {fmt_money(d.get('childcare'))}",
         ])
 
