@@ -4884,17 +4884,17 @@ class CalculatorFinalScreen(BaseScreen):
 
         def add_section(title, lines):
             section = CollapsibleSection(title, lines)
-
+        
             # Ensure all labels inside the collapsible align identically
-            for child in section.content.children:
+            for child in section.content_box.children:
                 if isinstance(child, SafeLabel):
                     child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-
+        
             # Force section to have a real height
             section.size_hint_y = None
             section.height = section.minimum_height
             section.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
-            
+        
             self.summary_layout.add_widget(section)
 
         # Claimant
