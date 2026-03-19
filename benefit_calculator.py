@@ -4980,8 +4980,6 @@ class CalculatorFinalScreen(BaseScreen):
         for i, child in enumerate(self.summary_layout.children):
             print(f"  child[{i}]:", type(child), "height=", getattr(child, "height", None))
 
-        Clock.schedule_once(refresh_scroll, 0)
-
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
