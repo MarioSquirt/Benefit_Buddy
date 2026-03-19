@@ -1602,6 +1602,11 @@ class GovUkDropdown(BoxLayout):
 
         self.add_widget(self.dropdown_panel)
 
+        # Ensure the whole dropdown grows downward
+        self.size_hint_y = None
+        self.bind(minimum_height=self.setter("height"))
+        self.height = self.minimum_height
+
         # Open dropdown on touch
         self.header.bind(on_touch_down=self._on_header_touch)
 
@@ -1814,6 +1819,7 @@ class CollapsibleSection(BoxLayout):
         # =========================================================
         # SECTION HEIGHT BINDING
         # =========================================================
+        self.size_hint_y = None
         self.bind(minimum_height=self.setter("height"))
         self.height = self.minimum_height
 
