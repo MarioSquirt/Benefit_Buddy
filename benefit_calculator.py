@@ -1601,7 +1601,12 @@ class GovUkDropdown(BoxLayout):
             self.dropdown_panel.add_widget(btn)
 
         self.add_widget(self.dropdown_panel)
-
+        
+        # Force panel to always sit below header
+        self.dropdown_panel.bind(
+            pos=lambda inst, val: setattr(inst, "y", self.header.y - inst.height)
+        )
+        
         # Ensure the whole dropdown grows downward
         self.size_hint_y = None
         self.bind(minimum_height=self.setter("height"))
@@ -1633,26 +1638,42 @@ class GovUkDropdown(BoxLayout):
 
     def toggle(self):
         self.is_open = not self.is_open
-
+    
         if self.is_open:
             # Chevron rotate up
             Animation(angle=180, d=0.25, t="out_quad").start(self.chevron_rot)
-
-            # Fade + slide open
-            target_height = len(self.values) * 50 + 4  # +4 for border inset
-            Animation(height=target_height, opacity=1, d=0.25, t="out_quad").start(self.dropdown_panel)
-
+    
+            # Calculate heights
+            panel_height = len(self.values) * 50 + 4
+            section_height = self.header.height + panel_height
+    
+            # Reset section height before animation
+            self.height = self.header.height
+    
+            # Prepare panel
+            self.dropdown_panel.opacity = 1
+            self.dropdown_panel.height = 0
+    
+            # Animate panel expanding
+            Animation(height=panel_height, opacity=1, d=0.25, t="out_quad").start(self.dropdown_panel)
+    
+            # Animate whole dropdown growing downward
+            Animation(height=section_height, d=0.25, t="out_quad").start(self)
+    
             # Fade-in each option
             for child in self.dropdown_panel.children:
                 child.opacity = 0
                 Animation(opacity=1, d=0.15, t="out_quad").start(child)
-
+    
         else:
             # Chevron rotate down
             Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
-
-            # Fade + slide closed
+    
+            # Collapse panel
             Animation(height=0, opacity=0, d=0.25, t="out_quad").start(self.dropdown_panel)
+    
+            # Collapse whole dropdown back to header height
+            Animation(height=self.header.height, d=0.25, t="out_quad").start(self)
 
     # =========================================================
     # SELECT
@@ -1811,7 +1832,7 @@ class CollapsibleSection(BoxLayout):
             opacity=0
         )
         self.content_box.bind(
-            minimum_height=lambda inst, val: setattr(inst, "height", val)
+            minimum_height=lambda inst, val: setattr(inst, "height", val) if not self.is_open else None
         )
 
         self.add_widget(self.content_box)
@@ -1867,23 +1888,33 @@ class CollapsibleSection(BoxLayout):
                 # Fade-in animation for each line
                 Animation(opacity=1, d=0.15, t="out_quad").start(lbl)
 
-            # Animate open
-            target_height = self.content_box.minimum_height
+            # Calculate heights
+            content_height = self.content_box.minimum_height
+            section_height = self.header.height + content_height
+            
+            # Reset section height before animation
+            self.height = self.header.height
+            
+            # Make content visible
             self.content_box.opacity = 1
-
-            Animation(height=target_height, d=0.25, t="out_quad").start(self)
-            Animation(height=target_height, d=0.25, t="out_quad").start(self.content_box)
+            self.content_box.height = 0  # start collapsed
+            
+            # Animate content expanding
+            Animation(height=content_height, d=0.25, t="out_quad").start(self.content_box)
+            
+            # Animate the whole section growing downward
+            Animation(height=section_height, d=0.25, t="out_quad").start(self)
 
         else:
             # Rotate chevron downward
             Animation(angle=0, d=0.25, t="out_quad").start(self.chevron_rot)
 
-            # Animate closed
+            # Collapse content
             anim = Animation(height=0, opacity=0, d=0.25, t="out_quad")
             anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
             anim.start(self.content_box)
-
-            # Animate section height back to header only
+            
+            # Collapse section back to header height
             Animation(height=self.header.height, d=0.25, t="out_quad").start(self)
 
         return True
