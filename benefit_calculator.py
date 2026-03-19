@@ -1615,14 +1615,11 @@ class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
         super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
 
-        # Section grows with content
-        self.bind(minimum_height=self.setter("height"))
-
         self.is_open = False
         self.content_lines = content_lines
 
         # =========================================================
-        # HEADER (Yellow background + blue text + chevron)
+        # HEADER
         # =========================================================
         self.header = BoxLayout(
             orientation="horizontal",
@@ -1631,8 +1628,11 @@ class CollapsibleSection(BoxLayout):
             height=50,
             padding=(10, 0)
         )
+        
+        self.header.bind(
+            minimum_height=self.header.setter("height")
+        )
 
-        # GOV.UK Yellow background
         with self.header.canvas.before:
             Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
@@ -1642,7 +1642,6 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
 
-        # Header label
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
@@ -1652,25 +1651,22 @@ class CollapsibleSection(BoxLayout):
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
-        # Chevron
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(20, 20),
-            allow_stretch=True,
-            keep_ratio=True
+            size=(20, 20)
         )
 
         self.header.add_widget(self.header_label)
         self.header.add_widget(self.header_chevron)
 
-        # Make header clickable
-        self.header.bind(on_touch_down=self.toggle)
+        # Correct touch handler
+        self.header.bind(on_touch_down=self._on_header_touch)
 
         self.add_widget(self.header)
 
         # =========================================================
-        # CONTENT BOX (collapsed initially)
+        # CONTENT BOX
         # =========================================================
         self.content_box = BoxLayout(
             orientation="vertical",
@@ -1680,25 +1676,37 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-
-        # FIX: ensure content box grows with its children
         self.content_box.bind(
             minimum_height=lambda inst, val: setattr(inst, "height", val)
         )
 
         self.add_widget(self.content_box)
 
+        # =========================================================
+        # NOW bind section height (after children exist)
+        # =========================================================
+        self.bind(minimum_height=self.setter("height"))
+        self.height = self.minimum_height
+
     # =========================================================
-    # TOGGLE OPEN/CLOSE
+    # TOUCH HANDLER
+    # =========================================================
+    def _on_header_touch(self, instance, touch):
+        if self.header.collide_point(*touch.pos):
+            self.toggle(self.header, touch)
+            return True
+        return False
+
+    # =========================================================
+    # TOGGLE
     # =========================================================
     def toggle(self, instance, touch=None):
-        if touch and not instance.collide_point(*touch.pos):
+        if touch and not self.header.collide_point(*touch.pos):
             return False
 
         self.is_open = not self.is_open
 
         if self.is_open:
-            # Expand
             self.header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
             self.content_box.opacity = 1
             self.content_box.clear_widgets()
@@ -1712,20 +1720,15 @@ class CollapsibleSection(BoxLayout):
                     color=get_color_from_hex("#FFFFFF"),
                     size_hint_y=None
                 )
-
-                # FIX: ensure label height updates from texture
                 lbl.bind(
                     width=lambda inst, val: setattr(inst, "text_size", (val, None)),
                     texture_size=lambda inst, val: setattr(inst, "height", val[1])
                 )
-
                 self.content_box.add_widget(lbl)
 
-            # Allow layout to update
             Clock.schedule_once(lambda dt: None, 0)
 
         else:
-            # Collapse
             self.header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
             self.content_box.opacity = 0
             self.content_box.height = 0
