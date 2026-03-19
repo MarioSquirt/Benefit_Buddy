@@ -1625,7 +1625,7 @@ class CollapsibleSection(BoxLayout):
             orientation="horizontal",
             spacing=10,
             size_hint=(1, None),
-            height=50,
+            height=64,
             padding=(10, 0)
         )
         
