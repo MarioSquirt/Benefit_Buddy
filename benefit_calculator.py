@@ -4340,11 +4340,6 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
             sar_dict[key] = cb.active
         data.sar_exemptions = sar_dict
     
-        # ---------------------------------------------------------
-        # SAR COLLAPSED / EXPANDED STATE
-        # ---------------------------------------------------------
-        data.sar_expanded = bool(w.get("sar_expanded", False))
-    
     def load_state(self):
         w = self.additional_widgets
         data = self.calculator_state
@@ -4380,26 +4375,6 @@ class CalculatorAdditionalElementsScreen(BaseScreen):
         sar_saved = getattr(data, "sar_exemptions", {}) or {}
         for key, cb in w["sar_fields"].items():
             cb.active = bool(sar_saved.get(key, False))
-    
-        # ---------------------------------------------------------
-        # SAR COLLAPSED / EXPANDED STATE
-        # ---------------------------------------------------------
-        expanded = bool(getattr(data, "sar_expanded", False))
-        w["sar_expanded"] = expanded
-    
-        sar_box = w["sar_box"]
-        sar_header = w["sar_header"]
-    
-        if expanded:
-            sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▾"
-            sar_box.opacity = 1
-            sar_box.disabled = False
-            sar_box.height = sar_box.minimum_height
-        else:
-            sar_header.text = "Shared Accommodation Rate (SAR) Exemptions ▸"
-            sar_box.opacity = 0
-            sar_box.disabled = True
-            sar_box.height = 0
 
 class CalculatorSanctionsScreen(BaseScreen):
     def __init__(self, calculator_state, **kwargs):
