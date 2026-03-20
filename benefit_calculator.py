@@ -1600,7 +1600,7 @@ class GovUkDropdown(BoxLayout):
                 divider = Widget(size_hint_y=None, height=2)
         
                 with divider.canvas.before:
-                    Color(*get_color_from_hex("#005EA5"))
+                    Color(*get_color_from_hex("#FFDD00"))
                     divider._line = Rectangle()
         
                 # Keep divider centered at 75% width
@@ -1842,7 +1842,7 @@ class CollapsibleSection(BoxLayout):
                     divider = Widget(size_hint_y=None, height=2)
 
                     with divider.canvas.before:
-                        Color(*get_color_from_hex("#B1B4B6"))
+                        Color(*get_color_from_hex("#FFDD00"))
                         divider._line = Rectangle()
 
                     def update_divider(inst, *args):
@@ -2157,6 +2157,13 @@ class CalculatorNavBar(BoxLayout):
     
     
     def open_dropdown(self):
+        
+        def make_row_press(row_ref):
+            return lambda *args: setattr(row_ref, "background_color", (0.95, 0.95, 0.95, 1))
+        
+        def make_row_release(row_ref):
+            return lambda *args: setattr(row_ref, "background_color", (1, 1, 1, 1))
+        
         if self.dropdown_open:
             return
     
@@ -2194,21 +2201,57 @@ class CalculatorNavBar(BoxLayout):
         panel_y = btn_y - panel.height - 8
         panel.pos = (btn_x, panel_y)
     
-        # Add menu items
-        for label, screen_name in self.screens:
+        for i, (label, screen_name) in enumerate(self.screens):
             row = BoxLayout(
                 orientation="horizontal",
                 spacing=10,
                 size_hint=(1, None),
                 height=40,
+                padding=(10, 0),
             )
-    
+        
+            # Background
+            with row.canvas.before:
+                Color(1, 1, 1, 1)
+                row._bg = Rectangle(size=row.size, pos=row.pos)
+        
+            row.bind(
+                size=lambda inst, val: setattr(inst._bg, "size", val),
+                pos=lambda inst, val: setattr(inst._bg, "pos", val),
+            )
+        
+            # Touch highlight
+            def _row_press(inst, touch, r=row):
+                if inst.collide_point(*touch.pos):
+                    make_row_press(r)()
+                return False
+        
+            def _row_release(inst, touch, r=row):
+                make_row_release(r)()
+                return False
+        
+            def _row_touch_up(inst, touch, r=row, screen=screen_name):
+                # 1. Release highlight
+                make_row_release(r)()
+            
+                # 2. Close dropdown
+                self.close_dropdown()
+            
+                # 3. Navigate after a tiny delay (lets highlight flash cleanly)
+                Clock.schedule_once(lambda dt: make_row_callback(r, screen)(inst, touch), 0)
+            
+                return False
+            
+            row.bind(on_touch_up=_row_touch_up)
+        
+            # Icon
             icon = Image(
                 source=self.icon_map[label],
                 size_hint=(None, None),
                 size=(20, 20),
             )
-    
+        
+            # Label
             lbl = SafeLabel(
                 text=label,
                 font_size=14,
@@ -2217,18 +2260,42 @@ class CalculatorNavBar(BoxLayout):
                 color=get_color_from_hex("#005EA5"),
             )
             lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-    
+        
             row.add_widget(icon)
             row.add_widget(lbl)
-    
-            row.bind(on_touch_down=make_row_callback(row, screen_name))
-    
+        
+            # Navigation callback (after highlight)
+            def _navigate_after_release(inst, touch, screen=screen_name):
+                self.close_dropdown()
+                Clock.schedule_once(lambda dt: make_row_callback(row, screen)(inst, touch), 0)
+                return False
+        
+            row.bind(on_touch_up=_navigate_after_release)
+        
             panel.add_widget(row)
+        
+            # Divider
+            if i < len(self.screens) - 1:
+                divider = Widget(size_hint_y=None, height=2)
+        
+                with divider.canvas.before:
+                    Color(*get_color_from_hex("#005EA5"))
+                    divider._line = Rectangle()
+        
+                def update_divider(inst, *args):
+                    full_w = panel.width
+                    line_w = full_w * 0.75
+                    inst._line.size = (line_w, 2)
+                    inst._line.pos = (panel.x + (full_w - line_w) / 2, inst.y)
+        
+                divider.bind(pos=update_divider, size=update_divider)
+                panel.bind(width=update_divider)
+        
+                panel.add_widget(divider)
     
         self.dropdown.add_widget(panel)
         current_screen = App.get_running_app().root.current_screen
         current_screen.add_widget(self.dropdown)
-    
     
     def close_dropdown(self):
         if not self.dropdown_open:
@@ -2847,23 +2914,24 @@ class CalculatorHousingScreen(BaseScreen):
             field.height = 0
 
         def _show_amount_widget(value_text):
+            # Hide all fields first
             for key in ("rent", "mortgage", "shared"):
                 field = w[key]
                 field.opacity = 0
                 field.disabled = True
                 field.height = 0
-
+        
             text = (value_text or "").strip().lower()
-            
-            if text == "Rent":
-                target = w["Rent"]
-            elif text == "Own":
-                target = w["Mortgage"]
-            elif text == "Shared Accommodation":
-                target = w["Shared"]
+        
+            if text == "rent":
+                target = w["rent"]
+            elif text == "own":
+                target = w["mortgage"]
+            elif text == "shared accommodation":
+                target = w["shared"]
             else:
                 return
-
+        
             target.opacity = 1
             target.disabled = False
             target.height = 50
