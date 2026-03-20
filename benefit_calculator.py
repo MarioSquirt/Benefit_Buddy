@@ -1600,7 +1600,7 @@ class GovUkDropdown(BoxLayout):
                 divider = Widget(size_hint_y=None, height=2)
         
                 with divider.canvas.before:
-                    Color(*get_color_from_hex("#FFDD00"))
+                    Color(*get_color_from_hex("#005EA5"))
                     divider._line = Rectangle()
         
                 # Keep divider centered at 75% width
@@ -1788,14 +1788,6 @@ class CollapsibleSection(BoxLayout):
         )
 
         self.add_widget(self.content_box)
-
-        # =========================================================
-        # SECTION HEIGHT BINDING
-        # =========================================================
-        self.size_hint_y = None
-        self.height = self.header.height
-        self.bind(minimum_height=lambda *args: None)
-        self.bind(height=lambda *args: None)
 
     # =========================================================
     # TOUCH HANDLER
@@ -2264,21 +2256,13 @@ class CalculatorNavBar(BoxLayout):
             row.add_widget(icon)
             row.add_widget(lbl)
         
-            # Navigation callback (after highlight)
-            def _navigate_after_release(inst, touch, screen=screen_name):
-                self.close_dropdown()
-                Clock.schedule_once(lambda dt: make_row_callback(row, screen)(inst, touch), 0)
-                return False
-        
-            row.bind(on_touch_up=_navigate_after_release)
-        
             panel.add_widget(row)
         
             # Divider
             if i < len(self.screens) - 1:
                 divider = Widget(size_hint_y=None, height=2)
         
-                with divider.canvas.before:
+                with divider.canvas.after:
                     Color(*get_color_from_hex("#005EA5"))
                     divider._line = Rectangle()
         
