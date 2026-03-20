@@ -1500,7 +1500,8 @@ class GovUkDropdown(BoxLayout):
             self._bg_color.rgb = get_color_from_hex("#FFDD00")[:3]
 
         self.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
-        self.bind(on_touch_up=lambda inst, touch: on_release())
+        self.bind(on_touch_up=lambda inst, touch: (on_release(), False)[1])
+        self.bind(on_touch_up=self.open_dropdown)
 
         # =========================================================
         # LABEL
