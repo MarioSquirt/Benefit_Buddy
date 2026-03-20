@@ -12,7 +12,7 @@ from kivy.core.window import Window
 Window.softinput_mode = "below_target"
 from kivy.core.image import Image as CoreImage
 from kivy.metrics import sp
-from kivy.utils import get_color_from_hex
+from kivy.utils import get_color_from_hex, platform
 from kivy.resources import resource_add_path, resource_find
 from kivy.properties import ObservableList, StringProperty
 
@@ -48,11 +48,36 @@ import tracemalloc
 from datetime import datetime
 from collections import defaultdict
 
+import sqlite3
+from db_builder import build_database
+
 # ============================================================
 # START MEMORY TRACING
 # ============================================================
 tracemalloc.start()
 
+def get_app_data_path():
+    if platform == "android":
+        from android.storage import app_storage_path
+        return app_storage_path()
+    elif platform == "ios":
+        from ios.storage import app_storage_path
+        return app_storage_path()
+    else:
+        # Desktop fallback
+        return os.path.join(os.getcwd(), "app_data")
+
+
+def ensure_database():
+    app_data = get_app_data_path()
+    os.makedirs(app_data, exist_ok=True)
+
+    db_path = os.path.join(app_data, "postcodes.db")
+    csv_path = os.path.join(os.path.dirname(__file__), "data", "pcode_brma_lookup.csv")
+
+    build_database(csv_path, db_path)
+
+    return db_path
 
 ICON_PATHS = {
     "Introduction": "images/icons/Introduction-icon/Introduction-32px.png",
@@ -6159,6 +6184,31 @@ class NavigationManager:
             except Exception as e:
                 print("ERROR in load_state():", e)
 
+class PostcodeDB:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)
+        self.cur = self.conn.cursor()
+
+    def lookup(self, postcode):
+        pc = postcode.replace(" ", "").upper()
+
+        row = self.cur.execute(
+            "SELECT brma, brma_name FROM postcodes WHERE postcode = ?",
+            (pc,)
+        ).fetchone()
+
+        if not row:
+            return None
+
+        brma, brma_name = row
+
+        # Match your existing return format
+        return {
+            "brma": brma,
+            "country": brma_name  # you can rename this later if needed
+        }
+
 # Define the main application class
 class BenefitBuddy(App):
 
@@ -6438,6 +6488,14 @@ class BenefitBuddy(App):
     # STARTUP DIAGNOSTICS
     # ---------------------------------------------------------
     def on_start(self):
+        # 1. Build or load the SQLite database on first launch
+        self.db_path = ensure_database()
+    
+        # 2. Create the SQLite lookup object
+        from postcode_sqlite import PostcodeDB   # or wherever your class lives
+        self.sqlite_db = PostcodeDB(self.db_path)
+    
+        # 3. Continue with your existing startup diagnostics
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
 
     def run_startup_diagnostics(self, dt):
