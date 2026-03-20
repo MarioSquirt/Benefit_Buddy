@@ -6492,7 +6492,6 @@ class BenefitBuddy(App):
         self.db_path = ensure_database()
     
         # 2. Create the SQLite lookup object
-        from postcode_sqlite import PostcodeDB   # or wherever your class lives
         self.sqlite_db = PostcodeDB(self.db_path)
     
         # 3. Continue with your existing startup diagnostics
