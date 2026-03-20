@@ -1465,105 +1465,99 @@ class IconRow(ButtonBehavior, BoxLayout):
 class GovUkDropdown(BoxLayout):
     def __init__(self, text="Select", values=None, **kwargs):
         super().__init__(
-            orientation="vertical",
-            spacing=0,
+            orientation="horizontal",
+            spacing=10,
+            padding=(15, 10),
             size_hint=(None, None),
+            height=55,
             width=300,
             **kwargs
         )
 
         self.values = values or []
         self._text = text
-        self.is_open = False
 
-        # Center horizontally
         self.size_hint_x = None
         self.pos_hint = {"center_x": 0.5}
 
         # =========================================================
-        # HEADER (yellow)
+        # HEADER BACKGROUND
         # =========================================================
-        self.header = BoxLayout(
-            orientation="horizontal",
-            spacing=10,
-            padding=(15, 10),
-            size_hint=(1, None),
-            height=55
-        )
+        with self.canvas.before:
+            self._bg_color = Color(*get_color_from_hex("#FFDD00"))
+            self._bg = Rectangle(size=self.size, pos=self.pos)
 
-        with self.header.canvas.before:
-            self._header_color = Color(*get_color_from_hex("#FFDD00"))
-            self._header_bg = Rectangle(size=self.header.size, pos=self.header.pos)
+        self.bind(size=lambda inst, val: setattr(self._bg, "size", val))
+        self.bind(pos=lambda inst, val: setattr(self._bg, "pos", val))
 
-        self.header.bind(
-            size=lambda inst, val: setattr(self._header_bg, "size", val),
-            pos=lambda inst, val: setattr(self._header_bg, "pos", val),
-        )
-
-        # Touch highlight
+        # =========================================================
+        # TOUCH HIGHLIGHT (press only)
+        # =========================================================
         def on_press(*args):
-            self._header_color.rgb = (0.95, 0.82, 0)
+            self._bg_color.rgb = (0.95, 0.82, 0)  # darker yellow
 
         def on_release(*args):
-            self._header_color.rgb = get_color_from_hex("#FFDD00")[:3]
+            self._bg_color.rgb = get_color_from_hex("#FFDD00")[:3]
 
-        self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
-        self.header.bind(on_touch_up=lambda inst, touch: on_release())
+        self.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
+        self.bind(on_touch_up=lambda inst, touch: on_release())
 
-        # Label
+        # =========================================================
+        # LABEL
+        # =========================================================
         self.label = SafeLabel(
             text=text,
             font_size=18,
             color=get_color_from_hex("#005EA5"),
             halign="left",
-            valign="middle",
-            size_hint=(1, None),
-            height=55
+            valign="middle"
         )
-        self.label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
 
-        # Chevron (no animation now, just flip instantly)
+        self.label.text_size = (self.width - 40, None)
+        self.label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        self.bind(width=lambda inst, val: setattr(self.label, "text_size", (val - 40, None)))
+
+        # =========================================================
+        # CHEVRON
+        # =========================================================
         self.chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
-            size=(20, 20),
-            pos_hint={"center_y": 0.5}
+            size=(20, 20)
         )
 
-        self.header.add_widget(self.label)
-        self.header.add_widget(self.chevron)
-        self.add_widget(self.header)
+        self.add_widget(self.label)
+        self.add_widget(self.chevron)
 
         # =========================================================
         # DROPDOWN PANEL
         # =========================================================
-        self.dropdown_panel = BoxLayout(
-            orientation="vertical",
-            spacing=0,
-            padding=(0, 0),
-            size_hint_y=None,
-            height=0,
-            opacity=0
-        )
+        self.dropdown = DropDown(auto_width=False)
+        self.dropdown.width = self.width
 
-        with self.dropdown_panel.canvas.before:
-            Color(*get_color_from_hex("#FFDD00"))
-            self._border = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
+        # 3px GOV.UK yellow border + white background
+        with self.dropdown.canvas.before:
+            Color(*get_color_from_hex("#FFDD00"))  # border
+            self._border = Rectangle(size=self.dropdown.size, pos=self.dropdown.pos)
 
-            Color(1, 1, 1, 1)
-            self._panel_bg = Rectangle(size=self.dropdown_panel.size, pos=self.dropdown_panel.pos)
+            Color(1, 1, 1, 1)  # inner white
+            self._inner = Rectangle(size=self.dropdown.size, pos=self.dropdown.pos)
 
-        def update_panel(*args):
-            self._border.size = (self.dropdown_panel.width, self.dropdown_panel.height)
-            self._border.pos = self.dropdown_panel.pos
+        def update_dropdown_graphics(*args):
+            # Border
+            self._border.size = self.dropdown.size
+            self._border.pos = self.dropdown.pos
 
-            self._panel_bg.size = (self.dropdown_panel.width - 4, self.dropdown_panel.height - 4)
-            self._panel_bg.pos = (self.dropdown_panel.x + 2, self.dropdown_panel.y + 2)
+            # Inner white inset by 3px
+            self._inner.size = (self.dropdown.width - 6, self.dropdown.height - 6)
+            self._inner.pos = (self.dropdown.x + 3, self.dropdown.y + 3)
 
-        self.dropdown_panel.bind(size=update_panel, pos=update_panel)
+        self.dropdown.bind(size=update_dropdown_graphics, pos=update_dropdown_graphics)
 
-        # Add options
-        for v in self.values:
+        self.dropdown.bind(on_dismiss=self._on_dropdown_dismiss)
+
+        for i, v in enumerate(self.values):
+            # Button
             btn = Button(
                 text=v,
                 size_hint_y=None,
@@ -1572,29 +1566,43 @@ class GovUkDropdown(BoxLayout):
                 background_color=get_color_from_hex("#FFFFFF"),
                 color=get_color_from_hex("#005EA5")
             )
-
+        
+            # Touch highlight for menu items
             def make_press(btn_ref):
                 return lambda *args: setattr(btn_ref, "background_color", (0.95, 0.95, 0.95, 1))
+        
             def make_release(btn_ref):
                 return lambda *args: setattr(btn_ref, "background_color", (1, 1, 1, 1))
-
+        
             btn.bind(on_press=make_press(btn), on_release=make_release(btn))
             btn.bind(on_release=lambda inst: self.select(inst.text))
-            self.dropdown_panel.add_widget(btn)
+        
+            # Add the button
+            self.dropdown.add_widget(btn)
+        
+            # Add divider AFTER each item except the last
+            if i < len(self.values) - 1:
+                divider = Widget(size_hint_y=None, height=2)
+        
+                with divider.canvas.before:
+                    Color(*get_color_from_hex("#B1B4B6"))  # GOV.UK grey
+                    divider._line = Rectangle()
+        
+                # Keep divider centered at 75% width
+                def update_divider(inst, *args):
+                    full_w = self.dropdown.width
+                    line_w = full_w * 0.75
+                    inst._line.size = (line_w, 2)
+                    inst._line.pos = (self.dropdown.x + (full_w - line_w) / 2, inst.y)
+        
+                divider.bind(pos=update_divider, size=update_divider)
+                self.dropdown.bind(width=update_divider)
+        
+                self.dropdown.add_widget(divider)
 
-        self.add_widget(self.dropdown_panel)
+    def _on_dropdown_dismiss(self, *args):
+        self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
 
-        # Ensure the whole dropdown grows downward
-        self.size_hint_y = None
-        self.bind(minimum_height=self.setter("height"))
-        self.height = self.minimum_height
-
-        # Open dropdown on touch
-        self.header.bind(on_touch_down=self._on_header_touch)
-
-    # =========================================================
-    # PROPERTY
-    # =========================================================
     @property
     def text(self):
         return self._text
@@ -1604,47 +1612,16 @@ class GovUkDropdown(BoxLayout):
         self._text = value
         self.label.text = value
 
-    # =========================================================
-    # OPEN/CLOSE LOGIC (no Animation)
-    # =========================================================
-    def _on_header_touch(self, instance, touch):
-        if self.header.collide_point(*touch.pos):
-            self.toggle()
+    def open_dropdown(self, instance, touch):
+        if self.collide_point(*touch.pos):
+            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
+            self.dropdown.open(self)
             return True
         return False
 
-    def toggle(self):
-        self.is_open = not self.is_open
-
-        if self.is_open:
-            # Chevron down → up (swap icon or rotate instantly if you prefer)
-            self.chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png" \
-                if os.path.exists("images/icons/ChevronUp-icon/ChevronUp-16px.png") \
-                else "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-
-            panel_height = len(self.values) * 50 + 4
-            section_height = self.header.height + panel_height
-
-            self.dropdown_panel.opacity = 1
-            self.dropdown_panel.height = panel_height
-
-            self.height = section_height
-
-        else:
-            # Chevron up → down
-            self.chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
-
-            self.dropdown_panel.opacity = 0
-            self.dropdown_panel.height = 0
-
-            self.height = self.header.height
-
-    # =========================================================
-    # SELECT
-    # =========================================================
     def select(self, value):
         self.text = value
-        self.toggle()
+        self.dropdown.dismiss()
 
 # Create a loading animation using a sequence of PNG images
 class PNGSequenceAnimationWidget(Image):
@@ -1693,7 +1670,7 @@ class PulsingGlow(Widget):
 # =========================================================
 class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
-        super().__init__(orientation="vertical", spacing=0, size_hint_y=None, **kwargs)
+        super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
 
         self.is_open = False
         self.content_lines = content_lines
@@ -1709,8 +1686,9 @@ class CollapsibleSection(BoxLayout):
             padding=(15, 0)
         )
 
+        # Background
         with self.header.canvas.before:
-            self._header_color = Color(*get_color_from_hex("#FFDD00"))
+            self._header_color = Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
 
         self.header.bind(
@@ -1718,7 +1696,9 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
 
-        # Touch highlight
+        # =========================================================
+        # TOUCH HIGHLIGHT (header)
+        # =========================================================
         def on_press(*args):
             self._header_color.rgb = (0.95, 0.82, 0)
 
@@ -1741,12 +1721,23 @@ class CollapsibleSection(BoxLayout):
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
-        # Chevron (instant flip, no animation)
+        # Chevron (rotating)
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(24, 24),
             pos_hint={"center_y": 0.5}
+        )
+        self.header_chevron.rotation = 0
+
+        with self.header_chevron.canvas.before:
+            PushMatrix()
+            self.chevron_rot = Rotate(origin=self.header_chevron.center, angle=0)
+        with self.header_chevron.canvas.after:
+            PopMatrix()
+
+        self.header_chevron.bind(
+            center=lambda inst, val: setattr(self.chevron_rot, "origin", val)
         )
 
         self.header.add_widget(self.header_label)
@@ -1756,19 +1747,7 @@ class CollapsibleSection(BoxLayout):
         self.add_widget(self.header)
 
         # =========================================================
-        # DIVIDER
-        # =========================================================
-        with self.canvas.after:
-            Color(0.85, 0.85, 0.85, 1)
-            self.divider = Rectangle(size=(self.width, 1), pos=(self.x, self.y))
-
-        self.bind(
-            pos=lambda inst, val: setattr(self.divider, "pos", (inst.x, inst.y)),
-            size=lambda inst, val: setattr(self.divider, "size", (inst.width, 1))
-        )
-
-        # =========================================================
-        # CONTENT BOX (anchored with canvas transform)
+        # CONTENT BOX
         # =========================================================
         self.content_box = BoxLayout(
             orientation="vertical",
@@ -1778,26 +1757,26 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-
-        # Canvas anchoring: content always drawn BELOW header
+        
+        # Subtle darker background behind content
         with self.content_box.canvas.before:
-            PushMatrix()
-            self._content_translate = Translate(0, 0, 0)
-        with self.content_box.canvas.after:
-            PopMatrix()
-
-        def update_translate(*args):
-            self._content_translate.y = -self.content_box.height
-
-        self.content_box.bind(height=update_translate)
-        self.header.bind(y=update_translate)
+            Color(0.0, 0.32, 0.56, 1)
+            self._content_bg = Rectangle(pos=self.content_box.pos, size=self.content_box.size)
+        
+        # Keep background in sync
+        self.content_box.bind(
+            pos=lambda inst, val: setattr(self._content_bg, "pos", val),
+            size=lambda inst, val: setattr(self._content_bg, "size", val)
+        )
+        self.content_box.bind(
+            minimum_height=lambda inst, val: setattr(inst, "height", val)
+        )
 
         self.add_widget(self.content_box)
 
         # =========================================================
         # SECTION HEIGHT BINDING
         # =========================================================
-        self.size_hint_y = None
         self.bind(minimum_height=self.setter("height"))
         self.height = self.minimum_height
 
@@ -1806,25 +1785,27 @@ class CollapsibleSection(BoxLayout):
     # =========================================================
     def _on_header_touch(self, instance, touch):
         if self.header.collide_point(*touch.pos):
-            self.toggle()
+            self.toggle(self.header, touch)
             return True
         return False
 
     # =========================================================
-    # TOGGLE (NO ANIMATION)
+    # TOGGLE (ANIMATED)
     # =========================================================
-    def toggle(self):
+    def toggle(self, instance, touch=None):
+        if touch and not self.header.collide_point(*touch.pos):
+            return False
+
         self.is_open = not self.is_open
 
         if self.is_open:
-            # Flip chevron instantly
-            self.header_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png" \
-                if os.path.exists("images/icons/ChevronUp-icon/ChevronUp-16px.png") \
-                else "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+            Animation(angle=180, d=0.2, t="out_quad").start(self.chevron_rot)
 
             # Build content
             self.content_box.clear_widgets()
-            for line in self.content_lines:
+
+            for i, line in enumerate(self.content_lines):
+                # Content label
                 lbl = SafeLabel(
                     text=line,
                     font_size=16,
@@ -1839,23 +1820,45 @@ class CollapsibleSection(BoxLayout):
                 )
                 self.content_box.add_widget(lbl)
 
-            # Expand instantly
-            content_height = self.content_box.minimum_height
-            self.content_box.opacity = 1
-            self.content_box.height = content_height
+                # Divider (between items only)
+                if i < len(self.content_lines) - 1:
+                    divider = Widget(size_hint_y=None, height=2)
 
-            self.height = self.header.height + content_height
+                    with divider.canvas.before:
+                        Color(*get_color_from_hex("#B1B4B6"))
+                        divider._line = Rectangle()
+
+                    def update_divider(inst, *args):
+                        full_w = self.content_box.width
+                        line_w = full_w * 0.75
+                        inst._line.size = (line_w, 2)
+                        inst._line.pos = (
+                            self.content_box.x + (full_w - line_w) / 2,
+                            inst.y
+                        )
+
+                    divider.bind(pos=update_divider, size=update_divider)
+                    self.content_box.bind(width=update_divider)
+
+                    self.content_box.add_widget(divider)
+
+            # Animate open
+            target_height = self.content_box.minimum_height
+            self.content_box.opacity = 1
+
+            Animation(height=target_height, d=0.2, t="out_quad").start(self.content_box)
+            Animation(height=self.header.height + target_height, d=0.2, t="out_quad").start(self)
 
         else:
-            # Flip chevron instantly
-            self.header_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+            Animation(angle=0, d=0.2, t="out_quad").start(self.chevron_rot)
 
-            # Collapse instantly
-            self.content_box.opacity = 0
-            self.content_box.height = 0
-            self.content_box.clear_widgets()
+            anim = Animation(height=0, opacity=0, d=0.2, t="out_quad")
+            anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
+            anim.start(self.content_box)
 
-            self.height = self.header.height
+            Animation(height=self.header.height, d=0.2, t="out_quad").start(self)
+
+        return True
 
 def make_row_callback(row, target_screen):
     def _on_touch_down(inst, touch):
