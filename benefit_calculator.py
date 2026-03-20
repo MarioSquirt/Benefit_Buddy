@@ -1500,8 +1500,22 @@ class GovUkDropdown(BoxLayout):
             self._bg_color.rgb = get_color_from_hex("#FFDD00")[:3]
 
         self.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
-        self.bind(on_touch_up=lambda inst, touch: (on_release(), False)[1])
-        self.bind(on_touch_up=self.open_dropdown)
+        
+        def _release(inst, touch):
+            # Only run highlight release when dropdown is closed
+            if not self.dropdown.attach_to:
+                on_release()
+            return False
+        
+        self.bind(on_touch_up=_release)
+        
+        def _open_if_closed(inst, touch):
+            # Only open if dropdown is not already open
+            if not self.dropdown.attach_to and self.collide_point(*touch.pos):
+                return self.open_dropdown(inst, touch)
+            return False
+        
+        self.bind(on_touch_up=_open_if_closed)
 
         # =========================================================
         # LABEL
@@ -1586,7 +1600,7 @@ class GovUkDropdown(BoxLayout):
                 divider = Widget(size_hint_y=None, height=2)
         
                 with divider.canvas.before:
-                    Color(*get_color_from_hex("#B1B4B6"))  # GOV.UK grey
+                    Color(*get_color_from_hex("#005EA5"))
                     divider._line = Rectangle()
         
                 # Keep divider centered at 75% width
@@ -1778,8 +1792,10 @@ class CollapsibleSection(BoxLayout):
         # =========================================================
         # SECTION HEIGHT BINDING
         # =========================================================
-        self.bind(minimum_height=self.setter("height"))
-        self.height = self.minimum_height
+        self.size_hint_y = None
+        self.height = self.header.height
+        self.bind(minimum_height=lambda *args: None)
+        self.bind(height=lambda *args: None)
 
     # =========================================================
     # TOUCH HANDLER
