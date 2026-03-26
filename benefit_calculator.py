@@ -73,9 +73,11 @@ def ensure_database():
     os.makedirs(app_data, exist_ok=True)
 
     db_path = os.path.join(app_data, "postcodes.db")
-    csv_path = os.path.join(os.path.dirname(__file__), "data", "pcode_brma_lookup.csv")
 
-    build_database(csv_path, db_path)
+    # The DB should already exist — built during development and shipped with the app
+    if not os.path.exists(db_path):
+        print("ERROR: postcodes.db is missing from app_data!")
+        return None
 
     return db_path
 
@@ -3455,54 +3457,54 @@ class CalculatorHousingScreen(BaseScreen):
             postcode = w["postcode"].text.strip().replace(" ", "").upper()
             if not postcode:
                 return
-        
+
             self.show_loading("Finding BRMA...")
-        
+
             def do_lookup(dt):
                 try:
                     app = App.get_running_app()
-                    app.ensure_postcode_csv_loaded()
-        
+
+                    # SQLite lookup only
                     brma_name = self.lookup_brma(postcode)
                     location = self.lookup_location_for_postcode(postcode)
 
                     app.calculator_state.location = location
                     app.calculator_state.brma = brma_name
                     app.calculator_state.postcode = postcode
-        
+
                     print(f"DEBUG: postcode={postcode}, brma={brma_name}, location={location}")
-        
-                    # ⭐ NEW: set in_london automatically
+
+                    # Auto-detect London
                     app.calculator_state.in_london = is_london_postcode(postcode)
                     print("DEBUG: in_london =", app.calculator_state.in_london)
-        
+
                     # Fill results box
                     results_box = w["brma_results_box"]
                     results_box.clear_widgets()
-                    
+
                     bedrooms = self.get_bedroom_entitlement()
                     loc_norm = location.lower() if location else None
                     lha_monthly = self.lookup_lha_rate(brma_name, bedrooms, loc_norm)
-        
+
                     results_box.opacity = 0
                     results_box.height = 0
-                    
+
                     add_result_row("Location:", location or "Not found")
                     add_result_row("BRMA:", brma_name or "Not found")
                     add_result_row("Bedroom entitlement:", str(bedrooms))
                     add_result_row("LHA monthly rate:", f"£{lha_monthly:.2f}")
-                    
+
                     show_results_box()
-        
+
                     scroll = w.get("scroll_view")
                     if scroll:
                         Clock.schedule_once(lambda dt: scroll.scroll_to(results_box), 0.1)
-        
+
                 except Exception as e:
                     print("BRMA lookup error:", e)
                 finally:
                     self.hide_loading()
-        
+
             Clock.schedule_once(do_lookup, 0)
 
         find_brma_btn.bind(on_press=on_find_brma)
@@ -3670,7 +3672,9 @@ class CalculatorHousingScreen(BaseScreen):
         result = app.lookup_postcode(postcode)
         if not result:
             return None
-        return result["country"]
+
+        code = result["country"]
+        return {"E": "England", "S": "Scotland", "W": "Wales"}.get(code, None)
 
     def lookup_lha_rate(self, brma, bedrooms, location):
         if not brma:
@@ -6229,12 +6233,9 @@ class BenefitBuddy(App):
             "sanctions": lambda: self.nav.get("calculator_sanctions").save_sanction_details(),
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
-
-        # NEW: file handle + size for binary search
-        self.postcode_file = None
-        self.postcode_file_size = 0
-
-        # Cache for repeated lookups
+        
+        # NEW: SQLite connection + cache
+        self.postcode_db = None
         self._postcode_cache = {}
 
         # Start at Disclaimer
@@ -6242,179 +6243,72 @@ class BenefitBuddy(App):
         return self.sm
 
     # ---------------------------------------------------------
-    # OPEN CSV ONCE (BINARY MODE, NO MEMORY LOADING)
+    # OPEN SQLITE DB ONCE
     # ---------------------------------------------------------
-    def ensure_postcode_csv_loaded(self):
-        if getattr(self, "postcode_file", None):
+    def ensure_postcode_db_loaded(self):
+        if self.postcode_db:
             return
-    
-        path = resource_find("data/pcode_brma_lookup.csv")
-        print("DEBUG: CSV path =", path)
-    
+
+        path = resource_find("app_data/postcodes.db")
         if not path:
-            print("ERROR: pcode_brma_lookup.csv not found!")
+            print("ERROR: postcodes.db not found!")
             return
-    
-        # Open in binary mode for fastest seeking + reading
-        self.postcode_file = open(path, "rb")
-        self.postcode_file.seek(0, 2)
-        self.postcode_file_size = self.postcode_file.tell()
-    
-        print(f"DEBUG: Postcode CSV opened (binary), size = {self.postcode_file_size} bytes")
-    
-        # Optional but recommended: verify sorted order
-        self.verify_postcode_csv_sorted()
+
+        import sqlite3
+        self.postcode_db = sqlite3.connect(path)
+        self.postcode_db.row_factory = sqlite3.Row
 
     # ---------------------------------------------------------
-    # PARSE A SINGLE CSV LINE
+    # SQLITE LOOKUP
     # ---------------------------------------------------------
-    def parse_postcode_line(self, line_bytes):
-        try:
-            line = line_bytes.rstrip(b"\r\n").decode("utf-8")
-        except Exception:
-            print("DEBUG: Failed to decode line:", line_bytes)
-            return None, None, None
-    
-        parts = line.split(",")
-    
-        if len(parts) < 6:
-            print("DEBUG: Malformed CSV line:", line)
-            return None, None, None
-    
-        # Correct column mapping
-        country_code = parts[0].strip().upper()
-        postcode = parts[3].replace(" ", "").upper()   # PCDS
-        brma_name = parts[5].strip()                   # brma_name
-    
-        # Map E/S/W to full names
-        country_map = {"E": "England", "S": "Scotland", "W": "Wales"}
-        country = country_map.get(country_code, "")
-    
-        # ⭐ DEBUG FIRST PARSED — put it RIGHT HERE
-        if not hasattr(self, "_debug_first_line"):
-            print("DEBUG FIRST PARSED:", postcode, brma_name, country)
-            self._debug_first_line = True
-    
-        return postcode, brma_name, country
+    def lookup_from_sqlite(self, pcd):
+        self.ensure_postcode_db_loaded()
+        if not self.postcode_db:
+            return None
+
+        pcd = pcd.replace(" ", "").upper()
+
+        cur = self.postcode_db.cursor()
+        row = cur.execute("""
+            SELECT 
+                brma_dict.name AS brma,
+                country_dict.code AS country
+            FROM postcodes
+            JOIN brma_dict ON postcodes.brma_id = brma_dict.id
+            JOIN country_dict ON postcodes.country_id = country_dict.id
+            WHERE postcodes.pcd = ?
+        """, (pcd,)).fetchone()
+
+        if not row:
+            return None
+
+        return {
+            "brma": row["brma"],
+            "country": row["country"]
+        }
 
     # ---------------------------------------------------------
-    # TRUE BINARY SEARCH ON THE CSV FILE
-    # ---------------------------------------------------------
-    def binary_search_postcode(self, target):
-        f = self.postcode_file
-        low = 0
-        high = self.postcode_file_size
-    
-        target = target.replace(" ", "").upper()
-        print(f"DEBUG: Starting binary search for {target}")
-    
-        steps = 0
-    
-        while low <= high:
-            steps += 1
-            mid = (low + high) // 2
-            f.seek(mid)
-    
-            # Skip partial line
-            _ = f.readline()
-    
-            line = f.readline()
-            if not line:
-                # SAFETY: jump backwards and retry
-                f.seek(max(0, mid - 200))
-                _ = f.readline()
-                line = f.readline()
-                if not line:
-                    print("DEBUG: No readable line at fallback position")
-                    return None
-    
-            postcode, brma, country = self.parse_postcode_line(line)
-            if not postcode:
-                high = mid - 1
-                continue
-    
-            print(f"DEBUG step {steps}: compare {postcode} vs {target}")
-    
-            if postcode == target:
-                print(f"DEBUG: MATCH FOUND after {steps} steps → {brma}, {country}")
-                return brma, country
-    
-            if postcode < target:
-                low = f.tell()
-            else:
-                high = mid - 1
-    
-        print(f"DEBUG: No match found after {steps} steps")
-        return None
-
-    # ---------------------------------------------------------
-    # PUBLIC LOOKUP WRAPPER
+    # PUBLIC LOOKUP WRAPPER (CACHE + SQLITE)
     # ---------------------------------------------------------
     def lookup_postcode(self, postcode):
-        self.ensure_postcode_csv_loaded()
-    
         key = postcode.replace(" ", "").upper()
-    
+
         # Cache hit
         if key in self._postcode_cache:
-            print("DEBUG: Cache hit for", key)
-            print("DEBUG: Lookup for", key, "took 0.02 ms (cached)")
             return self._postcode_cache[key]
-    
-        import time
-        start = time.perf_counter()
-    
-        result = self.binary_search_postcode(key)
-    
-        elapsed = (time.perf_counter() - start) * 1000
-        print(f"DEBUG: Lookup for {key} took {elapsed:.2f} ms")
-    
-        if not result:
-            self._postcode_cache[key] = None
-            return None
-    
-        brma, country = result
-    
-        # ⭐ Return a dictionary (UI expects this)
-        final = {"brma": brma, "country": country}
-    
-        self._postcode_cache[key] = final
-        return final
 
-    def verify_postcode_csv_sorted(self):
-        print("DEBUG: Verifying postcode CSV sorted order…")
-    
-        f = self.postcode_file
-        f.seek(0)
-    
-        prev = ""
-        checked = 0
-    
-        while checked < 5000:
-            line = f.readline()
-            if not line:
-                break
-    
-            postcode, _, _ = self.parse_postcode_line(line)
-            if not postcode:
-                continue
-    
-            if postcode < prev:
-                print("WARNING: CSV is NOT sorted — binary search may fail!")
-                f.seek(0)
-                return False
-    
-            prev = postcode
-            checked += 1
-    
-        print("DEBUG: CSV appears sorted (first 5000 rows)")
-        f.seek(0)
-        return True
+        result = self.lookup_from_sqlite(key)
 
+        # Cache result (even None)
+        self._postcode_cache[key] = result
+        return result
+
+    # ---------------------------------------------------------
+    # CLEAN SHUTDOWN
+    # ---------------------------------------------------------
     def on_stop(self):
-        if getattr(self, "postcode_file", None):
-            print("DEBUG: Closing postcode CSV file")
-            self.postcode_file.close()
+        if self.postcode_db:
+            self.postcode_db.close()
 
     # ---------------------------------------------------------
     # LHA CSV PRELOAD
@@ -6488,13 +6382,6 @@ class BenefitBuddy(App):
     # STARTUP DIAGNOSTICS
     # ---------------------------------------------------------
     def on_start(self):
-        # 1. Build or load the SQLite database on first launch
-        self.db_path = ensure_database()
-    
-        # 2. Create the SQLite lookup object
-        self.sqlite_db = PostcodeDB(self.db_path)
-    
-        # 3. Continue with your existing startup diagnostics
         Clock.schedule_once(self.run_startup_diagnostics, 0.1)
 
     def run_startup_diagnostics(self, dt):
@@ -6511,7 +6398,6 @@ class BenefitBuddy(App):
         print("\n[1] Asset Verification")
         required_assets = {
             "Logo": "images/logo.png",
-            "BRMA CSV": "data/pcode_brma_lookup.csv",
             "Roboto Font": "font/roboto.ttf",
             "Chevron Down Icon": "images/icons/ChevronDown-icon/ChevronDown-32px.png",
             "Chevron Up Icon": "images/icons/ChevronUp-icon/ChevronUp-32px.png",
