@@ -12,33 +12,11 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1️⃣ Checkout repository WITH LFS enabled
+      # 1️⃣ Checkout repository (NO LFS)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: true
           fetch-depth: 0
-          sparse-checkout-cone-mode: false
-
-      # 1️⃣b️⃣ Pull real LFS files (downloads actual CSV)
-      - name: Pull LFS files
-        run: git lfs pull
-
-      # 1️⃣c️⃣ Cache Git LFS OBJECTS (not pointer files)
-      - name: Cache Git LFS files
-        uses: actions/cache@v4
-        with:
-          path: .git/lfs/objects
-          key: ${{ runner.os }}-git-lfs-${{ hashFiles('data/pcode_brma_lookup.csv') }}
-          restore-keys: |
-            ${{ runner.os }}-git-lfs-
-
-
-      # 1️⃣d️⃣ Validate CSV (ensures real file is present)
-      - name: Validate BRMA CSV
-        run: |
-          echo "Checking CSV header..."
-          head -n 1 data/pcode_brma_lookup.csv || true
 
       # 2️⃣ Cache Python packages
       - name: Cache pip
@@ -107,7 +85,7 @@ jobs:
 
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/ccmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_PATH
 
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --version
 
