@@ -1,2 +1,55 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dll
+*.dylib
+
+# -------------------------
+# Kivy / Buildozer
+# -------------------------
+.buildozer/
+bin/
+*.apk
+*.aab
+*.keystore
+
+# Kivy logs
+.kivy/
+
+# -------------------------
+# Data files (large or source-only)
+# -------------------------
+data/*.csv
+data/source/*.csv
+*.db
+
+# Postcode source CSVs (too large for GitHub)
+pcode_brma_lookup.csv
+pcode_brma_lookup_clean.csv
+
+# -------------------------
+# OS / Editor junk
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node (if ever used)
 node_modules/
+
+# Environment files
 .env

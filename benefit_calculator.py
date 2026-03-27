@@ -51,6 +51,8 @@ from collections import defaultdict
 import sqlite3
 from db_builder import build_database
 
+from postcode_lookup import lookup_postcode as compact_lookup
+
 # ============================================================
 # START MEMORY TRACING
 # ============================================================
@@ -3464,7 +3466,6 @@ class CalculatorHousingScreen(BaseScreen):
                 try:
                     app = App.get_running_app()
 
-                    # SQLite lookup only
                     brma_name = self.lookup_brma(postcode)
                     location = self.lookup_location_for_postcode(postcode)
 
@@ -3665,7 +3666,7 @@ class CalculatorHousingScreen(BaseScreen):
         result = app.lookup_postcode(postcode)
         if not result:
             return None
-        return result["brma"]
+        return result["brma_name"]
     
     def lookup_location_for_postcode(self, postcode):
         app = App.get_running_app()
@@ -6234,81 +6235,15 @@ class BenefitBuddy(App):
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
         
-        # NEW: SQLite connection + cache
-        self.postcode_db = None
-        self._postcode_cache = {}
+        # Preload screens immediately (main thread)
+        self.nav.preload_all_screens(lambda x: None)
 
         # Start at Disclaimer
         self.nav.go("disclaimer")
         return self.sm
-
-    # ---------------------------------------------------------
-    # OPEN SQLITE DB ONCE
-    # ---------------------------------------------------------
-    def ensure_postcode_db_loaded(self):
-        if self.postcode_db:
-            return
-
-        path = resource_find("app_data/postcodes.db")
-        if not path:
-            print("ERROR: postcodes.db not found!")
-            return
-
-        import sqlite3
-        self.postcode_db = sqlite3.connect(path)
-        self.postcode_db.row_factory = sqlite3.Row
-
-    # ---------------------------------------------------------
-    # SQLITE LOOKUP
-    # ---------------------------------------------------------
-    def lookup_from_sqlite(self, pcd):
-        self.ensure_postcode_db_loaded()
-        if not self.postcode_db:
-            return None
-
-        pcd = pcd.replace(" ", "").upper()
-
-        cur = self.postcode_db.cursor()
-        row = cur.execute("""
-            SELECT 
-                brma_dict.name AS brma,
-                country_dict.code AS country
-            FROM postcodes
-            JOIN brma_dict ON postcodes.brma_id = brma_dict.id
-            JOIN country_dict ON postcodes.country_id = country_dict.id
-            WHERE postcodes.pcd = ?
-        """, (pcd,)).fetchone()
-
-        if not row:
-            return None
-
-        return {
-            "brma": row["brma"],
-            "country": row["country"]
-        }
-
-    # ---------------------------------------------------------
-    # PUBLIC LOOKUP WRAPPER (CACHE + SQLITE)
-    # ---------------------------------------------------------
+    
     def lookup_postcode(self, postcode):
-        key = postcode.replace(" ", "").upper()
-
-        # Cache hit
-        if key in self._postcode_cache:
-            return self._postcode_cache[key]
-
-        result = self.lookup_from_sqlite(key)
-
-        # Cache result (even None)
-        self._postcode_cache[key] = result
-        return result
-
-    # ---------------------------------------------------------
-    # CLEAN SHUTDOWN
-    # ---------------------------------------------------------
-    def on_stop(self):
-        if self.postcode_db:
-            self.postcode_db.close()
+        return compact_lookup(postcode)
 
     # ---------------------------------------------------------
     # LHA CSV PRELOAD
@@ -6372,9 +6307,6 @@ class BenefitBuddy(App):
         status_callback("Loading LHA files…")
         self.preload_lha_csvs(progress_callback, status_callback)
 
-        status_callback("Preparing screens…")
-        self.nav.preload_all_screens(progress_callback)
-
         progress_callback(1.0)
         status_callback("Ready")
 
@@ -6391,6 +6323,11 @@ class BenefitBuddy(App):
         self.check_safe_props()
         self.check_window_size()
         self.check_memory()
+        
+        print("\n[5] Postcode Lookup Test")
+        print("  SW1A1AA →", self.lookup_postcode("SW1A1AA"))
+        print("  DN350HQ →", self.lookup_postcode("DN350HQ"))
+        print("  ZE39XP →", self.lookup_postcode("ZE39XP"))
     
         print("\n=== Startup Diagnostics Complete ===\n")
 
