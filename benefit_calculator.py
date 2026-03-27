@@ -5554,7 +5554,7 @@ class DisclaimerScreen(BaseScreen):
         self.continue_button.disabled = False
     
         # Run diagnostics now that postcode data is loaded
-        App.get_running_app().run_startup_diagnostics()
+        Clock.schedule_once(lambda _dt: App.get_running_app().run_startup_diagnostics(), 0)
 
 # Define the main screen for the app
 @with_diagnostics([])
