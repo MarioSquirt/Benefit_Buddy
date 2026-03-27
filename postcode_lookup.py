@@ -2,7 +2,7 @@ import os
 import bisect
 import json
 
-BASE_DIR = os.path.join(os.path.dirname(__file__), "app_data", "experimental_lookup")
+BASE_DIR = os.path.join(os.path.dirname(__file__), "app_data", "postcodes")
 
 IDX_PATH = os.path.join(BASE_DIR, "postcodes.idx")
 DATA_PATH = os.path.join(BASE_DIR, "postcodes_data.bin")
