@@ -6343,7 +6343,7 @@ class BenefitBuddy(App):
     # ---------------------------------------------------------
     # STARTUP DIAGNOSTICS
     # ---------------------------------------------------------
-    def run_startup_diagnostics(self, dt):
+    def run_startup_diagnostics(self, dt=None):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
     
         self.check_assets()
