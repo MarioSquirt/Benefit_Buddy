@@ -19,10 +19,26 @@ from kivy.properties import ObservableList
 from kivy.utils import get_color_from_hex
 Window.clearcolor = get_color_from_hex("#005EA5")
 
-# Add app_data folder to Kivy resource search paths
+# === DEBUG: Inspect packaged filesystem on device ===
 app_root = os.path.dirname(__file__)
-resource_add_path(os.path.join(app_root, "app_data"))
-resource_add_path(os.path.join(app_root, "app_data", "postcodes"))
+Logger.info(f"BenefitBuddy: APK root = {app_root}")
+Logger.info(f"BenefitBuddy: APK root contents = {os.listdir(app_root)}")
+
+app_data_path = os.path.join(app_root, "app_data")
+Logger.info(f"BenefitBuddy: app_data exists = {os.path.exists(app_data_path)}")
+if os.path.exists(app_data_path):
+    Logger.info(f"BenefitBuddy: app_data contents = {os.listdir(app_data_path)}")
+
+postcodes_path = os.path.join(app_data_path, "postcodes")
+Logger.info(f"BenefitBuddy: postcodes exists = {os.path.exists(postcodes_path)}")
+if os.path.exists(postcodes_path):
+    Logger.info(f"BenefitBuddy: postcodes contents = {os.listdir(postcodes_path)}")
+
+# Register app_data paths for Kivy resources
+resource_add_path(app_data_path)
+resource_add_path(postcodes_path)
+Logger.info(f"BenefitBuddy: Added resource path → {app_data_path}")
+Logger.info(f"BenefitBuddy: Added resource path → {postcodes_path}")
 
 # ===============================================================
 # 🛡️ SafeLabel wrapper
