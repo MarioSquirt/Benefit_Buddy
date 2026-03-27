@@ -1,26 +1,40 @@
-import os
 import bisect
 import json
+from kivy.resources import resource_find
 
-BASE_DIR = os.path.join(os.path.dirname(__file__), "app_data", "postcodes")
+# --- Helpers to load packaged files safely on Android ---
 
-IDX_PATH = os.path.join(BASE_DIR, "postcodes.idx")
-DATA_PATH = os.path.join(BASE_DIR, "postcodes_data.bin")
-BRMA_DICT_PATH = os.path.join(BASE_DIR, "brma_dict.json")
-COUNTRY_DICT_PATH = os.path.join(BASE_DIR, "country_dict.json")
-BRMA_NAMES_PATH = os.path.join(BASE_DIR, "brma_names.json")
+def load_binary(name):
+    path = resource_find(f"app_data/postcodes/{name}")
+    if not path:
+        raise FileNotFoundError(f"Missing packaged file: {name}")
+    with open(path, "rb") as f:
+        return f.read()
 
+def load_json(name):
+    path = resource_find(f"app_data/postcodes/{name}")
+    if not path:
+        raise FileNotFoundError(f"Missing packaged file: {name}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+# --- Normalisation ---
 def normalise_postcode(p):
     return p.replace(" ", "").upper().strip()
 
-def load_idx():
-    with open(IDX_PATH, "rb") as f:
-        return f.read()
+# --- Load all data at startup (Android-safe) ---
+idx_bytes = load_binary("postcodes.idx")
+data_bytes = load_binary("postcodes_data.bin")
 
-def load_data():
-    with open(DATA_PATH, "rb") as f:
-        return f.read()
+brma_dict = load_json("brma_dict.json")
+country_dict = load_json("country_dict.json")
+brma_names = load_json("brma_names.json")
 
+# Reverse dictionaries: ID → code
+brma_rev = {v: k for k, v in brma_dict.items()}
+country_rev = {v: k for k, v in country_dict.items()}
+
+# --- Reconstruct all postcodes ---
 def reconstruct_all_postcodes(idx_bytes):
     postcodes = []
     pos = 0
@@ -41,21 +55,7 @@ def reconstruct_all_postcodes(idx_bytes):
 
     return postcodes
 
-# --- Load everything once at app startup ---
-idx_bytes = load_idx()
-data_bytes = load_data()
 all_postcodes = reconstruct_all_postcodes(idx_bytes)
-
-with open(BRMA_DICT_PATH, "r", encoding="utf-8") as f:
-    brma_dict = json.load(f)
-with open(COUNTRY_DICT_PATH, "r", encoding="utf-8") as f:
-    country_dict = json.load(f)
-with open(BRMA_NAMES_PATH, "r", encoding="utf-8") as f:
-    brma_names = json.load(f)
-
-# Reverse dictionaries: ID → code
-brma_rev = {v: k for k, v in brma_dict.items()}
-country_rev = {v: k for k, v in country_dict.items()}
 
 # --- Public lookup function ---
 def lookup_postcode(pcd):
