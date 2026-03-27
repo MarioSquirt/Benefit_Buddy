@@ -52,6 +52,8 @@ import sqlite3
 from db_builder import build_database
 
 from postcode_lookup import lookup_postcode as compact_lookup
+from postcode_lookup import load_all_postcode_data
+from postcode_lookup import all_postcodes
 
 # ============================================================
 # START MEMORY TRACING
@@ -5501,11 +5503,36 @@ class DisclaimerScreen(BaseScreen):
     def _load_csv_thread(self):
         app = App.get_running_app()
         try:
-            # Load LHA CSVs
-            app.preload_lha_csvs(self._update_progress, self._update_status)
+            # ---------------------------------------------------------
+            # 1) Load LHA CSVs (0 → 50%)
+            # ---------------------------------------------------------
+            self._update_status("Loading LHA files…")
+            app.preload_lha_csvs(
+                progress_callback=lambda v: self._update_progress(v * 0.50),
+                status_callback=self._update_status
+            )
     
-            # Preload screens
-            app.nav.preload_all_screens(self._update_progress)
+            # ---------------------------------------------------------
+            # 2) Preload screens (50% → 60%)
+            # ---------------------------------------------------------
+            self._update_status("Preparing screens…")
+            app.nav.preload_all_screens(
+                lambda v: self._update_progress(0.50 + v * 0.10)
+            )
+    
+            # ---------------------------------------------------------
+            # 3) Load postcode engine (60% → 100%)
+            # ---------------------------------------------------------
+            # Only load postcode data if not already loaded
+            if all_postcodes is None:
+                self._update_status("Loading postcode data…")
+                load_all_postcode_data(
+                    progress=lambda v: self._update_progress(0.60 + v * 0.40),
+                    status=self._update_status
+                )
+            else:
+                # Already loaded (e.g., returning to screen)
+                self._update_progress(1.0)
     
         except Exception as e:
             print("Startup preload error:", e)
