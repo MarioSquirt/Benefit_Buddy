@@ -20,21 +20,41 @@ from kivy.utils import get_color_from_hex
 Window.clearcolor = get_color_from_hex("#005EA5")
 
 # === DEBUG: Inspect packaged filesystem on device ===
-app_root = os.path.dirname(__file__)
-Logger.info(f"BenefitBuddy: APK root = {app_root}")
-Logger.info(f"BenefitBuddy: APK root contents = {os.listdir(app_root)}")
+# Android-safe root path
+try:
+    from android.storage import app_storage_path
+    app_root = app_storage_path()
+except ImportError:
+    # Desktop fallback
+    app_root = os.path.dirname(os.path.abspath(__file__))
 
+Logger.info(f"BenefitBuddy: APK root = {app_root}")
+
+# Safely list root contents
+try:
+    Logger.info(f"BenefitBuddy: APK root contents = {os.listdir(app_root)}")
+except Exception as e:
+    Logger.error(f"BenefitBuddy: Could not list APK root: {e}")
+
+# Check app_data
 app_data_path = os.path.join(app_root, "app_data")
 Logger.info(f"BenefitBuddy: app_data exists = {os.path.exists(app_data_path)}")
 if os.path.exists(app_data_path):
-    Logger.info(f"BenefitBuddy: app_data contents = {os.listdir(app_data_path)}")
+    try:
+        Logger.info(f"BenefitBuddy: app_data contents = {os.listdir(app_data_path)}")
+    except Exception as e:
+        Logger.error(f"BenefitBuddy: Could not list app_data: {e}")
 
+# Check postcodes folder
 postcodes_path = os.path.join(app_data_path, "postcodes")
 Logger.info(f"BenefitBuddy: postcodes exists = {os.path.exists(postcodes_path)}")
 if os.path.exists(postcodes_path):
-    Logger.info(f"BenefitBuddy: postcodes contents = {os.listdir(postcodes_path)}")
+    try:
+        Logger.info(f"BenefitBuddy: postcodes contents = {os.listdir(postcodes_path)}")
+    except Exception as e:
+        Logger.error(f"BenefitBuddy: Could not list postcodes: {e}")
 
-# Register app_data paths for Kivy resources
+# Register resource paths
 resource_add_path(app_data_path)
 resource_add_path(postcodes_path)
 Logger.info(f"BenefitBuddy: Added resource path → {app_data_path}")
