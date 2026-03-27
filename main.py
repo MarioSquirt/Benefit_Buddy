@@ -19,6 +19,10 @@ from kivy.properties import ObservableList
 from kivy.utils import get_color_from_hex
 Window.clearcolor = get_color_from_hex("#005EA5")
 
+# Add app_data folder to Kivy resource search paths
+app_root = os.path.dirname(__file__)
+resource_add_path(os.path.join(app_root, "app_data"))
+resource_add_path(os.path.join(app_root, "app_data", "postcodes"))
 
 # ===============================================================
 # 🛡️ SafeLabel wrapper
