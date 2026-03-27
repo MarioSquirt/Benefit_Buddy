@@ -5552,6 +5552,9 @@ class DisclaimerScreen(BaseScreen):
         self._set_real_progress(1.0)
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
+    
+        # Run diagnostics now that postcode data is loaded
+        App.get_running_app().run_startup_diagnostics()
 
 # Define the main screen for the app
 @with_diagnostics([])
@@ -6340,9 +6343,6 @@ class BenefitBuddy(App):
     # ---------------------------------------------------------
     # STARTUP DIAGNOSTICS
     # ---------------------------------------------------------
-    def on_start(self):
-        Clock.schedule_once(self.run_startup_diagnostics, 0.1)
-
     def run_startup_diagnostics(self, dt):
         print("\n=== Benefit Buddy Startup Diagnostics ===")
     
