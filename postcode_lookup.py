@@ -95,8 +95,10 @@ def load_all_postcode_data(progress=None, status=None):
 
     # 3) Reconstruct postcodes (heavy step)
     if status: status("Reconstructing postcodes…")
-    all_postcodes = reconstruct_all_postcodes(idx_bytes)
-    if progress: progress(0.80)
+    all_postcodes = reconstruct_all_postcodes(
+        idx_bytes,
+        progress_callback=lambda v: progress(0.20 + v * 0.60) if progress else None
+    )
 
     # 4) Load dictionaries
     if status: status("Loading BRMA dictionaries…")
