@@ -2321,17 +2321,14 @@ class CalculatorNavBar(BoxLayout):
                 panel.add_widget(sep)
     
         # Position panel under current button
-        # 1. Get TOP of current button in window coords
-        btn_x, btn_top = self.current_btn.to_window(
-            self.current_btn.x,
-            self.current_btn.y + self.current_btn.height
-        )
+        # 1. Get NAVBAR bottom in window coords
+        nav_x, nav_bottom = self.to_window(self.x, self.y)
         
         # 2. Convert window → dropdown coords
-        local_x, local_top = self.dropdown.to_widget(btn_x, btn_top, relative=True)
+        local_x, local_bottom = self.dropdown.to_widget(nav_x, nav_bottom, relative=True)
         
-        # 3. Position panel so its TOP sits just below the navbar/button
-        panel_y = local_top - panel.height  # 8px gap below navbar
+        # 3. Position panel so its TOP sits exactly at navbar bottom
+        panel_y = local_bottom - panel.height
         panel.pos = (local_x, panel_y)
     
         # Add panel above blocker
