@@ -2243,18 +2243,15 @@ class CalculatorNavBar(BoxLayout):
     
         # 1. Button position in window coords
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-    
-        # 2. Convert window → screen coords
-        screen_x, screen_y = current_screen.to_widget(btn_x, btn_y)
-    
-        # 3. Convert screen → dropdown coords
-        local_x, local_y = self.dropdown.to_widget(screen_x, screen_y)
+        
+        # 2. Convert window → dropdown coords directly
+        local_x, local_y = self.dropdown.to_widget(btn_x, btn_y, relative=True)
+        
         print("DEBUG — btn window coords:", btn_x, btn_y)
-        print("DEBUG — screen coords:", screen_x, screen_y)
         print("DEBUG — dropdown-local coords:", local_x, local_y)
         print("DEBUG — panel height:", panel.height)
     
-        # 4. Position panel under the button
+        # 3. Position panel under the button
         panel_y = local_y - panel.height - 8
         panel.pos = (local_x, panel_y)
         print("DEBUG — final panel pos:", panel.pos)
