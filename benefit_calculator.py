@@ -2216,9 +2216,7 @@ class CalculatorNavBar(BoxLayout):
         )
         self.dropdown.add_widget(blocker)
     
-        # ⭐ IMPORTANT: Add dropdown to ROOT so it is not clipped
-        root = App.get_running_app().root
-        root.add_widget(self.dropdown)
+        Window.add_widget(self.dropdown)
     
         # Build the panel
         panel = BoxLayout(
@@ -2270,9 +2268,8 @@ class CalculatorNavBar(BoxLayout):
             self.current_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
     
         if self.dropdown and self.dropdown.parent:
-            current_screen = App.get_running_app().root.current_screen
             if self.dropdown and self.dropdown.parent:
-                current_screen.remove_widget(self.dropdown)
+                Window.remove_widget(self.dropdown)
     
         self.dropdown = None
 
