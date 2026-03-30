@@ -2239,10 +2239,12 @@ class CalculatorNavBar(BoxLayout):
     
         # Position panel just under the navbar background
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        panel_y = btn_y - panel.height - 8
-        panel.pos = (btn_x, panel_y)
-    
-        # (your row creation code stays unchanged)
+        
+        # Convert window coordinates → dropdown-local coordinates
+        local_x, local_y = self.dropdown.to_widget(btn_x, btn_y)
+        
+        panel_y = local_y - panel.height - 8
+        panel.pos = (local_x, panel_y)
     
         # ⭐ Add panel AFTER blocker so it sits on top
         self.dropdown.add_widget(panel)
