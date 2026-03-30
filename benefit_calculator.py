@@ -2237,12 +2237,17 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
     
-        # Position panel just under the navbar background
+        # 1. Get button position in window coordinates
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
         
-        # Convert window coordinates → dropdown-local coordinates
-        local_x, local_y = self.dropdown.to_widget(btn_x, btn_y)
+        # 2. Convert window → screen coordinates
+        screen = App.get_running_app().root.current_screen
+        screen_x, screen_y = screen.to_widget(btn_x, btn_y)
         
+        # 3. Convert screen → dropdown coordinates
+        local_x, local_y = self.dropdown.to_widget(screen_x, screen_y)
+        
+        # 4. Position panel under the button
         panel_y = local_y - panel.height - 8
         panel.pos = (local_x, panel_y)
     
