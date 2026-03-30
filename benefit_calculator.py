@@ -1936,7 +1936,7 @@ class CalculatorNavBar(BoxLayout):
         )
 
         # ---------------------------------------------------------
-        # UPDATED SCREEN ORDER (Children BEFORE Housing)
+        # UPDATED SCREEN ORDER
         # ---------------------------------------------------------
         self.screens = [
             ("Introduction", "calculator_intro"),
@@ -2236,6 +2236,19 @@ class CalculatorNavBar(BoxLayout):
             size=lambda inst, val: setattr(panel._bg, "size", val),
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
+
+        app = App.get_running_app()
+        
+        for label, screen_name in self.screens:
+            icon = self.icon_map[label]
+        
+            row = self.make_nav_button(
+                label=label,
+                icon=icon,
+                on_press=lambda inst, target=screen_name: app.nav.go(target)
+            )
+        
+            panel.add_widget(row)
     
         # ⭐ Correct coordinate conversion sequence
     
