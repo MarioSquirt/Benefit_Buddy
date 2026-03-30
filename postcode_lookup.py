@@ -45,21 +45,24 @@ def normalise_postcode(p):
 # ============================================================
 
 def reconstruct_all_postcodes(idx_bytes):
-    postcodes = []
+    total = 2936738
+    postcodes = [None] * total  # preallocate list
+    ib = idx_bytes              # local reference for speed
     pos = 0
     prev = ""
-    total = 2936738  # fixed count
 
-    for _ in range(total):
-        prefix_len = idx_bytes[pos]
-        suffix_len = idx_bytes[pos + 1]
+    for i in range(total):
+        prefix_len = ib[pos]
+        suffix_len = ib[pos + 1]
         pos += 2
 
-        suffix = idx_bytes[pos:pos + suffix_len].decode("ascii")
+        # slice + decode
+        suffix = ib[pos:pos + suffix_len].decode("ascii")
         pos += suffix_len
 
+        # reconstruct
         postcode = prev[:prefix_len] + suffix
-        postcodes.append(postcode)
+        postcodes[i] = postcode
         prev = postcode
 
     return postcodes
