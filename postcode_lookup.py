@@ -44,10 +44,10 @@ def normalise_postcode(p):
 # Reconstruct postcode list from compressed index
 # ============================================================
 
-def reconstruct_all_postcodes(idx_bytes):
+def reconstruct_all_postcodes(idx_bytes, progress_callback=None):
     total = 2936738
-    postcodes = [None] * total  # preallocate list
-    ib = idx_bytes              # local reference for speed
+    postcodes = [None] * total
+    ib = idx_bytes
     pos = 0
     prev = ""
 
@@ -56,14 +56,16 @@ def reconstruct_all_postcodes(idx_bytes):
         suffix_len = ib[pos + 1]
         pos += 2
 
-        # slice + decode
         suffix = ib[pos:pos + suffix_len].decode("ascii")
         pos += suffix_len
 
-        # reconstruct
         postcode = prev[:prefix_len] + suffix
         postcodes[i] = postcode
         prev = postcode
+
+        # progress update every 10,000 iterations
+        if progress_callback and i % 10000 == 0:
+            progress_callback(i / total)
 
     return postcodes
 
