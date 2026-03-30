@@ -2208,16 +2208,19 @@ class CalculatorNavBar(BoxLayout):
         # Floating container
         self.dropdown = FloatLayout(size_hint=(1, 1))
     
-        # ⭐ NEW: Transparent blocker to swallow outside touches
+        # Transparent blocker
         blocker = Button(
             background_color=(0, 0, 0, 0),
             size_hint=(1, 1),
             on_release=lambda *a: self.close_dropdown()
         )
         self.dropdown.add_widget(blocker)
-        # ---------------------------------------------
     
-        # Panel
+        # ⭐ IMPORTANT: Add dropdown to screen BEFORE positioning panel
+        current_screen = App.get_running_app().root.current_screen
+        current_screen.add_widget(self.dropdown)
+    
+        # Build the panel
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -2227,7 +2230,6 @@ class CalculatorNavBar(BoxLayout):
             spacing=10,
         )
     
-        # Background
         with panel.canvas.before:
             Color(1, 1, 1, 1)
             panel._bg = Rectangle(size=panel.size, pos=panel.pos)
@@ -2237,25 +2239,28 @@ class CalculatorNavBar(BoxLayout):
             pos=lambda inst, val: setattr(panel._bg, "pos", val),
         )
     
-        # 1. Get button position in window coordinates
+        # ⭐ Correct coordinate conversion sequence
+    
+        # 1. Button position in window coords
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        
-        # 2. Convert window → screen coordinates
-        screen = App.get_running_app().root.current_screen
-        screen_x, screen_y = screen.to_widget(btn_x, btn_y)
-        
-        # 3. Convert screen → dropdown coordinates
+    
+        # 2. Convert window → screen coords
+        screen_x, screen_y = current_screen.to_widget(btn_x, btn_y)
+    
+        # 3. Convert screen → dropdown coords
         local_x, local_y = self.dropdown.to_widget(screen_x, screen_y)
-        
+        print("DEBUG — btn window coords:", btn_x, btn_y)
+        print("DEBUG — screen coords:", screen_x, screen_y)
+        print("DEBUG — dropdown-local coords:", local_x, local_y)
+        print("DEBUG — panel height:", panel.height)
+    
         # 4. Position panel under the button
         panel_y = local_y - panel.height - 8
         panel.pos = (local_x, panel_y)
+        print("DEBUG — final panel pos:", panel.pos)
     
-        # ⭐ Add panel AFTER blocker so it sits on top
+        # Add panel on top of blocker
         self.dropdown.add_widget(panel)
-    
-        current_screen = App.get_running_app().root.current_screen
-        current_screen.add_widget(self.dropdown)
     
     def close_dropdown(self):
         if not self.dropdown_open:
