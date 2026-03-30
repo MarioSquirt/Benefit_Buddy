@@ -2216,9 +2216,9 @@ class CalculatorNavBar(BoxLayout):
         )
         self.dropdown.add_widget(blocker)
     
-        # ⭐ IMPORTANT: Add dropdown to screen BEFORE positioning panel
-        current_screen = App.get_running_app().root.current_screen
-        current_screen.add_widget(self.dropdown)
+        # ⭐ IMPORTANT: Add dropdown to ROOT so it is not clipped
+        root = App.get_running_app().root
+        root.add_widget(self.dropdown)
     
         # Build the panel
         panel = BoxLayout(
