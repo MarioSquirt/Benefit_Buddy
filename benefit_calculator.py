@@ -2015,7 +2015,6 @@ class CalculatorNavBar(BoxLayout):
     # =====================================================================
     # BUTTON FACTORIES — ALL VERTICALLY CENTERED + SAFE TOUCH HANDLING
     # =====================================================================
-    
     def _bind_press(self, widget, callback):
         """Bind a safe on_touch_down handler that prevents event bubbling."""
         
@@ -2041,7 +2040,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="horizontal",
             spacing=8,
             size_hint=(None, None),
-            size=(300, 60),
+            size=(160, 60),
             padding=(0, 0),
         )
         btn.size_hint_y = None
@@ -2173,7 +2172,42 @@ class CalculatorNavBar(BoxLayout):
     # =====================================================================
     # DROPDOWN MENU
     # =====================================================================
+    def make_dropdown_row(self, label, icon, on_press):
+        row = BoxLayout(
+            orientation="horizontal",
+            spacing=8,
+            size_hint=(1, None),   # full width of panel
+            height=60,
+            padding=(0, 0),
+        )
     
+        img = Image(
+            source=icon,
+            size_hint=(None, None),
+            size=(32, 32),
+            allow_stretch=True,
+            keep_ratio=True,
+        )
+    
+        lbl = SafeLabel(
+            text=label,
+            font_size=18,
+            halign="left",
+            valign="middle",
+            color=get_color_from_hex("#005EA5"),
+            size_hint=(1, None),
+            height=60,
+        )
+    
+        # Make text fill all remaining space
+        lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+    
+        row.add_widget(self._center_icon(img))
+        row.add_widget(lbl)
+    
+        self._bind_press(row, on_press)
+        return row
+        
     def toggle_dropdown(self, *args):
         if self.dropdown_open:
             self.close_dropdown()
@@ -2257,7 +2291,7 @@ class CalculatorNavBar(BoxLayout):
                     self.close_dropdown()
                 )
     
-            row = self.make_nav_button(
+            row = self.make_dropdown_row(
                 label=label,
                 icon=icon,
                 on_press=make_row_callback(screen_name)
@@ -2297,7 +2331,7 @@ class CalculatorNavBar(BoxLayout):
         local_x, local_top = self.dropdown.to_widget(btn_x, btn_top, relative=True)
         
         # 3. Position panel so its TOP sits just below the navbar/button
-        panel_y = local_top - panel.height - 8  # 8px gap below navbar
+        panel_y = local_top - panel.height  # 8px gap below navbar
         panel.pos = (local_x, panel_y)
     
         # Add panel above blocker
