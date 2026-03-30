@@ -2187,7 +2187,7 @@ class CalculatorNavBar(BoxLayout):
                 setattr(row_ref, "background_color", (0.95, 0.95, 0.95, 1))
                 if row_ref.collide_point(*touch.pos) else None
             )
-        
+    
         def make_row_release(row_ref):
             return lambda inst, touch: (
                 setattr(row_ref, "background_color", (1, 1, 1, 1))
@@ -2199,14 +2199,14 @@ class CalculatorNavBar(BoxLayout):
     
         self.dropdown_open = True
     
-        # Toggle chevron UP
+        # Flip chevron
         if self.current_chevron:
             self.current_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
     
-        # Floating container
+        # Floating overlay
         self.dropdown = FloatLayout(size_hint=(1, 1))
     
-        # Transparent blocker
+        # Blocker
         blocker = Button(
             background_color=(0, 0, 0, 0),
             size_hint=(1, 1),
@@ -2216,7 +2216,7 @@ class CalculatorNavBar(BoxLayout):
     
         Window.add_widget(self.dropdown)
     
-        # Build the panel
+        # Panel
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -2226,76 +2226,73 @@ class CalculatorNavBar(BoxLayout):
             spacing=10,
         )
     
+        # GOV.UK border + inset
         with panel.canvas.before:
-            Color(1, 1, 1, 1)
-            panel._bg = Rectangle(size=panel.size, pos=panel.pos)
+            Color(*get_color_from_hex("#FFDD00"))
+            panel._border = Rectangle(size=panel.size, pos=panel.pos)
     
-        panel.bind(
-            size=lambda inst, val: setattr(panel._bg, "size", val),
-            pos=lambda inst, val: setattr(panel._bg, "pos", val),
-        )
-
+            Color(1, 1, 1, 1)
+            panel._inner = Rectangle(
+                size=(panel.width - 6, panel.height - 6),
+                pos=(panel.x + 3, panel.y + 3)
+            )
+    
+        def update_panel_graphics(*args):
+            panel._border.size = panel.size
+            panel._border.pos = panel.pos
+    
+            panel._inner.size = (panel.width - 6, panel.height - 6)
+            panel._inner.pos = (panel.x + 3, panel.y + 3)
+    
+        panel.bind(size=update_panel_graphics, pos=update_panel_graphics)
+    
         app = App.get_running_app()
-        
+    
         for label, screen_name in self.screens:
             icon = self.icon_map[label]
-        
-            # ⭐ Correct callback: navigate + close dropdown
+    
             def make_row_callback(target):
                 return lambda inst: (
                     app.nav.go(target),
                     self.close_dropdown()
                 )
-        
+    
             row = self.make_nav_button(
                 label=label,
                 icon=icon,
                 on_press=make_row_callback(screen_name)
             )
-        
+    
             panel.add_widget(row)
             row.bind(on_touch_down=make_row_press(row))
             row.bind(on_touch_up=make_row_release(row))
-
-            # Separator (75% width, GOV.UK blue)
-            sep = Widget(size_hint=(None, None), height=1)
-            sep.width = panel.width * 0.75
-            
-            with sep.canvas.before:
-                Color(0.0, 0.3686, 0.647, 1)  # GOV.UK blue
-                sep._line = Rectangle(size=(sep.width, 1), pos=sep.pos)
-            
-            # Keep separator aligned + sized correctly
-            def update_sep(*args):
+    
+            # Add separator except after last item
+            if (label, screen_name) != self.screens[-1]:
+                sep = Widget(size_hint=(None, None), height=1)
                 sep.width = panel.width * 0.75
-                sep._line.size = (sep.width, 1)
-                sep._line.pos = (sep.x, sep.y)
-            
-            panel.bind(size=update_sep)
-            sep.bind(pos=update_sep)
-            
-            panel.add_widget(sep)
     
-        # ⭐ Correct coordinate conversion sequence
+                with sep.canvas.before:
+                    Color(0.0, 0.3686, 0.647, 1)
+                    sep._line = Rectangle(size=(sep.width, 1), pos=sep.pos)
     
-        # 1. Button position in window coords
+                def update_sep(*args):
+                    sep.width = panel.width * 0.75
+                    sep._line.size = (sep.width, 1)
+                    sep._line.pos = (sep.x, sep.y)
+    
+                panel.bind(size=update_sep, pos=update_sep)
+                sep.bind(pos=update_sep)
+    
+                panel.add_widget(sep)
+    
+        # Position panel under current button
         btn_x, btn_y = self.current_btn.to_window(self.current_btn.x, self.current_btn.y)
-        
-        # 2. Convert window → dropdown coords directly
         local_x, local_y = self.dropdown.to_widget(btn_x, btn_y, relative=True)
-        
-        print("DEBUG — btn window coords:", btn_x, btn_y)
-        print("DEBUG — dropdown-local coords:", local_x, local_y)
-        print("DEBUG — panel height:", panel.height)
+        panel.pos = (local_x, local_y - panel.height - 8)
     
-        # 3. Position panel under the button
-        panel_y = local_y - panel.height - 8
-        panel.pos = (local_x, panel_y)
-        print("DEBUG — final panel pos:", panel.pos)
-    
-        # Add panel on top of blocker
+        # Add panel above blocker
         self.dropdown.add_widget(panel)
-        # Force panel to top of draw order
         self.dropdown.remove_widget(panel)
         self.dropdown.add_widget(panel)
     
