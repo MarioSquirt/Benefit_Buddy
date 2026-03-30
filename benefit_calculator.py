@@ -1900,14 +1900,6 @@ class CollapsibleSection(BoxLayout):
 
         return True
 
-def make_row_callback(row, target_screen):
-    def _on_touch_down(inst, touch):
-        if row.collide_point(*touch.pos):
-            App.get_running_app().nav.go(target_screen)
-            return True
-        return False
-    return _on_touch_down
-
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
         super().__init__(
@@ -2191,10 +2183,16 @@ class CalculatorNavBar(BoxLayout):
     def open_dropdown(self):
     
         def make_row_press(row_ref):
-            return lambda *args: setattr(row_ref, "background_color", (0.95, 0.95, 0.95, 1))
-    
+            return lambda inst, touch: (
+                setattr(row_ref, "background_color", (0.95, 0.95, 0.95, 1))
+                if row_ref.collide_point(*touch.pos) else None
+            )
+        
         def make_row_release(row_ref):
-            return lambda *args: setattr(row_ref, "background_color", (1, 1, 1, 1))
+            return lambda inst, touch: (
+                setattr(row_ref, "background_color", (1, 1, 1, 1))
+                if row_ref.collide_point(*touch.pos) else None
+            )
     
         if self.dropdown_open:
             return
@@ -2242,13 +2240,41 @@ class CalculatorNavBar(BoxLayout):
         for label, screen_name in self.screens:
             icon = self.icon_map[label]
         
+            # ⭐ Correct callback: navigate + close dropdown
+            def make_row_callback(target):
+                return lambda inst: (
+                    app.nav.go(target),
+                    self.close_dropdown()
+                )
+        
             row = self.make_nav_button(
                 label=label,
                 icon=icon,
-                on_press=lambda inst, target=screen_name: app.nav.go(target)
+                on_press=make_row_callback(screen_name)
             )
         
             panel.add_widget(row)
+            row.bind(on_touch_down=make_row_press(row))
+            row.bind(on_touch_up=make_row_release(row))
+
+            # Separator (75% width, GOV.UK blue)
+            sep = Widget(size_hint=(None, None), height=1)
+            sep.width = panel.width * 0.75
+            
+            with sep.canvas.before:
+                Color(0.0, 0.3686, 0.647, 1)  # GOV.UK blue
+                sep._line = Rectangle(size=(sep.width, 1), pos=sep.pos)
+            
+            # Keep separator aligned + sized correctly
+            def update_sep(*args):
+                sep.width = panel.width * 0.75
+                sep._line.size = (sep.width, 1)
+                sep._line.pos = (sep.x, sep.y)
+            
+            panel.bind(size=update_sep)
+            sep.bind(pos=update_sep)
+            
+            panel.add_widget(sep)
     
         # ⭐ Correct coordinate conversion sequence
     
@@ -2268,6 +2294,9 @@ class CalculatorNavBar(BoxLayout):
         print("DEBUG — final panel pos:", panel.pos)
     
         # Add panel on top of blocker
+        self.dropdown.add_widget(panel)
+        # Force panel to top of draw order
+        self.dropdown.remove_widget(panel)
         self.dropdown.add_widget(panel)
     
     def close_dropdown(self):
