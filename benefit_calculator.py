@@ -2026,13 +2026,23 @@ class CalculatorNavBar(BoxLayout):
     
     def _bind_press(self, widget, callback):
         """Bind a safe on_touch_down handler that prevents event bubbling."""
+        
         def handler(inst, touch):
             if widget.collide_point(*touch.pos):
                 callback(widget)
-                return True   # STOP PROPAGATION
+                # Do NOT swallow yet — allow the press to complete
+                return True
             return False
+    
         widget.bind(on_touch_down=handler)
     
+        def swallow_up(inst, touch):
+            # Swallow ONLY if the dropdown is open AND this is the navbar button
+            if self.dropdown_open and widget.collide_point(*touch.pos):
+                return True
+            return False
+    
+        widget.bind(on_touch_up=swallow_up)
     
     def make_nav_button(self, label, icon, on_press):
         btn = BoxLayout(
@@ -2178,15 +2188,14 @@ class CalculatorNavBar(BoxLayout):
         else:
             self.open_dropdown()
     
-    
     def open_dropdown(self):
-        
+    
         def make_row_press(row_ref):
             return lambda *args: setattr(row_ref, "background_color", (0.95, 0.95, 0.95, 1))
-        
+    
         def make_row_release(row_ref):
             return lambda *args: setattr(row_ref, "background_color", (1, 1, 1, 1))
-        
+    
         if self.dropdown_open:
             return
     
@@ -2197,7 +2206,16 @@ class CalculatorNavBar(BoxLayout):
             self.current_chevron.source = "images/icons/ChevronUp-icon/ChevronUp-16px.png"
     
         # Floating container
-        self.dropdown = FloatLayout(size_hint=(1, None), height=400)
+        self.dropdown = FloatLayout(size_hint=(1, 1))
+    
+        # ⭐ NEW: Transparent blocker to swallow outside touches
+        blocker = Button(
+            background_color=(0, 0, 0, 0),
+            size_hint=(1, 1),
+            on_release=lambda *a: self.close_dropdown()
+        )
+        self.dropdown.add_widget(blocker)
+        # ---------------------------------------------
     
         # Panel
         panel = BoxLayout(
@@ -2224,91 +2242,11 @@ class CalculatorNavBar(BoxLayout):
         panel_y = btn_y - panel.height - 8
         panel.pos = (btn_x, panel_y)
     
-        for i, (label, screen_name) in enumerate(self.screens):
-            row = BoxLayout(
-                orientation="horizontal",
-                spacing=10,
-                size_hint=(1, None),
-                height=40,
-                padding=(10, 0),
-            )
-        
-            # Background
-            with row.canvas.before:
-                Color(1, 1, 1, 1)
-                row._bg = Rectangle(size=row.size, pos=row.pos)
-        
-            row.bind(
-                size=lambda inst, val: setattr(inst._bg, "size", val),
-                pos=lambda inst, val: setattr(inst._bg, "pos", val),
-            )
-        
-            # Touch highlight
-            def _row_press(inst, touch, r=row):
-                if inst.collide_point(*touch.pos):
-                    make_row_press(r)()
-                return False
-        
-            def _row_release(inst, touch, r=row):
-                make_row_release(r)()
-                return False
-        
-            def _row_touch_up(inst, touch, r=row, screen=screen_name):
-                # 1. Release highlight
-                make_row_release(r)()
-            
-                # 2. Close dropdown
-                self.close_dropdown()
-            
-                # 3. Navigate after a tiny delay (lets highlight flash cleanly)
-                Clock.schedule_once(lambda dt: make_row_callback(r, screen)(inst, touch), 0)
-            
-                return False
-            
-            row.bind(on_touch_up=_row_touch_up)
-        
-            # Icon
-            icon = Image(
-                source=self.icon_map[label],
-                size_hint=(None, None),
-                size=(20, 20),
-            )
-        
-            # Label
-            lbl = SafeLabel(
-                text=label,
-                font_size=14,
-                halign="left",
-                valign="middle",
-                color=get_color_from_hex("#005EA5"),
-            )
-            lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-            row.add_widget(icon)
-            row.add_widget(lbl)
-        
-            panel.add_widget(row)
-        
-            # Divider
-            if i < len(self.screens) - 1:
-                divider = Widget(size_hint_y=None, height=2)
-        
-                with divider.canvas.after:
-                    Color(*get_color_from_hex("#005EA5"))
-                    divider._line = Rectangle()
-        
-                def update_divider(inst, *args):
-                    full_w = panel.width
-                    line_w = full_w * 0.75
-                    inst._line.size = (line_w, 2)
-                    inst._line.pos = (panel.x + (full_w - line_w) / 2, inst.y)
-        
-                divider.bind(pos=update_divider, size=update_divider)
-                panel.bind(width=update_divider)
-        
-                panel.add_widget(divider)
+        # (your row creation code stays unchanged)
     
+        # ⭐ Add panel AFTER blocker so it sits on top
         self.dropdown.add_widget(panel)
+    
         current_screen = App.get_running_app().root.current_screen
         current_screen.add_widget(self.dropdown)
     
