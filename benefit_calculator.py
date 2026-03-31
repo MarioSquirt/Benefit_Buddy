@@ -5603,13 +5603,23 @@ class DisclaimerScreen(BaseScreen):
     def _set_real_progress(self, value):
         self._real_progress = value
 
+    def _run_diagnostics_safe(self, dt):
+        app = App.get_running_app()
+        from postcode_lookup import all_postcodes
+    
+        if all_postcodes is not None:
+            app.run_startup_diagnostics()
+        else:
+            # Retry until postcode data is ready
+            Clock.schedule_once(self._run_diagnostics_safe, 0.1)
+
     def _loading_complete(self, dt):
         self._set_real_progress(1.0)
         self.loading_label.text = "Ready"
         self.continue_button.disabled = False
     
         # Run diagnostics now that postcode data is loaded
-        Clock.schedule_once(lambda _dt: App.get_running_app().run_startup_diagnostics(), 0)
+        Clock.schedule_once(self._run_diagnostics_safe, 0)
 
 # Define the main screen for the app
 @with_diagnostics([])
