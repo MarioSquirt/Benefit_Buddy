@@ -2176,7 +2176,7 @@ class CalculatorNavBar(BoxLayout):
         row = BoxLayout(
             orientation="horizontal",
             spacing=8,
-            size_hint=(1, None),   # full width of panel
+            size_hint=(1, None),
             height=60,
             padding=(0, 0),
         )
@@ -2198,12 +2198,23 @@ class CalculatorNavBar(BoxLayout):
             size_hint=(1, None),
             height=60,
         )
-    
-        # Make text fill all remaining space
         lbl.bind(size=lambda inst, val: setattr(inst, "text_size", val))
     
         row.add_widget(self._center_icon(img))
         row.add_widget(lbl)
+    
+        # GOV.UK divider (75% width, centred)
+        with row.canvas.after:
+            Color(0.0, 0.3686, 0.647, 1)  # GOV.UK blue
+            row._divider = Rectangle(size=(0, 3), pos=(0, 0))
+    
+        def update_divider(*_):
+            w = row.width * 0.75
+            x = row.x + (row.width - w) / 2
+            row._divider.size = (w, 3)
+            row._divider.pos = (x, row.y - 1)
+    
+        row.bind(size=update_divider, pos=update_divider)
     
         self._bind_press(row, on_press)
         return row
@@ -2300,25 +2311,6 @@ class CalculatorNavBar(BoxLayout):
             panel.add_widget(row)
             row.bind(on_touch_down=make_row_press(row))
             row.bind(on_touch_up=make_row_release(row))
-    
-            # Add separator except after last item
-            if (label, screen_name) != self.screens[-1]:
-                sep = Widget(size_hint=(None, None), height=1)
-                sep.width = panel.width * 0.75
-    
-                with sep.canvas.before:
-                    Color(0.0, 0.3686, 0.647, 1)
-                    sep._line = Rectangle(size=(sep.width, 1), pos=sep.pos)
-    
-                def update_sep(*args):
-                    sep.width = panel.width * 0.75
-                    sep._line.size = (sep.width, 1)
-                    sep._line.pos = (sep.x, sep.y)
-    
-                panel.bind(size=update_sep, pos=update_sep)
-                sep.bind(pos=update_sep)
-    
-                panel.add_widget(sep)
     
         # 1. Get the bottom of the NAVBAR in window coords
         nav_x, nav_bottom = self.to_window(self.x, self.y)
@@ -5529,20 +5521,12 @@ class DisclaimerScreen(BaseScreen):
             ("Preparing graphics…", app.warm_up_graphics, 0.05),
             ("Loading fonts…", app.preload_fonts, 0.10),
             ("Loading icons…", app.preload_icons, 0.20),
-            ("Preparing navigation…", app.preload_navbar, 0.25),
-            ("Preparing menu…", app.preload_dropdown_rows, 0.30),
         ]
     
         for status, func, progress in steps:
             self.loading_label.text = status
             func()  # safe: main thread
             self._set_real_progress(progress)
-    
-        # Preload screens on main thread too (it creates widgets)
-        self.loading_label.text = "Preparing screens…"
-        app.nav.preload_all_screens(
-            lambda v: self._set_real_progress(0.30 + v * 0.30)
-        )
 
     def _start_background_load(self, dt):
         import threading
@@ -5551,14 +5535,18 @@ class DisclaimerScreen(BaseScreen):
     def _background_load_thread(self):
         app = App.get_running_app()
         try:
-            # 1) Load LHA CSVs (60% → 80%)
+            # 1) Preload screens (20% → 60%)
+            self._update_status("Preparing screens…")
+            app.nav.preload_all_screens(
+                lambda v: self._update_progress(0.20 + v * 0.40)
+            )
+            # 2) Load LHA CSVs (60% → 80%)
             self._update_status("Loading LHA files…")
             app.preload_lha_csvs(
                 progress_callback=lambda v: self._update_progress(0.60 + v * 0.20),
                 status_callback=self._update_status
             )
-    
-            # 2) Load postcode engine (80% → 100%)
+            # 3) Load postcode engine (80% → 100%)
             if all_postcodes is None:
                 self._update_status("Loading postcode data…")
                 load_all_postcode_data(
