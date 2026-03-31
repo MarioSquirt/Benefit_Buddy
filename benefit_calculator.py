@@ -2320,15 +2320,14 @@ class CalculatorNavBar(BoxLayout):
     
                 panel.add_widget(sep)
     
-        # 1. Get the bottom of the yellow navbar background in window coords
-        nav_x, nav_bottom = self.to_window(self._bg_rect.x, self._bg_rect.y)
+        # 1. Get NAVBAR bottom in window coords
+        nav_x, nav_bottom = self.to_window(self.x, self.y)
         
         # 2. Convert window → dropdown coords
         local_x, local_bottom = self.dropdown.to_widget(nav_x, nav_bottom, relative=True)
         
         # 3. Position panel so its TOP sits just below the navbar
-        #    Apply downward offset to compensate for padding + inset
-        panel_y = local_bottom - panel.height - 13
+        panel_y = local_bottom - panel.height - 8
         panel.pos = (local_x, panel_y)
     
         # Add panel above blocker
