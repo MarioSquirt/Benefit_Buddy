@@ -2255,7 +2255,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="vertical",
             size_hint=(None, None),
             width=300,
-            height=460,
+            height=580,
             padding=(10, 10, 10, 10),
             spacing=10,
         )
@@ -2330,7 +2330,7 @@ class CalculatorNavBar(BoxLayout):
         local_btn_x, local_nav_bottom = self.dropdown.to_widget(btn_x, nav_bottom, relative=True)
         
         # 4. Position panel so its TOP sits just below the navbar
-        panel_y = local_nav_bottom - panel.height - 13
+        panel_y = local_nav_bottom - panel.height - 8
         
         panel.pos = (local_btn_x, panel_y)
     
