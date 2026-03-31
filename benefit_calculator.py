@@ -2255,7 +2255,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="vertical",
             size_hint=(None, None),
             width=300,
-            height=800,
+            height=720,
             padding=(10, 10, 10, 10),
             spacing=10,
         )
@@ -2330,7 +2330,7 @@ class CalculatorNavBar(BoxLayout):
         local_btn_x, local_nav_bottom = self.dropdown.to_widget(btn_x, nav_bottom, relative=True)
         
         # 4. Position panel so its TOP sits just below the navbar
-        panel_y = local_nav_bottom - panel.height - 2
+        panel_y = local_nav_bottom - panel.height
         
         panel.pos = (local_btn_x, panel_y)
     
@@ -5493,8 +5493,14 @@ class DisclaimerScreen(BaseScreen):
         self._attach_layout(0)
     
     def on_enter(self):
+        # Smooth bar updater
         Clock.schedule_interval(self._smooth_progress, 0.02)
-        Clock.schedule_once(self.start_csv_load, 0.1)
+    
+        # Phase 1: UI/graphics preload on main thread
+        Clock.schedule_once(self._preload_ui_phase, 0.05)
+    
+        # Phase 2: heavy data in background
+        Clock.schedule_once(self._start_background_load, 0.10)
 
     def _attach_layout(self, dt):
         # Always attach the layout immediately
@@ -5515,75 +5521,48 @@ class DisclaimerScreen(BaseScreen):
     
         self.loading_bar_fg.size_hint_x = self._display_progress
 
-    def start_csv_load(self, dt):
+    def _preload_ui_phase(self, dt):
         app = App.get_running_app()
     
-        # Load CSVs in background thread
-        import threading
-        threading.Thread(target=self._load_csv_thread).start()
+        # All of this MUST stay on the main thread
+        steps = [
+            ("Preparing graphics…", app.warm_up_graphics, 0.05),
+            ("Loading fonts…", app.preload_fonts, 0.10),
+            ("Loading icons…", app.preload_icons, 0.20),
+            ("Preparing navigation…", app.preload_navbar, 0.25),
+            ("Preparing menu…", app.preload_dropdown_rows, 0.30),
+        ]
+    
+        for status, func, progress in steps:
+            self.loading_label.text = status
+            func()  # safe: main thread
+            self._set_real_progress(progress)
+    
+        # Preload screens on main thread too (it creates widgets)
+        self.loading_label.text = "Preparing screens…"
+        app.nav.preload_all_screens(
+            lambda v: self._set_real_progress(0.30 + v * 0.30)
+        )
 
-    def _load_csv_thread(self):
+    def _start_background_load(self, dt):
+        import threading
+        threading.Thread(target=self._background_load_thread).start()
+
+    def _background_load_thread(self):
         app = App.get_running_app()
         try:
-            # ---------------------------------------------------------
-            # 0) Warm up graphics (0 → 5%)
-            # ---------------------------------------------------------
-            self._update_status("Preparing graphics…")
-            app.warm_up_graphics()
-            self._update_progress(0.05)
-    
-            # ---------------------------------------------------------
-            # 1) Preload fonts (5% → 10%)
-            # ---------------------------------------------------------
-            self._update_status("Loading fonts…")
-            app.preload_fonts()
-            self._update_progress(0.10)
-    
-            # ---------------------------------------------------------
-            # 2) Preload icons (10% → 20%)
-            # ---------------------------------------------------------
-            self._update_status("Loading icons…")
-            app.preload_icons()
-            self._update_progress(0.20)
-    
-            # ---------------------------------------------------------
-            # 3) Preload navbar (20% → 25%)
-            # ---------------------------------------------------------
-            self._update_status("Preparing navigation…")
-            app.preload_navbar()
-            self._update_progress(0.25)
-    
-            # ---------------------------------------------------------
-            # 4) Preload dropdown rows (25% → 30%)
-            # ---------------------------------------------------------
-            self._update_status("Preparing menu…")
-            app.preload_dropdown_rows()
-            self._update_progress(0.30)
-    
-            # ---------------------------------------------------------
-            # 5) Load LHA CSVs (30% → 60%)
-            # ---------------------------------------------------------
+            # 1) Load LHA CSVs (60% → 80%)
             self._update_status("Loading LHA files…")
             app.preload_lha_csvs(
-                progress_callback=lambda v: self._update_progress(0.30 + v * 0.30),
+                progress_callback=lambda v: self._update_progress(0.60 + v * 0.20),
                 status_callback=self._update_status
             )
     
-            # ---------------------------------------------------------
-            # 6) Preload screens (60% → 70%)
-            # ---------------------------------------------------------
-            self._update_status("Preparing screens…")
-            app.nav.preload_all_screens(
-                lambda v: self._update_progress(0.60 + v * 0.10)
-            )
-    
-            # ---------------------------------------------------------
-            # 7) Load postcode engine (70% → 100%)
-            # ---------------------------------------------------------
+            # 2) Load postcode engine (80% → 100%)
             if all_postcodes is None:
                 self._update_status("Loading postcode data…")
                 load_all_postcode_data(
-                    progress=lambda v: self._update_progress(0.70 + v * 0.30),
+                    progress=lambda v: self._update_progress(0.80 + v * 0.20),
                     status=self._update_status
                 )
             else:
@@ -6188,7 +6167,7 @@ class NavigationManager:
         self.loaded = {}
 
         # ---------------------------------------------------------
-        # UPDATED ORDER: children BEFORE housing
+        # UPDATED ORDER:
         # ---------------------------------------------------------
         self.screen_factories = {
             name: (lambda n=name: ScreenFactory.create(n))
@@ -6326,9 +6305,6 @@ class BenefitBuddy(App):
             "sanctions": lambda: self.nav.get("calculator_sanctions").save_sanction_details(),
             "advance": lambda: self.nav.get("calculator_advance").save_advance_payment_details(),
         }
-        
-        # Preload screens immediately (main thread)
-        self.nav.preload_all_screens(lambda x: None)
 
         # Start at Disclaimer
         self.nav.go("disclaimer")
