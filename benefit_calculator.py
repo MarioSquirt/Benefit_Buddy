@@ -5318,10 +5318,6 @@ class CalculationBreakdownScreen(BaseScreen):
             row.add_widget(lbl)
             row.add_widget(amt)
             table.add_widget(row)
-
-@with_diagnostics([])
-class InstantScreen(BaseScreen):
-    pass
         
 # Define the Settings Screen
 @with_diagnostics([])
@@ -5530,82 +5526,68 @@ class DisclaimerScreen(BaseScreen):
         app = App.get_running_app()
         try:
             # ---------------------------------------------------------
-            # 0) Artificial initialising step (0 → 2%)
-            # ---------------------------------------------------------
-            self._update_status("Initialising…")
-            time.sleep(0.15)  # tiny pause so the user sees it
-            self._update_progress(0.02)
-    
-            # ---------------------------------------------------------
-            # 1) Warm up graphics (2% → 7%)
+            # 0) Warm up graphics (0 → 5%)
             # ---------------------------------------------------------
             self._update_status("Preparing graphics…")
             app.warm_up_graphics()
-            self._update_progress(0.07)
+            self._update_progress(0.05)
     
             # ---------------------------------------------------------
-            # 2) Preload fonts (7% → 12%)
+            # 1) Preload fonts (5% → 10%)
             # ---------------------------------------------------------
             self._update_status("Loading fonts…")
             app.preload_fonts()
-            self._update_progress(0.12)
+            self._update_progress(0.10)
     
             # ---------------------------------------------------------
-            # 3) Preload icons (12% → 22%)
+            # 2) Preload icons (10% → 20%)
             # ---------------------------------------------------------
             self._update_status("Loading icons…")
             app.preload_icons()
-            self._update_progress(0.22)
+            self._update_progress(0.20)
     
             # ---------------------------------------------------------
-            # 4) Preload navbar (22% → 27%)
+            # 3) Preload navbar (20% → 25%)
             # ---------------------------------------------------------
             self._update_status("Preparing navigation…")
             app.preload_navbar()
-            self._update_progress(0.27)
+            self._update_progress(0.25)
     
             # ---------------------------------------------------------
-            # 5) Preload dropdown rows (27% → 32%)
+            # 4) Preload dropdown rows (25% → 30%)
             # ---------------------------------------------------------
             self._update_status("Preparing menu…")
             app.preload_dropdown_rows()
-            self._update_progress(0.32)
+            self._update_progress(0.30)
     
             # ---------------------------------------------------------
-            # 6) Load LHA CSVs (32% → 62%)
+            # 5) Load LHA CSVs (30% → 60%)
             # ---------------------------------------------------------
             self._update_status("Loading LHA files…")
             app.preload_lha_csvs(
-                progress_callback=lambda v: self._update_progress(0.32 + v * 0.30),
+                progress_callback=lambda v: self._update_progress(0.30 + v * 0.30),
                 status_callback=self._update_status
             )
     
             # ---------------------------------------------------------
-            # 7) Preload screens (62% → 72%)
+            # 6) Preload screens (60% → 70%)
             # ---------------------------------------------------------
             self._update_status("Preparing screens…")
             app.nav.preload_all_screens(
-                lambda v: self._update_progress(0.62 + v * 0.10)
+                lambda v: self._update_progress(0.60 + v * 0.10)
             )
     
             # ---------------------------------------------------------
-            # 8) Load postcode engine (72% → 98%)
+            # 7) Load postcode engine (70% → 100%)
             # ---------------------------------------------------------
             if all_postcodes is None:
                 self._update_status("Loading postcode data…")
                 load_all_postcode_data(
-                    progress=lambda v: self._update_progress(0.72 + v * 0.26),
+                    progress=lambda v: self._update_progress(0.70 + v * 0.30),
                     status=self._update_status
                 )
             else:
-                self._update_progress(0.98)
-    
-            # ---------------------------------------------------------
-            # 9) Finalising step (98% → 100%)
-            # ---------------------------------------------------------
-            self._update_status("Finalising…")
-            time.sleep(0.10)
-            self._update_progress(1.0)
+                self._update_progress(1.0)
     
         except Exception as e:
             print("Startup preload error:", e)
@@ -6118,9 +6100,6 @@ class ScreenFactory:
     def create(name):
         app = App.get_running_app()
 
-        if name == "instant":
-            return InstantScreen(name=name)
-
         if name == "disclaimer":
             return DisclaimerScreen(name=name)
 
@@ -6204,7 +6183,7 @@ class NavigationManager:
         self.screen_factories = {
             name: (lambda n=name: ScreenFactory.create(n))
             for name in [
-                "instant", "disclaimer", "settings", "main",
+                "disclaimer", "settings", "main",
                 "create_account", "log_in",
                 "main_guest_access", "main_full_access",
 
