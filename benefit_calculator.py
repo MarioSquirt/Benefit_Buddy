@@ -2212,7 +2212,7 @@ class CalculatorNavBar(BoxLayout):
             w = row.width * 0.75
             x = row.x + (row.width - w) / 2
             row._divider.size = (w, 3)
-            row._divider.pos = (x, row.y - 1)
+            row._divider.pos = (x, row.y)
     
         row.bind(size=update_divider, pos=update_divider)
     
@@ -2266,7 +2266,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="vertical",
             size_hint=(None, None),
             width=300,
-            height=720,
+            height=640,
             padding=(10, 10, 10, 10),
             spacing=10,
         )
