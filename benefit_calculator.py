@@ -2255,7 +2255,7 @@ class CalculatorNavBar(BoxLayout):
             orientation="vertical",
             size_hint=(None, None),
             width=300,
-            height=580,
+            height=800,
             padding=(10, 10, 10, 10),
             spacing=10,
         )
@@ -2330,7 +2330,7 @@ class CalculatorNavBar(BoxLayout):
         local_btn_x, local_nav_bottom = self.dropdown.to_widget(btn_x, nav_bottom, relative=True)
         
         # 4. Position panel so its TOP sits just below the navbar
-        panel_y = local_nav_bottom - panel.height - 8
+        panel_y = local_nav_bottom - panel.height - 2
         
         panel.pos = (local_btn_x, panel_y)
     
@@ -5530,35 +5530,82 @@ class DisclaimerScreen(BaseScreen):
         app = App.get_running_app()
         try:
             # ---------------------------------------------------------
-            # 1) Load LHA CSVs (0 → 50%)
+            # 0) Artificial initialising step (0 → 2%)
+            # ---------------------------------------------------------
+            self._update_status("Initialising…")
+            time.sleep(0.15)  # tiny pause so the user sees it
+            self._update_progress(0.02)
+    
+            # ---------------------------------------------------------
+            # 1) Warm up graphics (2% → 7%)
+            # ---------------------------------------------------------
+            self._update_status("Preparing graphics…")
+            app.warm_up_graphics()
+            self._update_progress(0.07)
+    
+            # ---------------------------------------------------------
+            # 2) Preload fonts (7% → 12%)
+            # ---------------------------------------------------------
+            self._update_status("Loading fonts…")
+            app.preload_fonts()
+            self._update_progress(0.12)
+    
+            # ---------------------------------------------------------
+            # 3) Preload icons (12% → 22%)
+            # ---------------------------------------------------------
+            self._update_status("Loading icons…")
+            app.preload_icons()
+            self._update_progress(0.22)
+    
+            # ---------------------------------------------------------
+            # 4) Preload navbar (22% → 27%)
+            # ---------------------------------------------------------
+            self._update_status("Preparing navigation…")
+            app.preload_navbar()
+            self._update_progress(0.27)
+    
+            # ---------------------------------------------------------
+            # 5) Preload dropdown rows (27% → 32%)
+            # ---------------------------------------------------------
+            self._update_status("Preparing menu…")
+            app.preload_dropdown_rows()
+            self._update_progress(0.32)
+    
+            # ---------------------------------------------------------
+            # 6) Load LHA CSVs (32% → 62%)
             # ---------------------------------------------------------
             self._update_status("Loading LHA files…")
             app.preload_lha_csvs(
-                progress_callback=lambda v: self._update_progress(v * 0.50),
+                progress_callback=lambda v: self._update_progress(0.32 + v * 0.30),
                 status_callback=self._update_status
             )
     
             # ---------------------------------------------------------
-            # 2) Preload screens (50% → 60%)
+            # 7) Preload screens (62% → 72%)
             # ---------------------------------------------------------
             self._update_status("Preparing screens…")
             app.nav.preload_all_screens(
-                lambda v: self._update_progress(0.50 + v * 0.10)
+                lambda v: self._update_progress(0.62 + v * 0.10)
             )
     
             # ---------------------------------------------------------
-            # 3) Load postcode engine (60% → 100%)
+            # 8) Load postcode engine (72% → 98%)
             # ---------------------------------------------------------
-            # Only load postcode data if not already loaded
             if all_postcodes is None:
                 self._update_status("Loading postcode data…")
                 load_all_postcode_data(
-                    progress=lambda v: self._update_progress(0.60 + v * 0.40),
+                    progress=lambda v: self._update_progress(0.72 + v * 0.26),
                     status=self._update_status
                 )
             else:
-                # Already loaded (e.g., returning to screen)
-                self._update_progress(1.0)
+                self._update_progress(0.98)
+    
+            # ---------------------------------------------------------
+            # 9) Finalising step (98% → 100%)
+            # ---------------------------------------------------------
+            self._update_status("Finalising…")
+            time.sleep(0.10)
+            self._update_progress(1.0)
     
         except Exception as e:
             print("Startup preload error:", e)
@@ -6300,6 +6347,56 @@ class BenefitBuddy(App):
     
     def lookup_postcode(self, postcode):
         return compact_lookup(postcode)
+
+    # ============================
+    # PRELOAD HELPERS FOR STARTUP
+    # ============================
+    
+    def preload_icons(self):
+        from kivy.core.image import Image as CoreImage
+        for label, icon_path in self.icon_map.items():
+            try:
+                CoreImage(icon_path).texture  # forces load + cache
+            except Exception as e:
+                print("Icon preload error:", icon_path, e)
+    
+    
+    def preload_fonts(self):
+        from kivy.core.text import LabelBase
+        # Add any fonts you use here
+        try:
+            LabelBase.register(name="Roboto", fn_regular="data/fonts/Roboto-Regular.ttf")
+            LabelBase.register(name="RobotoBold", fn_regular="data/fonts/Roboto-Bold.ttf")
+        except Exception as e:
+            print("Font preload error:", e)
+    
+    
+    def preload_navbar(self):
+        try:
+            # Instantiate once so textures + canvas compile
+            _ = self.nav.build_navbar(offscreen=True)
+        except Exception as e:
+            print("Navbar preload error:", e)
+    
+    
+    def preload_dropdown_rows(self):
+        try:
+            for label, screen_name in self.nav.screens:
+                icon = self.icon_map[label]
+                _ = self.nav.make_dropdown_row(label, icon, lambda *_: None)
+        except Exception as e:
+            print("Dropdown preload error:", e)
+    
+    
+    def warm_up_graphics(self):
+        from kivy.uix.widget import Widget
+        from kivy.graphics import Color, Rectangle
+    
+        # Render a tiny off-screen widget to force GPU texture upload
+        w = Widget(size=(1, 1), pos=(-1000, -1000))
+        with w.canvas:
+            Color(1, 1, 1, 1)
+            Rectangle(size=(1, 1), pos=(-1000, -1000))
 
     # ---------------------------------------------------------
     # LHA CSV PRELOAD
