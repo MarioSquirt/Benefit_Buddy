@@ -5535,26 +5535,29 @@ class DisclaimerScreen(BaseScreen):
     def _background_load_thread(self):
         app = App.get_running_app()
         try:
-            # 1) Preload screens (20% → 60%)
-            self._update_status("Preparing screens…")
-            app.nav.preload_all_screens(
-                lambda v: self._update_progress(0.20 + v * 0.40)
-            )
-            # 2) Load LHA CSVs (60% → 80%)
+            # 1) Load LHA CSVs (20% → 40%)
             self._update_status("Loading LHA files…")
             app.preload_lha_csvs(
-                progress_callback=lambda v: self._update_progress(0.60 + v * 0.20),
+                progress_callback=lambda v: self._update_progress(0.20 + v * 0.20),
                 status_callback=self._update_status
             )
-            # 3) Load postcode engine (80% → 100%)
+    
+            # 2) Load postcode engine (40% → 80%)
+            from postcode_lookup import all_postcodes
             if all_postcodes is None:
                 self._update_status("Loading postcode data…")
                 load_all_postcode_data(
-                    progress=lambda v: self._update_progress(0.80 + v * 0.20),
+                    progress=lambda v: self._update_progress(0.40 + v * 0.40),
                     status=self._update_status
                 )
             else:
-                self._update_progress(1.0)
+                self._update_progress(0.80)
+    
+            # 3) Preload screens (80% → 100%)
+            self._update_status("Preparing screens…")
+            app.nav.preload_all_screens(
+                lambda v: self._update_progress(0.80 + v * 0.20)
+            )
     
         except Exception as e:
             print("Startup preload error:", e)
