@@ -2203,18 +2203,22 @@ class CalculatorNavBar(BoxLayout):
         row.add_widget(self._center_icon(img))
         row.add_widget(lbl)
     
-        # GOV.UK divider (75% width, centred)
-        with row.canvas.after:
-            Color(0.0, 0.3686, 0.647, 1)  # GOV.UK blue
-            row._divider = Rectangle(size=(0, 3), pos=(0, 0))
+        # ⭐ Add divider only if not last row
+        def add_divider():
+            with row.canvas.after:
+                Color(0.0, 0.3686, 0.647, 1)
+                row._divider = Rectangle(size=(0, 3), pos=(0, 0))
     
-        def update_divider(*_):
-            w = row.width * 0.75
-            x = row.x + (row.width - w) / 2
-            row._divider.size = (w, 3)
-            row._divider.pos = (x, row.y)
+            def update_divider(*_):
+                w = row.width * 0.75
+                x = row.x + (row.width - w) / 2
+                row._divider.size = (w, 3)
+                row._divider.pos = (x, row.y)
     
-        row.bind(size=update_divider, pos=update_divider)
+            row.bind(size=update_divider, pos=update_divider)
+    
+        if not getattr(row, "is_last", False):
+            add_divider()
     
         self._bind_press(row, on_press)
         return row
@@ -2265,7 +2269,7 @@ class CalculatorNavBar(BoxLayout):
         panel = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
-            width=300,
+            width=360,
             height=640,
             padding=(10, 10, 10, 10),
             spacing=10,
@@ -2295,19 +2299,22 @@ class CalculatorNavBar(BoxLayout):
     
         for label, screen_name in self.screens:
             icon = self.icon_map[label]
-    
+        
             def make_row_callback(target):
                 return lambda inst: (
                     app.nav.go(target),
                     self.close_dropdown()
                 )
-    
+        
             row = self.make_dropdown_row(
                 label=label,
                 icon=icon,
                 on_press=make_row_callback(screen_name)
             )
-    
+        
+            # ⭐ Mark last row
+            row.is_last = (label, screen_name) == self.screens[-1]
+        
             panel.add_widget(row)
             row.bind(on_touch_down=make_row_press(row))
             row.bind(on_touch_up=make_row_release(row))
