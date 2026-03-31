@@ -6291,6 +6291,8 @@ class BenefitBuddy(App):
     def build(self):
         self.sm = ScreenManager()
         self.nav = NavigationManager(self.sm)
+
+        self.icon_map = ICON_PATHS
         
         self.calculator_state = CalculatorState()
         self.engine = CalculatorEngine()
