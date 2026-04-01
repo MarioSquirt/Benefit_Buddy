@@ -1732,7 +1732,7 @@ class CollapsibleSection(BoxLayout):
             padding=(15, 0)
         )
 
-        # Background
+        # Header background
         with self.header.canvas.before:
             self._header_color = Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
@@ -1752,7 +1752,7 @@ class CollapsibleSection(BoxLayout):
         self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
         self.header.bind(on_touch_up=lambda inst, touch: on_release())
 
-        # Label
+        # Header label
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
@@ -1772,7 +1772,6 @@ class CollapsibleSection(BoxLayout):
             size=(24, 24),
             pos_hint={"center_y": 0.5}
         )
-        self.header_chevron.rotation = 0
 
         with self.header_chevron.canvas.before:
             PushMatrix()
@@ -1787,11 +1786,11 @@ class CollapsibleSection(BoxLayout):
         self.header.add_widget(self.header_label)
         self.header.add_widget(self.header_chevron)
 
-        self.header.bind(on_touch_down=self._on_header_touch)
+        # Add header FIRST
         self.add_widget(self.header)
 
         # =========================================================
-        # CONTENT BOX
+        # CONTENT BOX (starts hidden)
         # =========================================================
         self.content_box = BoxLayout(
             orientation="vertical",
@@ -1802,6 +1801,7 @@ class CollapsibleSection(BoxLayout):
             opacity=0
         )
 
+        # Content background
         with self.content_box.canvas.before:
             Color(0.0, 0.32, 0.56, 1)
             self._content_bg = Rectangle(pos=self.content_box.pos, size=self.content_box.size)
@@ -1811,42 +1811,37 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._content_bg, "size", val)
         )
 
-        # Content box grows to its children
+        # Content grows to children
         self.content_box.bind(
             minimum_height=lambda inst, val: setattr(inst, "height", val)
         )
 
+        # Add content BELOW header
         self.add_widget(self.content_box)
 
         # =========================================================
-        # ⭐ CRITICAL FIXES
+        # HEIGHT MANAGEMENT
         # =========================================================
-
-        # 1. Give the section a real starting height (header only)
         self.height = self.header.height
-
-        # 2. Ensure the section never collapses below header height
         self.minimum_height = self.header.height
-
-        # 3. Keep height synced to minimum_height as content expands
         self.bind(minimum_height=self.setter("height"))
+
+        # Touch handler
+        self.header.bind(on_touch_down=self._on_header_touch)
 
     # =========================================================
     # TOUCH HANDLER
     # =========================================================
     def _on_header_touch(self, instance, touch):
         if self.header.collide_point(*touch.pos):
-            self.toggle(self.header, touch)
+            self.toggle()
             return True
         return False
 
     # =========================================================
     # TOGGLE (ANIMATED)
     # =========================================================
-    def toggle(self, instance, touch=None):
-        if touch and not self.header.collide_point(*touch.pos):
-            return False
-
+    def toggle(self):
         self.is_open = not self.is_open
 
         if self.is_open:
@@ -1889,9 +1884,9 @@ class CollapsibleSection(BoxLayout):
                     self.content_box.bind(width=update_divider)
                     self.content_box.add_widget(divider)
 
+            # Animate open
             target_height = self.content_box.minimum_height
             self.content_box.opacity = 1
-
             Animation(height=target_height, d=0.2, t="out_quad").start(self.content_box)
 
         else:
@@ -1900,8 +1895,6 @@ class CollapsibleSection(BoxLayout):
             anim = Animation(height=0, opacity=0, d=0.2, t="out_quad")
             anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
             anim.start(self.content_box)
-
-        return True
 
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
