@@ -1820,6 +1820,8 @@ class CollapsibleSection(BoxLayout):
 
         self.add_widget(self.content_box)
 
+        self.bind(minimum_height=self.setter("height"))
+
     # =========================================================
     # TOUCH HANDLER
     # =========================================================
@@ -1887,7 +1889,6 @@ class CollapsibleSection(BoxLayout):
             self.content_box.opacity = 1
 
             Animation(height=target_height, d=0.2, t="out_quad").start(self.content_box)
-            Animation(height=self.header.height + target_height, d=0.2, t="out_quad").start(self)
 
         else:
             Animation(angle=0, d=0.2, t="out_quad").start(self.chevron_rot)
@@ -1895,8 +1896,6 @@ class CollapsibleSection(BoxLayout):
             anim = Animation(height=0, opacity=0, d=0.2, t="out_quad")
             anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
             anim.start(self.content_box)
-
-            Animation(height=self.header.height, d=0.2, t="out_quad").start(self)
 
         return True
 
