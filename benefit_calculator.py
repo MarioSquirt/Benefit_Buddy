@@ -1742,9 +1742,7 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
 
-        # =========================================================
-        # TOUCH HIGHLIGHT (header)
-        # =========================================================
+        # Touch highlight
         def on_press(*args):
             self._header_color.rgb = (0.95, 0.82, 0)
 
@@ -1767,7 +1765,7 @@ class CollapsibleSection(BoxLayout):
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
 
-        # Chevron (rotating)
+        # Chevron
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
@@ -1803,23 +1801,34 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-        
-        # Subtle darker background behind content
+
         with self.content_box.canvas.before:
             Color(0.0, 0.32, 0.56, 1)
             self._content_bg = Rectangle(pos=self.content_box.pos, size=self.content_box.size)
-        
-        # Keep background in sync
+
         self.content_box.bind(
             pos=lambda inst, val: setattr(self._content_bg, "pos", val),
             size=lambda inst, val: setattr(self._content_bg, "size", val)
         )
+
+        # Content box grows to its children
         self.content_box.bind(
             minimum_height=lambda inst, val: setattr(inst, "height", val)
         )
 
         self.add_widget(self.content_box)
 
+        # =========================================================
+        # ⭐ CRITICAL FIXES
+        # =========================================================
+
+        # 1. Give the section a real starting height (header only)
+        self.height = self.header.height
+
+        # 2. Ensure the section never collapses below header height
+        self.minimum_height = self.header.height
+
+        # 3. Keep height synced to minimum_height as content expands
         self.bind(minimum_height=self.setter("height"))
 
     # =========================================================
@@ -1847,7 +1856,6 @@ class CollapsibleSection(BoxLayout):
             self.content_box.clear_widgets()
 
             for i, line in enumerate(self.content_lines):
-                # Content label
                 lbl = SafeLabel(
                     text=line,
                     font_size=16,
@@ -1862,10 +1870,8 @@ class CollapsibleSection(BoxLayout):
                 )
                 self.content_box.add_widget(lbl)
 
-                # Divider (between items only)
                 if i < len(self.content_lines) - 1:
                     divider = Widget(size_hint_y=None, height=2)
-
                     with divider.canvas.before:
                         Color(*get_color_from_hex("#FFDD00"))
                         divider._line = Rectangle()
@@ -1881,10 +1887,8 @@ class CollapsibleSection(BoxLayout):
 
                     divider.bind(pos=update_divider, size=update_divider)
                     self.content_box.bind(width=update_divider)
-
                     self.content_box.add_widget(divider)
 
-            # Animate open
             target_height = self.content_box.minimum_height
             self.content_box.opacity = 1
 
