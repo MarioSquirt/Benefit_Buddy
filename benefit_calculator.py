@@ -5003,7 +5003,7 @@ class CalculatorFinalScreen(BaseScreen):
 
         self.summary_widgets = {}
         self.calculate_scroll = None
-        self.summary_layout = None  # <-- store the layout explicitly
+        self.summary_layout = None
 
         self.build_ui()
 
@@ -5012,19 +5012,25 @@ class CalculatorFinalScreen(BaseScreen):
     # ---------------------------------------------------------
     def build_ui(self):
         root = BoxLayout(orientation="vertical")
-
         root.add_widget(CalculatorNavBar(current="calculator_final"))
 
         outer = BoxLayout(orientation="vertical", spacing=0, padding=0)
 
-        # Scroll area
+        # ScrollView
         self.calculate_scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
             do_scroll_y=True
         )
 
-        # Store as an attribute so we don't rely on children[0]
+        # AnchorLayout wrapper (fixes reordering + jumping)
+        container = AnchorLayout(
+            anchor_y="top",
+            size_hint=(1, None)
+        )
+        container.bind(minimum_height=container.setter("height"))
+
+        # Summary layout inside AnchorLayout
         self.summary_layout = BoxLayout(
             orientation="vertical",
             spacing=30,
@@ -5033,8 +5039,10 @@ class CalculatorFinalScreen(BaseScreen):
         )
         self.summary_layout.bind(minimum_height=self.summary_layout.setter("height"))
 
+        # Title at index 0
         self.summary_layout.add_widget(
-            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
+            index=0
         )
 
         # Placeholder label
@@ -5050,11 +5058,14 @@ class CalculatorFinalScreen(BaseScreen):
             width=lambda inst, val: setattr(inst, "text_size", (val, None)),
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
-        self.summary_layout.add_widget(self.summary_widgets["label"])
+        self.summary_layout.add_widget(self.summary_widgets["label"], index=1)
 
-        # Ensure scrollview has ONLY this layout as its child
+        # Add summary layout into container
+        container.add_widget(self.summary_layout)
+
+        # Add container into ScrollView
         self.calculate_scroll.clear_widgets()
-        self.calculate_scroll.add_widget(self.summary_layout)
+        self.calculate_scroll.add_widget(container)
 
         outer.add_widget(self.calculate_scroll)
 
@@ -5103,13 +5114,9 @@ class CalculatorFinalScreen(BaseScreen):
             result = self.calculate_callback(self.calculator_state, UC_RATES)
             result_text = f"Calculated Entitlement: £{result:.2f}"
             self.calculator_state.calculation_result = result_text
-
         except Exception as e:
             self.summary_widgets["label"].text = f"Error during calculation: {str(e)}"
             return
-
-        print("CALCULATION RESULT:", result)
-        print("Calling update_summary() with state:", self.calculator_state.__dict__)
 
         try:
             self.update_summary()
@@ -5117,28 +5124,20 @@ class CalculatorFinalScreen(BaseScreen):
             self.summary_widgets["label"].text = f"Error updating summary: {str(e)}"
             return
 
-        # Scroll to top after layout updates
         Clock.schedule_once(lambda dt: setattr(self.calculate_scroll, "scroll_y", 1.0), 0)
 
     # ---------------------------------------------------------
     # SUMMARY REBUILD
     # ---------------------------------------------------------
     def update_summary(self):
-        print("SUMMARY SCREEN INSTANCE:", self)
-        print("\n===== SUMMARY DEBUG =====")
-        for key, value in self.calculator_state.__dict__.items():
-            print(f"{key}: {value}")
-        print("===== END SUMMARY DEBUG =====\n")
-
         d = self.calculator_state.__dict__
 
-        # Work directly on the stored layout, not children[0]
         if not self.summary_layout:
-            print("ERROR: summary_layout is None")
             return
 
         self.summary_layout.clear_widgets()
 
+        # Title stays at top
         self.summary_layout.add_widget(
             wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
             index=0
@@ -5146,17 +5145,16 @@ class CalculatorFinalScreen(BaseScreen):
 
         def add_section(title, lines):
             section = CollapsibleSection(title, lines)
-        
-            # Ensure all labels inside the collapsible align identically
+
+            # Ensure labels wrap
             for child in section.content_box.children:
                 if isinstance(child, SafeLabel):
                     child.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        
-            # Force section to have a real height
+
             section.size_hint_y = None
             section.height = section.minimum_height
-            section.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
-        
+
+            # Insert below title
             self.summary_layout.add_widget(section, index=1)
 
         # Claimant
@@ -5235,12 +5233,6 @@ class CalculatorFinalScreen(BaseScreen):
             f"Modern Slavery Victim: {sar.get('modern_slavery')}",
             f"Armed Forces Reservist: {sar.get('armed_forces_reservist')}",
         ])
-
-        print("SUMMARY LAYOUT DEBUG:")
-        print("  children:", len(self.summary_layout.children))
-        print("  height:", self.summary_layout.height)
-        for i, child in enumerate(self.summary_layout.children):
-            print(f"  child[{i}]:", type(child), "height=", getattr(child, "height", None))
 
 class CalculationBreakdownScreen(BaseScreen):
     def __init__(self, **kwargs):
