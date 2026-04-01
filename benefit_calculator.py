@@ -5013,23 +5013,22 @@ class CalculatorFinalScreen(BaseScreen):
     def build_ui(self):
         root = BoxLayout(orientation="vertical")
         root.add_widget(CalculatorNavBar(current="calculator_final"))
-
+    
         outer = BoxLayout(orientation="vertical", spacing=0, padding=0)
-
+    
         # ScrollView
         self.calculate_scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
             do_scroll_y=True
         )
-
+    
         # AnchorLayout wrapper (fixes reordering + jumping)
         container = AnchorLayout(
             anchor_y="top",
             size_hint=(1, None)
         )
-        container.bind(minimum_height=container.setter("height"))
-
+    
         # Summary layout inside AnchorLayout
         self.summary_layout = BoxLayout(
             orientation="vertical",
@@ -5038,13 +5037,16 @@ class CalculatorFinalScreen(BaseScreen):
             size_hint=(1, None)
         )
         self.summary_layout.bind(minimum_height=self.summary_layout.setter("height"))
-
+    
+        # Make container follow summary_layout height
+        self.summary_layout.bind(minimum_height=container.setter("height"))
+    
         # Title at index 0
         self.summary_layout.add_widget(
             wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
             index=0
         )
-
+    
         # Placeholder label
         self.summary_widgets["label"] = SafeLabel(
             text="No calculation yet.",
@@ -5059,19 +5061,19 @@ class CalculatorFinalScreen(BaseScreen):
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
         self.summary_layout.add_widget(self.summary_widgets["label"], index=1)
-
+    
         # Add summary layout into container
         container.add_widget(self.summary_layout)
-
+    
         # Add container into ScrollView
         self.calculate_scroll.clear_widgets()
         self.calculate_scroll.add_widget(container)
-
+    
         outer.add_widget(self.calculate_scroll)
-
+    
         # Bottom button bar
         button_bar = BoxLayout(size_hint=(1, None), height=100, padding=20, spacing=20)
-
+    
         run_btn = RoundedButton(
             text="Run Calculation",
             size_hint=(1, 1),
@@ -5086,7 +5088,7 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=self.run_calculation
         )
         button_bar.add_widget(run_btn)
-
+    
         breakdown_btn = RoundedButton(
             text="View Calculation Breakdown",
             size_hint=(1, 1),
@@ -5101,7 +5103,7 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=lambda inst: self.go_to_breakdown_callback()
         )
         button_bar.add_widget(breakdown_btn)
-
+    
         outer.add_widget(button_bar)
         root.add_widget(outer)
         self.add_widget(root)
