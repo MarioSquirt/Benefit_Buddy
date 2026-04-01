@@ -5160,7 +5160,7 @@ class CalculatorFinalScreen(BaseScreen):
             section.height = section.minimum_height
 
             # Insert below title
-            self.summary_layout.add_widget(section, index=1)
+            self.summary_layout.add_widget(section)
 
         # Claimant
         add_section("Claimant Details", [
