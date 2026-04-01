@@ -1717,10 +1717,10 @@ class PulsingGlow(Widget):
 class CollapsibleSection(BoxLayout):
     def __init__(self, title, content_lines, **kwargs):
         super().__init__(orientation="vertical", spacing=5, size_hint_y=None, **kwargs)
-
+    
         self.is_open = False
         self.content_lines = content_lines
-
+    
         # =========================================================
         # HEADER
         # =========================================================
@@ -1731,28 +1731,25 @@ class CollapsibleSection(BoxLayout):
             height=64,
             padding=(15, 0)
         )
-
-        # Header background
+    
         with self.header.canvas.before:
             self._header_color = Color(1, 0.866, 0, 1)
             self._header_rect = Rectangle(pos=self.header.pos, size=self.header.size)
-
+    
         self.header.bind(
             pos=lambda inst, val: setattr(self._header_rect, "pos", val),
             size=lambda inst, val: setattr(self._header_rect, "size", val),
         )
-
-        # Touch highlight
+    
         def on_press(*args):
             self._header_color.rgb = (0.95, 0.82, 0)
-
+    
         def on_release(*args):
             self._header_color.rgb = (1, 0.866, 0)
-
+    
         self.header.bind(on_touch_down=lambda inst, touch: on_press() if inst.collide_point(*touch.pos) else None)
         self.header.bind(on_touch_up=lambda inst, touch: on_release())
-
-        # Header label
+    
         self.header_label = SafeLabel(
             text=title,
             font_size=18,
@@ -1764,33 +1761,42 @@ class CollapsibleSection(BoxLayout):
             pos_hint={"center_y": 0.5}
         )
         self.header_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
-
-        # Chevron
+    
         self.header_chevron = Image(
             source="images/icons/ChevronDown-icon/ChevronDown-16px.png",
             size_hint=(None, None),
             size=(24, 24),
             pos_hint={"center_y": 0.5}
         )
-
+    
         with self.header_chevron.canvas.before:
             PushMatrix()
             self.chevron_rot = Rotate(origin=self.header_chevron.center, angle=0)
         with self.header_chevron.canvas.after:
             PopMatrix()
-
+    
         self.header_chevron.bind(
             center=lambda inst, val: setattr(self.chevron_rot, "origin", val)
         )
-
+    
         self.header.add_widget(self.header_label)
         self.header.add_widget(self.header_chevron)
-
+    
         # Add header FIRST
         self.add_widget(self.header)
-
+    
         # =========================================================
-        # CONTENT BOX (starts hidden)
+        # CONTENT WRAPPER (⭐ THIS FIXES THE UPWARD EXPANSION)
+        # =========================================================
+        self.content_wrapper = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=0
+        )
+        self.content_wrapper.bind(minimum_height=self.content_wrapper.setter("height"))
+    
+        # =========================================================
+        # CONTENT BOX (inside wrapper)
         # =========================================================
         self.content_box = BoxLayout(
             orientation="vertical",
@@ -1800,33 +1806,33 @@ class CollapsibleSection(BoxLayout):
             height=0,
             opacity=0
         )
-
-        # Content background
+    
         with self.content_box.canvas.before:
             Color(0.0, 0.32, 0.56, 1)
             self._content_bg = Rectangle(pos=self.content_box.pos, size=self.content_box.size)
-
+    
         self.content_box.bind(
             pos=lambda inst, val: setattr(self._content_bg, "pos", val),
             size=lambda inst, val: setattr(self._content_bg, "size", val)
         )
-
-        # Content grows to children
+    
         self.content_box.bind(
             minimum_height=lambda inst, val: setattr(inst, "height", val)
         )
-
-        # Add content BELOW header
-        self.add_widget(self.content_box)
-
+    
+        # Add content box into wrapper
+        self.content_wrapper.add_widget(self.content_box)
+    
+        # Add wrapper BELOW header
+        self.add_widget(self.content_wrapper)
+    
         # =========================================================
         # HEIGHT MANAGEMENT
         # =========================================================
         self.height = self.header.height
         self.minimum_height = self.header.height
         self.bind(minimum_height=self.setter("height"))
-
-        # Touch handler
+    
         self.header.bind(on_touch_down=self._on_header_touch)
 
     # =========================================================
