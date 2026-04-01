@@ -32,9 +32,6 @@ bin/
 # -------------------------
 # Data files (large or source-only)
 # -------------------------
-data/*.csv
-data/source/*.csv
-*.db
 
 # Postcode source CSVs (too large for GitHub)
 pcode_brma_lookup.csv
