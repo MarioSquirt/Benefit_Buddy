@@ -5140,7 +5140,8 @@ class CalculatorFinalScreen(BaseScreen):
         self.summary_layout.clear_widgets()
 
         self.summary_layout.add_widget(
-            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
+            index=0
         )
 
         def add_section(title, lines):
@@ -5156,7 +5157,7 @@ class CalculatorFinalScreen(BaseScreen):
             section.height = section.minimum_height
             section.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
         
-            self.summary_layout.add_widget(section)
+            self.summary_layout.add_widget(section, index=1)
 
         # Claimant
         add_section("Claimant Details", [
