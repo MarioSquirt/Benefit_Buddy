@@ -5013,43 +5013,37 @@ class CalculatorFinalScreen(BaseScreen):
     def build_ui(self):
         root = BoxLayout(orientation="vertical")
         root.add_widget(CalculatorNavBar(current="calculator_final"))
-    
+
         outer = BoxLayout(orientation="vertical", spacing=0, padding=0)
-    
+
         # ScrollView
         self.calculate_scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
             do_scroll_y=True
         )
-    
-        # AnchorLayout wrapper
-        container = AnchorLayout(
-            anchor_y="top",
-            size_hint=(1, None)
+
+        # ScrollView content wrapper MUST be a BoxLayout
+        container = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None
         )
-        container.height = 0
-    
-        # Summary layout inside AnchorLayout
+        container.bind(minimum_height=container.setter("height"))
+
+        # Summary layout inside container
         self.summary_layout = BoxLayout(
             orientation="vertical",
             spacing=30,
             padding=20,
-            size_hint=(1, None)
+            size_hint_y=None
         )
-    
-        # ❗ REMOVE this line (causes feedback loop)
-        # self.summary_layout.bind(minimum_height=self.summary_layout.setter("height"))
-    
-        # ✔ Correct: summary_layout controls container height
-        self.summary_layout.bind(minimum_height=container.setter("height"))
-    
-        # Title at index 0
+        self.summary_layout.bind(minimum_height=self.summary_layout.setter("height"))
+
+        # Title at top
         self.summary_layout.add_widget(
-            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
-            index=0
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
-    
+
         # Placeholder label
         self.summary_widgets["label"] = SafeLabel(
             text="No calculation yet.",
@@ -5063,20 +5057,20 @@ class CalculatorFinalScreen(BaseScreen):
             width=lambda inst, val: setattr(inst, "text_size", (val, None)),
             texture_size=lambda inst, val: setattr(inst, "height", val[1])
         )
-        self.summary_layout.add_widget(self.summary_widgets["label"], index=1)
-    
+        self.summary_layout.add_widget(self.summary_widgets["label"])
+
         # Add summary layout into container
         container.add_widget(self.summary_layout)
-    
+
         # Add container into ScrollView
         self.calculate_scroll.clear_widgets()
         self.calculate_scroll.add_widget(container)
-    
+
         outer.add_widget(self.calculate_scroll)
-    
+
         # Bottom button bar
         button_bar = BoxLayout(size_hint=(1, None), height=100, padding=20, spacing=20)
-    
+
         run_btn = RoundedButton(
             text="Run Calculation",
             size_hint=(1, 1),
@@ -5091,7 +5085,7 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=self.run_calculation
         )
         button_bar.add_widget(run_btn)
-    
+
         breakdown_btn = RoundedButton(
             text="View Calculation Breakdown",
             size_hint=(1, 1),
@@ -5106,7 +5100,7 @@ class CalculatorFinalScreen(BaseScreen):
             on_press=lambda inst: self.go_to_breakdown_callback()
         )
         button_bar.add_widget(breakdown_btn)
-    
+
         outer.add_widget(button_bar)
         root.add_widget(outer)
         self.add_widget(root)
@@ -5144,8 +5138,7 @@ class CalculatorFinalScreen(BaseScreen):
 
         # Title stays at top
         self.summary_layout.add_widget(
-            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30),
-            index=0
+            wrapped_SafeLabel("Summary of your Universal Credit calculation:", 18, 30)
         )
 
         def add_section(title, lines):
@@ -5159,7 +5152,7 @@ class CalculatorFinalScreen(BaseScreen):
             section.size_hint_y = None
             section.height = section.minimum_height
 
-            # Insert below title
+            # Append in natural order (below previous content)
             self.summary_layout.add_widget(section)
 
         # Claimant
