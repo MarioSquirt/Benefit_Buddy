@@ -1831,7 +1831,6 @@ class CollapsibleSection(BoxLayout):
         # =========================================================
         self.height = self.header.height
         self.minimum_height = self.header.height
-        self.bind(minimum_height=self.setter("height"))
     
         self.header.bind(on_touch_down=self._on_header_touch)
 
@@ -1849,13 +1848,13 @@ class CollapsibleSection(BoxLayout):
     # =========================================================
     def toggle(self):
         self.is_open = not self.is_open
-
+    
         if self.is_open:
+            # Rotate chevron
             Animation(angle=180, d=0.2, t="out_quad").start(self.chevron_rot)
-
+    
             # Build content
             self.content_box.clear_widgets()
-
             for i, line in enumerate(self.content_lines):
                 lbl = SafeLabel(
                     text=line,
@@ -1870,13 +1869,13 @@ class CollapsibleSection(BoxLayout):
                     texture_size=lambda inst, val: setattr(inst, "height", val[1])
                 )
                 self.content_box.add_widget(lbl)
-
+    
                 if i < len(self.content_lines) - 1:
                     divider = Widget(size_hint_y=None, height=2)
                     with divider.canvas.before:
                         Color(*get_color_from_hex("#FFDD00"))
                         divider._line = Rectangle()
-
+    
                     def update_divider(inst, *args):
                         full_w = self.content_box.width
                         line_w = full_w * 0.75
@@ -1885,22 +1884,35 @@ class CollapsibleSection(BoxLayout):
                             self.content_box.x + (full_w - line_w) / 2,
                             inst.y
                         )
-
+    
                     divider.bind(pos=update_divider, size=update_divider)
                     self.content_box.bind(width=update_divider)
                     self.content_box.add_widget(divider)
-
-            # Animate open
-            target_height = self.content_box.minimum_height
+    
+            # Calculate heights
+            target_content_h = self.content_box.minimum_height
+            target_wrapper_h = target_content_h
+            target_total_h = self.header.height + target_wrapper_h
+    
+            # Make content visible
             self.content_box.opacity = 1
-            Animation(height=target_height, d=0.2, t="out_quad").start(self.content_box)
-
+    
+            # Animate all three layers
+            Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_box)
+            Animation(height=target_wrapper_h, d=0.2, t="out_quad").start(self.content_wrapper)
+            Animation(height=target_total_h, d=0.2, t="out_quad").start(self)
+    
         else:
+            # Rotate chevron back
             Animation(angle=0, d=0.2, t="out_quad").start(self.chevron_rot)
-
-            anim = Animation(height=0, opacity=0, d=0.2, t="out_quad")
-            anim.bind(on_complete=lambda *args: self.content_box.clear_widgets())
-            anim.start(self.content_box)
+    
+            # Animate collapse
+            Animation(height=0, opacity=0, d=0.2, t="out_quad").start(self.content_box)
+            Animation(height=0, d=0.2, t="out_quad").start(self.content_wrapper)
+            Animation(height=self.header.height, d=0.2, t="out_quad").start(self)
+    
+            # Clear content after collapse
+            self.content_box.clear_widgets()
 
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
