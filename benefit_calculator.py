@@ -3289,8 +3289,8 @@ class CalculatorHousingScreen(BaseScreen):
                 set_header_background(service_header, "#FFDD00", 1.0)
             else:
                 service_label.color = get_color_from_hex("#005EA5")
-                service_chevron.source = ""
-                service_chevron.size = (0, 20)   # collapse horizontally
+                service_chevron.source = "images/icons/ChevronDown-icon/ChevronDown-16px.png"
+                service_chevron.size = (20, 20)
                 set_header_background(service_header, "#FFDD00", 1.0)
 
         def apply_service_box(mode, expanded):
@@ -3386,11 +3386,11 @@ class CalculatorHousingScreen(BaseScreen):
             apply_service_box(mode, expanded)
 
             # Enable/disable service fields based on tenancy
-            social = (value or "").strip().lower() == "Social"
+            social = (value or "").strip().lower() == "social"
             for field in w["service_fields"].values():
                 field.disabled = not social
 
-        w["tenancy_type"].label.bind(text=on_tenancy_change_service)
+        w["tenancy_type"].bind(text=on_tenancy_change_service)
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
