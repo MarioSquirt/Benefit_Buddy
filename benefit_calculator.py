@@ -2179,7 +2179,7 @@ class CalculatorNavBar(BoxLayout):
     # =====================================================================
     # DROPDOWN MENU
     # =====================================================================
-    def make_dropdown_row(self, label, icon, on_press):
+    def make_dropdown_row(self, label, icon, on_press, is_last=False):
         row = BoxLayout(
             orientation="horizontal",
             spacing=8,
@@ -2210,8 +2210,8 @@ class CalculatorNavBar(BoxLayout):
         row.add_widget(self._center_icon(img))
         row.add_widget(lbl)
     
-        # ⭐ Add divider only if not last row
-        def add_divider():
+        # Add divider only if not last
+        if not is_last:
             with row.canvas.after:
                 Color(0.0, 0.3686, 0.647, 1)
                 row._divider = Rectangle(size=(0, 3), pos=(0, 0))
@@ -2223,9 +2223,6 @@ class CalculatorNavBar(BoxLayout):
                 row._divider.pos = (x, row.y)
     
             row.bind(size=update_divider, pos=update_divider)
-    
-        if not getattr(row, "is_last", False):
-            add_divider()
     
         self._bind_press(row, on_press)
         return row
@@ -2306,6 +2303,7 @@ class CalculatorNavBar(BoxLayout):
     
         for label, screen_name in self.screens:
             icon = self.icon_map[label]
+            is_last = (label, screen_name) == self.screens[-1]
         
             def make_row_callback(target):
                 return lambda inst: (
@@ -2316,12 +2314,10 @@ class CalculatorNavBar(BoxLayout):
             row = self.make_dropdown_row(
                 label=label,
                 icon=icon,
-                on_press=make_row_callback(screen_name)
+                on_press=make_row_callback(screen_name),
+                is_last=is_last
             )
-        
-            # ⭐ Mark last row
-            row.is_last = (label, screen_name) == self.screens[-1]
-        
+            
             panel.add_widget(row)
             row.bind(on_touch_down=make_row_press(row))
             row.bind(on_touch_up=make_row_release(row))
@@ -3099,6 +3095,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["location"].disabled = True
         w["location"].opacity = 0
         w["location"].height = 0
+        location_anchor.height = 0  # ← also collapse the anchor
         
         # BRMA SPINNER (manual)
         brma_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=70)
@@ -3115,6 +3112,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["brma"].disabled = True
         w["brma"].opacity = 0
         w["brma"].height = 0
+        brma_anchor.height = 0  # ← also collapse the anchor
         
         Clock.schedule_once(lambda dt: setattr(w["brma"].label, "text", "Select BRMA"), 0)
                 
@@ -3166,10 +3164,12 @@ class CalculatorHousingScreen(BaseScreen):
                 w_local["location"].opacity = 1
                 w_local["location"].disabled = False
                 w_local["location"].height = 50
+                location_anchor.height = 70
         
                 w_local["brma"].opacity = 1
                 w_local["brma"].disabled = False
                 w_local["brma"].height = 50
+                brma_anchor.height = 70
         
                 # Restore saved values
                 w_local["location"].text = self.calculator_state.location or "Select Location"
@@ -3180,15 +3180,17 @@ class CalculatorHousingScreen(BaseScreen):
                 # Show Find BRMA button
                 w_local["find_brma_btn"].opacity = 1
                 w_local["find_brma_btn"].disabled = False
-        
+
                 # Hide manual controls
                 w_local["location"].opacity = 0
                 w_local["location"].disabled = True
                 w_local["location"].height = 0
-        
+                location_anchor.height = 0  # ← missing
+
                 w_local["brma"].opacity = 0
                 w_local["brma"].disabled = True
                 w_local["brma"].height = 0
+                brma_anchor.height = 0  # ← missing
         
         w["manual_toggle"].bind(active=toggle_manual_mode)
 
@@ -3251,7 +3253,6 @@ class CalculatorHousingScreen(BaseScreen):
             spacing=10,
             size_hint=(1, None),
         )
-        service_box.bind(minimum_height=service_box.setter("height"))
         layout.add_widget(service_box)
         w["service_box"] = service_box
 
@@ -3294,20 +3295,22 @@ class CalculatorHousingScreen(BaseScreen):
                 service_box.opacity = 1
                 service_box.disabled = False
                 service_box.spacing = 10
-                service_box.height = service_box.minimum_height
-
-                # Restore child heights
+        
+                # Restore child heights first, then measure
                 for child in service_box.children:
                     child.height = 70
                     child.opacity = 1
                     child.disabled = False
+        
+                # Now set height after children are restored
+                service_box.height = service_box.minimum_height
+        
             else:
                 service_box.opacity = 0
                 service_box.disabled = True
                 service_box.spacing = 0
-                service_box.height = 0
-
-                # Collapse children
+                service_box.height = 0  # now nothing overrides this back
+        
                 for child in service_box.children:
                     child.height = 0
                     child.opacity = 0
