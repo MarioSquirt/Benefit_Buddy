@@ -2982,14 +2982,16 @@ class CalculatorHousingScreen(BaseScreen):
         def _update_tenancy_visibility(value_text):
             text = (value_text or "").strip().lower()
         
-            if text == "Rent":
+            if text == "rent":
                 w["tenancy_type"].opacity = 1
                 w["tenancy_type"].disabled = False
                 w["tenancy_type"].height = 50
+                tenancy_anchor.height = 70  # ← add this
             else:
                 w["tenancy_type"].opacity = 0
                 w["tenancy_type"].disabled = True
                 w["tenancy_type"].height = 0
+                tenancy_anchor.height = 0   # ← add this
                 w["tenancy_type"].text = "Select Tenancy Type"
 
         w["housing_type"].label.bind(text=lambda spinner, value: _show_amount_widget(value))
@@ -3016,6 +3018,7 @@ class CalculatorHousingScreen(BaseScreen):
         w["tenancy_type"].opacity = 0
         w["tenancy_type"].disabled = True
         w["tenancy_type"].height = 0
+        tenancy_anchor.height = 0  # ← add this
 
         # ---------------------------------------------------------
         # NON-DEPENDANTS
@@ -3412,8 +3415,10 @@ class CalculatorHousingScreen(BaseScreen):
         # Helper to show the results box
         def show_results_box():
             box = w["brma_results_box"]
-            box.opacity = 1
-            box.height = box.minimum_height
+            def do_show(dt):
+                box.height = box.minimum_height
+                box.opacity = 1
+            Clock.schedule_once(do_show, 0)
         
         
         # ---------------------------------------------------------
@@ -3426,10 +3431,6 @@ class CalculatorHousingScreen(BaseScreen):
             size_hint_y=None,
             height=0,      # start collapsed
             opacity=0,     # start invisible
-        )
-        
-        w["brma_results_box"].bind(
-            minimum_height=w["brma_results_box"].setter("height")
         )
         
         layout.add_widget(w["brma_results_box"])
