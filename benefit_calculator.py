@@ -2982,7 +2982,7 @@ class CalculatorHousingScreen(BaseScreen):
         def _update_tenancy_visibility(value_text):
             text = (value_text or "").strip().lower()
         
-            if text == "Rent":
+            if text == "rent":
                 w["tenancy_type"].opacity = 1
                 w["tenancy_type"].disabled = False
                 w["tenancy_type"].height = 50
