@@ -3390,7 +3390,7 @@ class CalculatorHousingScreen(BaseScreen):
             for field in w["service_fields"].values():
                 field.disabled = not social
 
-        w["tenancy_type"].bind(text=on_tenancy_change_service)
+        w["tenancy_type"].label.bind(text=on_tenancy_change_service)
 
         # ---------------------------------------------------------
         # FIND BRMA BUTTON
