@@ -1883,12 +1883,15 @@ class CollapsibleSection(BoxLayout):
                         self.content_box.bind(width=update_divider)
                         self.content_box.add_widget(divider)
     
-                self.content_box.opacity = 1
-    
-                # Defer until after Kivy has done a layout pass and computed real heights
+                self.content_box.opacity = 0  # keep hidden until animation starts
+
                 def do_animate(dt):
                     target_content_h = self.content_box.minimum_height
                     target_total_h = self.header.height + target_content_h
+                    # Force height back to 0 so animation always grows downward from header
+                    self.content_box.height = 0
+                    self.content_wrapper.height = 0
+                    self.content_box.opacity = 1  # reveal only as animation begins
                     Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_box)
                     Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_wrapper)
                     Animation(height=target_total_h, d=0.2, t="out_quad").start(self)
