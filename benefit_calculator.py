@@ -3056,9 +3056,9 @@ class CalculatorHousingScreen(BaseScreen):
 
         def get_service_mode(value):
             val = (value or "").lower()
-            if val == "Social":
+            if val == "social":
                 return "applicable"
-            elif val == "Private":
+            elif val == "private":
                 return "not_applicable"
             return "unset"
 
@@ -3686,7 +3686,7 @@ class CalculatorHousingScreen(BaseScreen):
     
         # TENANCY-DEPENDENT SERVICE CHARGE ENABLE/DISABLE
         tenancy = (w["tenancy_type"].text or "").strip().lower()
-        social = (tenancy == "Social")
+        social = (tenancy == "social")
         for widget in w["service_fields"].values():
             widget.disabled = not social
 
