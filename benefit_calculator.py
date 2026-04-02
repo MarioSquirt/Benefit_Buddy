@@ -1816,10 +1816,6 @@ class CollapsibleSection(BoxLayout):
             size=lambda inst, val: setattr(self._content_bg, "size", val)
         )
     
-        self.content_box.bind(
-            minimum_height=lambda inst, val: setattr(inst, "height", val)
-        )
-    
         # Add content box into wrapper
         self.content_wrapper.add_widget(self.content_box)
     
@@ -1847,72 +1843,64 @@ class CollapsibleSection(BoxLayout):
     # TOGGLE (ANIMATED)
     # =========================================================
     def toggle(self):
-        self.is_open = not self.is_open
+            self.is_open = not self.is_open
     
-        if self.is_open:
-            # Rotate chevron
-            Animation(angle=180, d=0.2, t="out_quad").start(self.chevron_rot)
+            if self.is_open:
+                Animation(angle=180, d=0.2, t="out_quad").start(self.chevron_rot)
     
-            # Build content
-            self.content_box.clear_widgets()
-            for i, line in enumerate(self.content_lines):
-                lbl = SafeLabel(
-                    text=line,
-                    font_size=16,
-                    halign="left",
-                    valign="middle",
-                    color=get_color_from_hex("#FFFFFF"),
-                    size_hint_y=None
-                )
-                lbl.bind(
-                    width=lambda inst, val: setattr(inst, "text_size", (val, None)),
-                    texture_size=lambda inst, val: setattr(inst, "height", val[1])
-                )
-                self.content_box.add_widget(lbl)
+                self.content_box.clear_widgets()
+                for i, line in enumerate(self.content_lines):
+                    lbl = SafeLabel(
+                        text=line,
+                        font_size=16,
+                        halign="left",
+                        valign="middle",
+                        color=get_color_from_hex("#FFFFFF"),
+                        size_hint_y=None
+                    )
+                    lbl.bind(
+                        width=lambda inst, val: setattr(inst, "text_size", (val, None)),
+                        texture_size=lambda inst, val: setattr(inst, "height", val[1])
+                    )
+                    self.content_box.add_widget(lbl)
     
-                if i < len(self.content_lines) - 1:
-                    divider = Widget(size_hint_y=None, height=2)
-                    with divider.canvas.before:
-                        Color(*get_color_from_hex("#FFDD00"))
-                        divider._line = Rectangle()
+                    if i < len(self.content_lines) - 1:
+                        divider = Widget(size_hint_y=None, height=2)
+                        with divider.canvas.before:
+                            Color(*get_color_from_hex("#FFDD00"))
+                            divider._line = Rectangle()
     
-                    def update_divider(inst, *args):
-                        full_w = self.content_box.width
-                        line_w = full_w * 0.75
-                        inst._line.size = (line_w, 2)
-                        inst._line.pos = (
-                            self.content_box.x + (full_w - line_w) / 2,
-                            inst.y
-                        )
+                        def update_divider(inst, *args):
+                            full_w = self.content_box.width
+                            line_w = full_w * 0.75
+                            inst._line.size = (line_w, 2)
+                            inst._line.pos = (
+                                self.content_box.x + (full_w - line_w) / 2,
+                                inst.y
+                            )
     
-                    divider.bind(pos=update_divider, size=update_divider)
-                    self.content_box.bind(width=update_divider)
-                    self.content_box.add_widget(divider)
+                        divider.bind(pos=update_divider, size=update_divider)
+                        self.content_box.bind(width=update_divider)
+                        self.content_box.add_widget(divider)
     
-            # Calculate heights
-            target_content_h = self.content_box.minimum_height
-            target_wrapper_h = target_content_h
-            target_total_h = self.header.height + target_wrapper_h
+                self.content_box.opacity = 1
     
-            # Make content visible
-            self.content_box.opacity = 1
+                # Defer until after Kivy has done a layout pass and computed real heights
+                def do_animate(dt):
+                    target_content_h = self.content_box.minimum_height
+                    target_total_h = self.header.height + target_content_h
+                    Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_box)
+                    Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_wrapper)
+                    Animation(height=target_total_h, d=0.2, t="out_quad").start(self)
     
-            # Animate all three layers
-            Animation(height=target_content_h, d=0.2, t="out_quad").start(self.content_box)
-            Animation(height=target_wrapper_h, d=0.2, t="out_quad").start(self.content_wrapper)
-            Animation(height=target_total_h, d=0.2, t="out_quad").start(self)
+                Clock.schedule_once(do_animate, 0)
     
-        else:
-            # Rotate chevron back
-            Animation(angle=0, d=0.2, t="out_quad").start(self.chevron_rot)
-    
-            # Animate collapse
-            Animation(height=0, opacity=0, d=0.2, t="out_quad").start(self.content_box)
-            Animation(height=0, d=0.2, t="out_quad").start(self.content_wrapper)
-            Animation(height=self.header.height, d=0.2, t="out_quad").start(self)
-    
-            # Clear content after collapse
-            self.content_box.clear_widgets()
+            else:
+                Animation(angle=0, d=0.2, t="out_quad").start(self.chevron_rot)
+                Animation(height=0, opacity=0, d=0.2, t="out_quad").start(self.content_box)
+                Animation(height=0, d=0.2, t="out_quad").start(self.content_wrapper)
+                Animation(height=self.header.height, d=0.2, t="out_quad").start(self)
+                self.content_box.clear_widgets()
 
 class CalculatorNavBar(BoxLayout):
     def __init__(self, current, **kwargs):
